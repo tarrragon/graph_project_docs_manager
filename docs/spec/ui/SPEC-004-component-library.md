@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-10"
-version: "1.137"
+version: "1.138"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.137（1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.138（1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -1707,7 +1707,7 @@ EVT-CORPUS-004 項目說明：
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 依變體 | 點選 | 建構（存在即代表有問題） | 由呼叫端移除（問題消失） | 資料態：存在與否由呼叫端依所在畫面的損壞／缺口資料決定——追溯視圖（`gap`）為 `traceabilityStateProvider`（`lib/screens/trace/trace_providers.dart`）；Ticket 清單為 `ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0（`lib/screens/ticket_list/ticket_list_providers.dart`）；節點詳情的 `damagedDetail` / `damagedEdge` 隨 SPEC-001 §6「部分損壞」在 0.x 不可達而不渲染（恢復條件見 SPEC-001 §6，`1.0.0-W3-656`）。元件本身不 watch，只接收 `count` / `explanation` / `child` 傳值（§2） | 等確認才顯示（損壞與缺口為解析完成後的資料態，載入中不渲染本元件；§2 樂觀更新政策：0.1 無樂觀操作） |
+| default | 依變體 | 點選 | 建構（存在即代表有問題） | 由呼叫端移除（問題消失） | 資料態：存在與否由呼叫端依所在畫面的損壞／缺口資料決定——追溯視圖（`gap`）為 `traceabilityStateProvider`（`lib/screens/trace/trace_providers.dart`）；Ticket 清單為 `ticketListStateProvider` 的 `TicketsReady.corruptedCount` 大於 0（`lib/screens/ticket_list/ticket_list_providers.dart`）；節點詳情的 `damagedDetail` / `damagedEdge` 隨 SPEC-001 §6「部分損壞」在 0.x 不可達而不渲染（恢復條件見 SPEC-001 §6，`1.1.0-W3-656`）。元件本身不 watch，只接收 `count` / `explanation` / `child` 傳值（§2） | 等確認才顯示（損壞與缺口為解析完成後的資料態，載入中不渲染本元件；§2 樂觀更新政策：0.1 無樂觀操作） |
 | hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space / Enter） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
@@ -6846,6 +6846,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.138 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：4.6 `IssueMarker` default 列「恢復條件見 SPEC-001 §6」的票 ID 由 `1.0.0-W3-656` 改為 `1.1.0-W3-656`；變更歷史列保留原文。條文不變 |
 | 1.137 | 2026-11-10 | `1.0.0-W3-553`（用戶裁定，1.0 編輯能力四項架構決策）：§2 樂觀更新政策列由「0.x 不允許（提案）＋ 1.0 規劃時重評」改為「0.x 與 1.0 皆不允許」；1.0 寫入等位元組落檔才顯示新值，CLI 驗證結果以獨立的驗證狀態呈現（進行中 → 通過／失敗），驗證失敗不自動回滾；三個可觀測時刻與寫入結果型別改由 edit domain 的編輯能力規格定義；刪除原重評條件與「允許類別限低風險可逆欄位」的預想。決策依據見 `docs/tech-decisions.md`〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉。未新增元件與 i18n key |
 | 1.136 | 2026-11-10 | `0.7.0-W1-007.6`（補 `0.7.0-W1-007.4` 回報的 SPEC-003 §3.10 三項缺口）：4.30 `Panel.scrollable` 新增 optional `footer` slot〈固定底部 slot〉（不隨捲動、不傳時版面不變，含 `kMinWindowSize` 下的尺寸算式），偏好設定面板與鍵盤快捷鍵面板的關閉鈕改放 `footer`（§3.6 §9、§11 兩列同步）；4.4 `AppButton` 新增〈開啟時取得焦點〉`autofocus` 參數；4.7 `NavItem` 新增〈`action` 變體的焦點節點〉`focusNode` 參數供面板關閉後焦點歸位；正文版本行由 1.133 修正。未新增元件與 i18n key |
 | 1.135 | 2026-11-10 | `0.7.0-W1-012.18`（用戶裁決，承 `0.7.0-W1-012.12` 合併閘門 `real_font_layout_test` history 兩案紅燈）：4.32 子件列高 `hitTargetMin` 與 4.10 元件固有高 `hitTargetMin` + 2 × `Space.xxs` 互斥。4.10 尺寸契約分清段高 `hitTargetMin`（命中區）與元件固有高；4.32 `history` 子件列高改為 `hitTargetMin` + 2 × `Space.xxs`、框體高加 2 × `Space.xs`，`default` 不變；5.6 `history` 空間不足策略由「不觸發」改為期間選擇取有界寬、超出時各段 label 截斷，刪除「合計不到可用寬的一半」斷言；篩選列不再以縮放吸收超寬。 |

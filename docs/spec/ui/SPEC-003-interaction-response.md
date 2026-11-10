@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-10"
-version: "1.90"
+version: "1.91"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -335,7 +335,7 @@ Test Results。
 
 | 平台事實 | 實測結果 |
 |---------|---------|
-| `UNUserNotificationCenter` 可用性 | ad-hoc 簽章與 Apple Development 簽章的 debug build 皆可用：授權為允許時 `authorizationStatus` 回 `granted`、`add` 送達通知。授權狀態由系統依 bundle id 保存，與簽章種類無關（兩種簽章在同一使用者記錄下回相同狀態）。**Developer ID 簽章下的可用性未量**，由 `1.0.0-W1-027` 承接 |
+| `UNUserNotificationCenter` 可用性 | ad-hoc 簽章與 Apple Development 簽章的 debug build 皆可用：授權為允許時 `authorizationStatus` 回 `granted`、`add` 送達通知。授權狀態由系統依 bundle id 保存，與簽章種類無關（兩種簽章在同一使用者記錄下回相同狀態）。**Developer ID 簽章下的可用性未量**，由 `1.1.0-W1-027` 承接 |
 | 未簽章 build 的首次授權請求回應 | **未量到**：本機在第一輪量測前已存有本 bundle id 的「不允許」使用者記錄，`notDetermined` 已不可達，`requestAuthorization` 從未被呼叫。`~/Library/Preferences/com.apple.ncprefs.plist` 不是本機 macOS 版本存放此記錄之處，不可作為「是否已請求過」的判據；以「系統設定 → 通知」清單為準 |
 | Flutter 端載體 | 原生 `MethodChannel`（`macos/Runner/AppDelegate.swift` + `lib/services/macos_scan_notifier.dart`），無第三方套件；channel 於啟動時註冊並存活至 runtime，授權查詢、發送、撤回、點擊回傳四條路徑皆實測通過 |
 | `AppLifecycleState` 對應 | `inactive` 為過渡態而非可停留狀態：離開前景（失焦、最小化或隱藏）一律 `resumed → inactive → hidden`，返回一律 `hidden → inactive → resumed`，兩段間隔 0–531 ms 不具語意；失焦與最小化在此值上不可區分。以 `inactive` 為判斷分支的邏輯在 macOS 上為死碼 |
@@ -2200,7 +2200,7 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 「斷點」需要圖節點的欄位級損壞資料。frontmatter 解析成功的檔案不產生這類資料；解析失敗的檔案
 不進入圖譜，且依 SPEC-006 FR-04 本版不做部分救回，無「可讀欄位」可顯示。上表最後一列與
 `state-nodeDetail-partial`、欄位級損壞標記在 0.x 都不會發生，條文保留，恢復條件綁觸發票
-`1.0.0-W3-656`。「檔案存在但 frontmatter 解析失敗」一列是本次新增的可達分支，原三分支
+`1.1.0-W3-656`。「檔案存在但 frontmatter 解析失敗」一列是本次新增的可達分支，原三分支
 表把它與「解析有斷點」視為同一件事。
 
 各分支皆須在 `Motion.cancelDeadline` 內抵達（重新整理是單檔操作，不套用批次載入態）。
@@ -2822,6 +2822,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.91 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：§3.6〈重新整理的三分支〉註記的觸發票 ID 由 `1.0.0-W3-656` 改為 `1.1.0-W3-656`；`UNUserNotificationCenter` 可用性列「Developer ID 簽章下的可用性未量」的承接票由 `1.0.0-W1-027` 改為 `1.1.0-W1-027`；變更歷史列保留原文。條文不變 |
 | 1.90 | 2026-11-10 | `0.7.0-W1-007.10`：§3.11〈在地化載體（約束）〉App 名稱載體由 `CFBundleDisplayName` 改為 `CFBundleName` 與 `CFBundleDisplayName` 並列（AppKit 以本地化 CFBundleName 作為 App 選單標題） |
 | 1.89 | 2026-11-10 | `0.7.0-W1-007.6`：§3.10〈清單為靜態內容〉補關閉鈕固定於面板底部、開啟時焦點落點與關閉後歸位的元件承載出處（對應 SPEC-004 v1.136 4.30、4.4、4.7），偏好設定面板同此；§2.10 條文不變 |
 | 1.88 | 2026-11-09 | 來源鏈錨點定名：§2.9 新增〈節點詳情來源鏈的錨點〉（區塊 `panel-nodeDetail-source-chain`、節點列 `card-nodeDetail-chain-<nodeId>`、缺上游虛線框 `badge-nodeDetail-chain-broken-<nodeId>`，及不沿用既有錨點的理由）；§3.6〈來源鏈〉表補錨點、根列不可點，表後註記改指 §2.9 與 SPEC-004 4.39。不新增 §4 列，總數不變。對應 SPEC-004 v1.134 |

@@ -6,7 +6,7 @@ related_usecases: [UC-01]
 depends_on_bundles: []
 path_patterns: [lib/schema/]
 created: "2026-08-26"
-updated: "2026-10-13"
+updated: "2026-11-10"
 ---
 
 # Domain Map — Schema
@@ -46,7 +46,7 @@ updated: "2026-10-13"
 
 ### Bundle 不變式清單
 
-供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依條款分屬兩處：路徑對型別查詢在 SPEC-006 FR-06，邊型表在 SPEC-007 FR-01（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`（此為目標邊界，非現況：2026-09-24 規劃時該目錄尚不存在）。
+供 version-bootstrap Step 5 逐條轉成 domain unit test，不靠「剛好出現在某個 UC 場景」被動覆蓋。規則權威依條款分屬兩處：路徑對型別查詢在 SPEC-006 FR-06，邊型表在 SPEC-007 FR-01（各列的 SPEC 條款欄寫明出處）。本表只列可獨立斷言的不變式；目標路徑為 `lib/schema/`（2026-09-24 規劃時該目錄尚不存在；現況已建立，版本比較的單一實作在 `lib/schema/schema_version.dart`，`lib/app/domain_view_schema_version.dart` 只轉出，gate 判定屬 App 層路由、留在 `lib/app/`。2026-11-10 盤點，`1.0.0-W1-083`）。
 
 | Bundle | 不變式（每條可轉一個 unit test） | SPEC 條款 |
 |---|---|---|
