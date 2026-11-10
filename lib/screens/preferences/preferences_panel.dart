@@ -130,18 +130,19 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
           child: Panel.scrollable(
             key: _stateKey(snapshot),
             scrollKey: const Key('scroll-preferences-editors'),
+            footer: AppButton(
+              label: l10n.cellDetailCloseAction,
+              onPressed: _close,
+              variant: AppButtonVariant.text,
+              autofocus: true,
+              testKey: const Key('action-preferences-close'),
+            ),
             children: [
               AppText.singleLine(
                 l10n.preferencesTitle,
                 variant: AppTextVariant.subtitle,
               ),
               if (snapshot != null) ..._optionRows(l10n, snapshot),
-              AppButton(
-                label: l10n.cellDetailCloseAction,
-                onPressed: _close,
-                variant: AppButtonVariant.text,
-                testKey: const Key('action-preferences-close'),
-              ),
             ],
           ),
         ),

@@ -112,6 +112,25 @@ Future<_MemoryStore> _pump(
 }
 
 void main() {
+  testWidgets('開啟時焦點在關閉鈕（固定底部 footer）', (tester) async {
+    await _pump(tester, installed: {'cursor'});
+    await tester.pump();
+
+    final closeFinder = find.byKey(const Key('action-preferences-close'));
+    final focusedContext = FocusManager.instance.primaryFocus?.context;
+    expect(
+      find.descendant(
+        of: closeFinder,
+        matching: find.byElementPredicate((e) => e == focusedContext),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.getRect(closeFinder).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(Panel)).bottom),
+    );
+  });
+
   testWidgets('只列查得 handler 的編輯器，系統預設恆排第一且預設選取', (tester) async {
     await _pump(tester, installed: {'cursor', 'vscode'});
 

@@ -467,6 +467,56 @@ void _registerBottomItemTests() {
       expect(container.read(preferencesOpenProvider), isFalse);
     });
 
+    testWidgets('底部項開啟的面板關閉後焦點回到該項（設定、快捷鍵）', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+
+      for (final entry in [
+        ('nav-action-preferences', preferencesOpenProvider),
+        ('nav-action-shortcuts', shortcutsOpenProvider),
+      ]) {
+        await tester.tap(find.byKey(Key(entry.$1)));
+        await tester.pump();
+        container.read(entry.$2.notifier).state = false;
+        await tester.pump();
+        await tester.pump();
+        expect(_itemNode(tester, entry.$1).hasFocus, isTrue, reason: entry.$1);
+      }
+    });
+
+    testWidgets('選單開啟後關閉：焦點回開啟前持有者；無持有者不預設焦點', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+      Future<void> sendMenu() async {
+        await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          preferencesChannelName,
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('openKeyboardShortcuts'),
+          ),
+          (_) {},
+        );
+        await tester.pump();
+      }
+
+      // 開啟前持有者：設定項。
+      _itemNode(tester, 'nav-action-preferences').requestFocus();
+      await tester.pump();
+      await sendMenu();
+      container.read(shortcutsOpenProvider.notifier).state = false;
+      await tester.pump();
+      await tester.pump();
+      expect(_itemNode(tester, 'nav-action-preferences').hasFocus, isTrue);
+
+      // 無持有者：不歸還到底部項。
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await sendMenu();
+      container.read(shortcutsOpenProvider.notifier).state = false;
+      await tester.pump();
+      await tester.pump();
+      expect(_itemNode(tester, 'nav-action-shortcuts').hasFocus, isFalse);
+    });
+
     testWidgets('底部項不改變導覽狀態', (tester) async {
       late ProviderContainer container;
       await _pumpShell(tester, onReady: (c) => container = c);
@@ -576,6 +626,14 @@ List<Key> _ancestorKeys(FocusNode? node) {
 }
 
 /// 將焦點放到專案切換入口（SPEC-003 §2.10 Tab 序列的起點）。
+/// 底部項（以 testKey 定位）內部持有的焦點節點。
+FocusNode _itemNode(WidgetTester tester, String key) {
+  final inner = find
+      .descendant(of: find.byKey(Key(key)), matching: find.byType(Padding))
+      .first;
+  return Focus.of(tester.element(inner));
+}
+
 Future<void> _focusSwitcherEntry(WidgetTester tester) async {
   final inner = find
       .descendant(
