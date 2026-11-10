@@ -77,7 +77,7 @@ md 已在 `origin/main`，否則硬擋——逐次徵詢會使每一次 worktree
 - 本專案是 consumer，不開修框架的線，也不派修框架。發現框架問題照常建票，回報後關閉本地票：到 `tarrragon/claude` 開 issue 或 observe，或直接通知 llm-dev session。P0／P1 也一樣回報，由主控方排入版本。
 - 碰到框架阻礙時，照常在回報中標「拖慢專案」，作為主控方分診的優先序依據。
 - 例外只有 component-contract-design，見上方「開發上游」一段。
-- 清理線與派修判準只適用主控方，見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修復時點：派修或累積到清理線〉。
+- 修復時點的版本分診只適用主控方，見 `.claude/skills/framework-issue/references/escalation-flow.md`〈修復時點：版本分診〉（框架 v3.1.0 起取代原〈修復時點：派修或累積到清理線〉，清理線已移除）。
 
 **仍不在授權內**：`sync-push` 與 `skill-sync push`（同上段理由，那是改資產本體不是留一則可刪的觀測）、
 改他人 owner 的區段或 issue body、其他 remote 與其他 repo、以 `create_issue.py` 新開 issue
