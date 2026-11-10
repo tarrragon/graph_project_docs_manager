@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-10"
-version: "1.0"
+version: "1.1"
 owner: L54-main
 has_functional_requirements: true
 
@@ -75,6 +75,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - 步驟 1 或步驟 5 讀不到檔案時：檔案已不存在視為 W ≠ M（外部已改，檔案被刪或改名）；其他讀取失敗（權限等）回傳 `ioFailed`。
 - 比較用位元組內容本身，不用雜湊（〈2026-09-10〉A-2：單檔 KB 級、短生命週期比對）。
 - H 以 `git -C <工作區根> show HEAD:./<工作區相對路徑>` 取得。`./` 前綴使路徑相對於 `-C` 指定的目錄解析，工作區可以是 repo 的子目錄。stdout 以位元組讀取，不經字元解碼。結束碼 0 為 H 存在；結束碼 128 且 stderr 指出路徑不在 HEAD 中，為 H 不存在；其他情況為 H 無法判定。後兩者都走快照分支。
+- App 發出的 `git` 呼叫一律在環境中設 `LC_ALL=C`（比照 SPEC-008 FR-01 規則 1）。理由：上一條以 stderr 內容區分「H 不存在」與「H 無法判定」，而 `git` 的 stderr 會依 `LANG`／`LC_MESSAGES` 翻譯，不固定語系時判定結果會隨使用者的語系設定改變。
 - 步驟 5 的重比把外部寫入的時窗縮到步驟 5 與步驟 6 之間。該殘餘時窗內的外部寫入會被覆蓋，為已知限制：不採檔案鎖與 `xattr` 標記（〈2026-09-10〉A-2：對不參與協定的外部編輯器無強制力）。
 - **唯讀降級不進本閘門**：由本 domain 在工作區開啟時判定（以工作區根探測 `git`）。可寫或唯讀是本 domain 的狀態，不放進 Workspace：Workspace 的變更理由是資料夾存取方式，放進去會讓它知道編輯的存在（2026-11-10 主控裁定）。工作區不是 git repo，或 `git` 無法執行時，整個工作區進入唯讀降級並常駐降級徽章，編輯控制項不可用。理由：快照與 H 都需要 `git`，缺席時每次寫入都只會落入 `snapshotFailed`；在開啟時降級，與 A-1「依賴缺席 → 降級並常駐徽章」的先例一致（〈2026-09-10〉A-1 末段；`git` 缺席部分為 2026-11-10 主控裁定）。本 domain 不在每次寫入時重判；編輯期間 `git` 變為不可用時，由步驟 3 回傳 `snapshotFailed`，不靜默放行。
 
@@ -102,6 +103,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 **約束條件**：
 
 - 不動 index、HEAD、refs、stash，不增加 reflog 項目（〈2026-09-10〉A-1 實測）。
+- `hash-object` 呼叫同樣設 `LC_ALL=C`（FR-01 約束）。
 - 快照是 session 內的復原手段，不是備份：blob 為 unreachable object，受 `gc.pruneExpire` 管轄（預設兩週）。規格、文案與日誌不得使用「備份」一詞而不寫明期限。
 - 快照 SHA 寫進 structured log（FR-07 `snapshotTaken`），供事後追溯（FR-08）。
 - 快照發生時必須有可見回饋，並附取回說明。畫面形式由 SPEC-001／003 的編輯狀態承接。1.0 不提供 App 內的還原動作；取回由使用者依說明執行。
@@ -477,3 +479,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 | 1.0 | 2026-11-10 | 初始版本（1.0.0-W3-553.1） |
+| 1.1 | 2026-11-10 | FR-01 約束新增：App 發出的 `git` 呼叫一律設 `LC_ALL=C`；FR-02 註明 `hash-object` 同樣適用。出處為 `1.0.0-W3-553.4` 測試設計審查：H 的判定依賴 `git` stderr，stderr 會隨語系翻譯 |
