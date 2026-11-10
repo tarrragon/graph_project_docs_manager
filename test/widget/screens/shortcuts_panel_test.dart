@@ -92,9 +92,20 @@ void main() {
   testWidgets('關閉鈕關閉面板', (tester) async {
     final container = await _pumpOpen(tester);
 
-    // 關閉鈕在捲動清單末端，內容超出面板高時需先捲入可見範圍。
-    await tester.ensureVisible(find.byKey(const Key('action-shortcuts-close')));
-    await tester.pump();
+    // 關閉鈕為固定底部 footer，不需捲動即可點；開啟時焦點落在其上。
+    final closeFinder = find.byKey(const Key('action-shortcuts-close'));
+    expect(
+      tester.getRect(closeFinder).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(Panel)).bottom),
+    );
+    final focusedContext = FocusManager.instance.primaryFocus?.context;
+    expect(
+      find.descendant(
+        of: closeFinder,
+        matching: find.byElementPredicate((e) => e == focusedContext),
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('action-shortcuts-close')));
     await tester.pump();
 

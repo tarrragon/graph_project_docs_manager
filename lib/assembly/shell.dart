@@ -68,6 +68,16 @@ class _AppShellState extends ConsumerState<AppShell>
   late final ScanNotificationController _scanNotificationController;
   StreamSubscription<void>? _preferencesRequests;
   StreamSubscription<void>? _shortcutsRequests;
+  final FocusNode _preferencesItemFocus = FocusNode(
+    debugLabel: 'nav-action-preferences',
+  );
+  final FocusNode _shortcutsItemFocus = FocusNode(
+    debugLabel: 'nav-action-shortcuts',
+  );
+
+  /// 面板關閉後焦點的歸還目標（SPEC-003 §3.10）：底部項開啟為該項，
+  /// 選單或 ⌘, 開啟為開啟前的焦點持有者（無則 null，不預設焦點）。
+  FocusNode? _returnFocusTarget;
 
   @override
   void initState() {
@@ -78,12 +88,12 @@ class _AppShellState extends ConsumerState<AppShell>
     _preferencesRequests = ref
         .read(preferencesChannelProvider)
         .openRequested
-        .listen((_) => ref.read(preferencesOpenProvider.notifier).state = true);
+        .listen((_) => _openPreferences(FocusManager.instance.primaryFocus));
     // 說明選單「鍵盤快捷鍵」開啟快捷鍵面板；與偏好設定互斥由 build 的 ref.listen 處理。
     _shortcutsRequests = ref
         .read(preferencesChannelProvider)
         .openKeyboardShortcutsRequested
-        .listen((_) => ref.read(shortcutsOpenProvider.notifier).state = true);
+        .listen((_) => _openShortcuts(FocusManager.instance.primaryFocus));
     // SPEC-006 FR-11 規則 1：常駐殼啟動即掛上監看，早於還原工作區後的首輪掃描。
     ref.read(corpusWatchProvider);
     // 每輪掃描完成寫入最近專案計數快照（SPEC-005 §2.4〈計數快照〉）。
@@ -139,8 +149,31 @@ class _AppShellState extends ConsumerState<AppShell>
     }
   }
 
+  void _openPreferences(FocusNode? returnTo) {
+    _returnFocusTarget = returnTo;
+    ref.read(preferencesOpenProvider.notifier).state = true;
+  }
+
+  void _openShortcuts(FocusNode? returnTo) {
+    _returnFocusTarget = returnTo;
+    ref.read(shortcutsOpenProvider.notifier).state = true;
+  }
+
+  /// 面板關閉（非因另一面板開啟而被互斥關閉）後把焦點交還開啟者。
+  void _restoreFocusAfterClose({required bool otherPanelOpen}) {
+    if (otherPanelOpen) return;
+    final target = _returnFocusTarget;
+    _returnFocusTarget = null;
+    if (target == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && target.context != null) target.requestFocus();
+    });
+  }
+
   @override
   void dispose() {
+    _preferencesItemFocus.dispose();
+    _shortcutsItemFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _preferencesRequests?.cancel();
     _shortcutsRequests?.cancel();
@@ -189,10 +222,22 @@ class _AppShellState extends ConsumerState<AppShell>
     final isShortcutsOpen = ref.watch(shortcutsOpenProvider);
     // 兩面板互斥（SPEC-003 §3.8、§3.10）：開一個時先關另一個。
     ref.listen<bool>(preferencesOpenProvider, (_, open) {
-      if (open) ref.read(shortcutsOpenProvider.notifier).state = false;
+      if (open) {
+        ref.read(shortcutsOpenProvider.notifier).state = false;
+      } else {
+        _restoreFocusAfterClose(
+          otherPanelOpen: ref.read(shortcutsOpenProvider),
+        );
+      }
     });
     ref.listen<bool>(shortcutsOpenProvider, (_, open) {
-      if (open) ref.read(preferencesOpenProvider.notifier).state = false;
+      if (open) {
+        ref.read(preferencesOpenProvider.notifier).state = false;
+      } else {
+        _restoreFocusAfterClose(
+          otherPanelOpen: ref.read(preferencesOpenProvider),
+        );
+      }
     });
     return Scaffold(
       body: Stack(
@@ -228,15 +273,15 @@ class _AppShellState extends ConsumerState<AppShell>
                 components.NavItem.action(
                   icon: const components.AppIcon(icon: Icons.settings_outlined),
                   label: l10n.sidebarSettingsLabel,
-                  onTap: () =>
-                      ref.read(preferencesOpenProvider.notifier).state = true,
+                  focusNode: _preferencesItemFocus,
+                  onTap: () => _openPreferences(_preferencesItemFocus),
                   testKey: const Key('nav-action-preferences'),
                 ),
                 components.NavItem.action(
                   icon: const components.AppIcon(icon: Icons.keyboard_outlined),
                   label: l10n.keyboardShortcutsTitle,
-                  onTap: () =>
-                      ref.read(shortcutsOpenProvider.notifier).state = true,
+                  focusNode: _shortcutsItemFocus,
+                  onTap: () => _openShortcuts(_shortcutsItemFocus),
                   testKey: const Key('nav-action-shortcuts'),
                 ),
               ],

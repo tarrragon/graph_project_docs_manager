@@ -100,6 +100,13 @@ class ShortcutsPanel extends ConsumerWidget {
           child: Panel.scrollable(
             key: const Key('state-shortcuts-list'),
             scrollKey: const Key('scroll-shortcuts-list'),
+            footer: AppButton(
+              label: l10n.cellDetailCloseAction,
+              onPressed: () => _close(ref),
+              variant: AppButtonVariant.text,
+              autofocus: true,
+              testKey: const Key('action-shortcuts-close'),
+            ),
             children: [
               AppText.singleLine(
                 l10n.keyboardShortcutsTitle,
@@ -111,12 +118,6 @@ class ShortcutsPanel extends ConsumerWidget {
                   action: entry.action(l10n),
                   contextLabel: entry.context(l10n),
                 ),
-              AppButton(
-                label: l10n.cellDetailCloseAction,
-                onPressed: () => _close(ref),
-                variant: AppButtonVariant.text,
-                testKey: const Key('action-shortcuts-close'),
-              ),
             ],
           ),
         ),
