@@ -20,6 +20,7 @@ import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
@@ -44,7 +45,12 @@ class ScanRoundResult {
     required this.graph,
     required this.schemaResolution,
     required this.isDegraded,
+    this.edgeResolution,
   });
+
+  /// 本輪建圖所用的邊型決議結果（與 [buildGraph] 同輸入）；History 沿用同一份。
+  /// 為 `null` 代表未記錄（測試替身），消費端自行降級決議。
+  final EdgeTypeResolution? edgeResolution;
 
   /// 本輪所屬工作區根目錄。
   final String workspacePath;
@@ -332,6 +338,10 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
       graph: graph,
       schemaResolution: resolution,
       isDegraded: isDegraded,
+      edgeResolution: resolveEdgeTypes(
+        projectSchemaJson: projectJson,
+        builtinSchemaJson: builtinJson,
+      ),
     );
   }
 

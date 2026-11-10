@@ -7,10 +7,13 @@ import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/history_providers.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
+import 'package:graph_project_docs_manager/app/scan_round.dart'
+    show builtinTrackingSchemaJsonProvider;
 import 'package:graph_project_docs_manager/history/application/history_state.dart';
 
 import '../../helpers/history/fake_process_runner.dart';
 import '../../helpers/history/history_screen_fixtures.dart';
+import '../../helpers/history/synthetic_git_log.dart';
 import '../../helpers/pump_harness.dart';
 
 Finder _key(String k) => find.byKey(Key(k));
@@ -76,6 +79,45 @@ void main() {
         ),
       ),
     );
+  });
+
+  testWidgets('WR-6 真實接線：合成 git log 的 blockedBy 增補產生事件（E2 正向對照）', (
+    tester,
+  ) async {
+    const path = 'docs/work-logs/v0.1.0/tickets/0.1.0-W1-001.md';
+    const before = {'id': '0.1.0-W1-001'};
+    final log = SyntheticLogBuilder()
+      ..commit('a', files: [LogFileEntry.added(path, frontmatterLines(before))])
+      ..commit(
+        'b',
+        parents: ['a'],
+        files: [
+          LogFileEntry.modified(
+            path,
+            before: frontmatterLines(before),
+            after: frontmatterLines({
+              'id': '0.1.0-W1-001',
+              'blockedBy': ['0.1.0-W1-002'],
+            }),
+          ),
+        ],
+      );
+    final runner = FakeProcessRunner(
+      scanFactory: () => FakeScanScript.complete([log.toBytes()]),
+    );
+    await _pumpWired(tester, runner);
+    // 真實 app 的掃描輪次會等內建表載入；此處以真實資產載入對齊（不覆寫）。
+    await tester.runAsync(
+      () =>
+          historyContainer(tester)
+              .read(builtinTrackingSchemaJsonProvider.future),
+    );
+    await tester.tap(_key('nav-item-history'));
+    await tester.pumpAndSettle();
+    final state = historyContainer(tester).read(historyProvider);
+    expect(state, isA<HistoryLoaded>());
+    final events = (state as HistoryLoaded).snapshot.events;
+    expect(events, isNotEmpty);
   });
 
   testWidgets('WR-5 導覽列七項，變更記錄為第七項', (tester) async {
