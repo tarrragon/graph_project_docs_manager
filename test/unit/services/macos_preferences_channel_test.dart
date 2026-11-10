@@ -63,4 +63,29 @@ void main() {
 
     expect(count, 1);
   });
+
+  test('原生端送 openKeyboardShortcuts：只有快捷鍵串流發出，未知方法不誤觸發', () async {
+    final channel = MacosPreferencesChannel(channel: _channel);
+    var shortcuts = 0;
+    var preferences = 0;
+    final subA = channel.openKeyboardShortcutsRequested.listen(
+      (_) => shortcuts++,
+    );
+    final subB = channel.openRequested.listen((_) => preferences++);
+    addTearDown(subA.cancel);
+    addTearDown(subB.cancel);
+
+    Future<void> send(String method) => messenger.handlePlatformMessage(
+      preferencesChannelName,
+      const StandardMethodCodec().encodeMethodCall(MethodCall(method)),
+      (_) {},
+    );
+    await send('unknownMethod');
+    await pumpEventQueue();
+    expect((shortcuts, preferences), (0, 0));
+
+    await send('openKeyboardShortcuts');
+    await pumpEventQueue();
+    expect((shortcuts, preferences), (1, 0));
+  });
 }

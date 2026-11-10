@@ -38,10 +38,20 @@ class MacosPreferencesChannel implements EditorHandlerProbe {
   /// 使用者按選單列「Preferences…」或 ⌘, 時發出。
   Stream<void> get openRequested => _openRequestedController.stream;
 
+  final StreamController<void> _openShortcutsController =
+      StreamController<void>.broadcast();
+
+  /// 使用者按說明選單「鍵盤快捷鍵」時發出（SPEC-003 §3.11〈選單動作的通道〉）。
+  Stream<void> get openKeyboardShortcutsRequested =>
+      _openShortcutsController.stream;
+
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (call.method == 'openPreferences') {
       developer.log('收到偏好設定開啟請求', name: _tag); // i18n-exempt: 開發者診斷 log
       _openRequestedController.add(null);
+    } else if (call.method == 'openKeyboardShortcuts') {
+      developer.log('收到鍵盤快捷鍵開啟請求', name: _tag); // i18n-exempt: 開發者診斷 log
+      _openShortcutsController.add(null);
     }
     return null;
   }
