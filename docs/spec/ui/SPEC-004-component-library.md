@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.136（1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.136（1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -2276,9 +2276,9 @@ EVT-CORPUS-004 項目說明：
 | 項目 | 值 |
 |------|-----|
 | 尺寸模式 | 固有尺寸（各段 label 寬 + 2 × `Space.md`，軌道內距 `Space.xxs`） |
-| 最小尺寸 | 寬：2 × `LayoutSize.hitTargetMin`；高：`LayoutSize.hitTargetMin` |
-| 最小命中區 | 每段 `LayoutSize.hitTargetMin` |
-| 最大尺寸 | 寬：父格位寬（超出時各段 label 截斷）；高：`LayoutSize.hitTargetMin` |
+| 最小尺寸 | 寬：2 × `LayoutSize.hitTargetMin`；高：元件固有高 `LayoutSize.hitTargetMin` + 2 × `Space.xxs`（段高 `hitTargetMin` 加軌道內距上下各 `Space.xxs`） |
+| 最小命中區 | 每段 `LayoutSize.hitTargetMin`（段高；不含軌道內距） |
+| 最大尺寸 | 寬：父格位寬（超出時各段 label 截斷）；高：元件固有高 `LayoutSize.hitTargetMin` + 2 × `Space.xxs` |
 | `kMinWindowSize` 下的行為 | 維持（置於 `SplitRow.header` 右格） |
 | `kDesignSize` 下的行為 | 維持 |
 
@@ -4933,11 +4933,11 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 尺寸模式 | 填滿父容器（寬）；含底邊框的框體高固定 `LayoutSize.hitTargetMin` + 2 × `Space.xs`（框體內上下內距各 `Space.xs`，子件列高 `hitTargetMin`），不隨 ScreenUtil 縮放；框體下方另有間距 `Space.sm`（見〈使用 design token〉間距列），不計入此固定高 |
+| 尺寸模式 | 填滿父容器（寬）；含底邊框的框體高固定 = 子件列高 + 2 × `Space.xs`（框體內上下內距各 `Space.xs`），不隨 ScreenUtil 縮放；子件列高：`default` 為 `LayoutSize.hitTargetMin`（框體高 `hitTargetMin` + 2 × `Space.xs`），`history` 為 `SegmentedControl` 元件固有高 `hitTargetMin` + 2 × `Space.xxs`（4.10；框體高 `hitTargetMin` + 2 × `Space.xxs` + 2 × `Space.xs`）；框體下方另有間距 `Space.sm`（見〈使用 design token〉間距列），不計入此固定高 |
 | 最小尺寸 | 寬：`default` 為 `SearchField` 最小寬 + Σ `FilterDropdown` 固有寬 + `IssueMarker` 寬 + (N + 1) × `Space.sm`；`history` 為 `SegmentedControl` 固有寬 + `AppCheckbox` 固有寬 + `Space.sm` |
 | 最小命中區 | 不適用 |
 | 最大尺寸 | 寬無上限；高固定 |
-| `kMinWindowSize` 下的行為 | 維持（`default`：`SearchField` 吸收剩餘寬；`history`：兩子件固有寬遠小於可用寬；5.6 不觸發公式） |
+| `kMinWindowSize` 下的行為 | 維持（`default`：`SearchField` 吸收剩餘寬；`history`：`AppCheckbox` 固有寬，`SegmentedControl` 取有界寬、超出時各段 label 截斷；5.6） |
 | `kDesignSize` 下的行為 | 維持 |
 
 #### 內容政策
@@ -6577,9 +6577,9 @@ EVT-CORPUS-004 項目說明：
 
 | 不變式 | 值 |
 |--------|-----|
-| 不重疊 | 單列水平互斥；`default` 由 `SearchField` 吸收剩餘寬，`history` 子件固有寬靠左 |
+| 不重疊 | 單列水平互斥；`default` 由 `SearchField` 吸收剩餘寬，`history` 的 `AppCheckbox` 取固有寬、`SegmentedControl` 取有界寬，兩者靠左 |
 | 最小間距 | `Space.sm`；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發。`history`：上限 2，`SegmentedControl` 固有寬（三段，以 en 最長 label `historyPeriodDefaultLabel`「Default period」計）+ `AppCheckbox` 固有寬（以 en `historyIncludeTicketCreatedLabel`「Include ticket creation」計）+ `Space.sm` ≤ 可用寬（= `Panel` 內寬，`kMinWindowSize` 下為 960 − `LayoutSize.sidebarWidth` − 2 × `Space.xl` − 2 × `Space.md` = 724）；兩者合計不到可用寬的一半，測試以 `kMinWindowSize` 與 en 文案代入斷言。`default`：上限 5；`SearchField` 最小寬 + Σ `FilterDropdown` 固有寬（以最長選項文案計）+ `IssueMarker` 寬 + 4 × `Space.sm` ≤ 可用寬（= `Panel` 內寬）；測試以 `TestCopy` 最長值與 `kMinWindowSize` 代入斷言 |
+| 空間不足策略 | `history`：上限 2；`SegmentedControl` 格位為有界寬 = 可用寬（= `Panel` 內寬）− `AppCheckbox` 固有寬 − `Space.sm`，不超出時取固有寬、靠左；`SegmentedControl` 固有寬 > 有界寬時觸發，各段 label 截斷（4.10 最大尺寸），`AppCheckbox` 維持固有寬，不縮放、不換行。觸發條件只在字型寬於預期時成立（測試字型、極端系統字型），測試以 `kMinWindowSize`、en 長 label 與測試字型代入，斷言不溢位且段 label 截斷。`default`：不觸發，上限 5；`SearchField` 最小寬 + Σ `FilterDropdown` 固有寬（以最長選項文案計）+ `IssueMarker` 寬 + 4 × `Space.sm` ≤ 可用寬（= `Panel` 內寬）；測試以 `TestCopy` 最長值與 `kMinWindowSize` 代入斷言 |
 
 ### 5.7 BadgeRow
 
@@ -6847,6 +6847,7 @@ EVT-CORPUS-004 項目說明：
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 | 1.136 | 2026-11-10 | `0.7.0-W1-007.6`（補 `0.7.0-W1-007.4` 回報的 SPEC-003 §3.10 三項缺口）：4.30 `Panel.scrollable` 新增 optional `footer` slot〈固定底部 slot〉（不隨捲動、不傳時版面不變，含 `kMinWindowSize` 下的尺寸算式），偏好設定面板與鍵盤快捷鍵面板的關閉鈕改放 `footer`（§3.6 §9、§11 兩列同步）；4.4 `AppButton` 新增〈開啟時取得焦點〉`autofocus` 參數；4.7 `NavItem` 新增〈`action` 變體的焦點節點〉`focusNode` 參數供面板關閉後焦點歸位；正文版本行由 1.133 修正。未新增元件與 i18n key |
+| 1.135 | 2026-11-10 | `0.7.0-W1-012.18`（用戶裁決，承 `0.7.0-W1-012.12` 合併閘門 `real_font_layout_test` history 兩案紅燈）：4.32 子件列高 `hitTargetMin` 與 4.10 元件固有高 `hitTargetMin` + 2 × `Space.xxs` 互斥。4.10 尺寸契約分清段高 `hitTargetMin`（命中區）與元件固有高；4.32 `history` 子件列高改為 `hitTargetMin` + 2 × `Space.xxs`、框體高加 2 × `Space.xs`，`default` 不變；5.6 `history` 空間不足策略由「不觸發」改為期間選擇取有界寬、超出時各段 label 截斷，刪除「合計不到可用寬的一半」斷言；篩選列不再以縮放吸收超寬。 |
 | 1.134 | 2026-11-09 | 登記節點詳情來源鏈（對應 SPEC-001 v1.84 §6〈來源鏈〉、SPEC-003 v1.88 §3.6〈來源鏈〉與 §2.9）：4.39 `Tree` 新增 `sourceChain` 變體（恆全部展開、無展開器、不持有展開集合；選擇理由、承載位置、尺寸約束、節點列、缺上游列、不渲染條件、資料來源），總表同步；4.40 `ListRow.tree` 補來源鏈列行為、`testKey` 與 i18n；§3.6 §6 正常列組成補 `Section.static`[`Tree.sourceChain`]；§4.0.6 新增 `sourceChainTitle`、`sourceChainNoUpstream`（zh／en）。ARB 同批 |
 | 1.133 | 2026-11-09 | `0.7.0-W1-007.1`（`0.7.0-W1-007` 用戶裁決三項，對應 SPEC-001 v1.83、SPEC-003 v1.86）：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項的順序、動作、錨點、Tab 順序接在七個導覽項之後、`kMinWindowSize` 下不溢位的 token 算式），slot 表增 `bottomItems`，焦點路徑三區段改四區段，i18n 與測試點同步；4.7 `NavItem` 增 `action` 變體（恆 unselected、不改導覽狀態）；4.40 `ListRow` 增 `shortcut` 變體（按鍵、作用、情境）；§3.6 補 SPEC-001 §11「快捷鍵清單」一列（`Panel.scrollable` + `ListRow.shortcut`）；§4.0.6 新增〈1.133 新增〉表登記 20 個 key，並註明主選單標題不進 ARB。未新增元件 |
 | 1.132 | 2026-11-09 | `0.7.0-W1-009.1`（對應 SPEC-003 v1.85 §3.8、§2.13 列 20／21）：§4.0.6 新增兩 key 並登記 zh／en 與用處，4.26 `AppSnackBar` `message` 呼叫端清單補兩 key；ARB 同批 |

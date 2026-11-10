@@ -1,6 +1,7 @@
 /// [Toolbar] widget test（SPEC-004 §4.32「測試點」、§5.6 排列不變式）。
 library;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -301,5 +302,61 @@ void main() {
         expect(find.byType(SearchField), findsNothing);
       });
     }
+
+    testWidgets('框體高 = hitTargetMin + 2×Space.xxs + 2×Space.xs（4.32）', (
+      tester,
+    ) async {
+      await pumpHarness(tester, size: WindowSize.min, child: build());
+      final box = tester.getSize(find.byKey(const Key('toolbar-history')));
+      expect(
+        box.height,
+        closeTo(LayoutSize.hitTargetMin + 2 * Space.xxs + 2 * Space.xs, 0.01),
+      );
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('en 長 label 於最小視窗不溢位且段 label 截斷（E2 正向對照）', (tester) async {
+      const long = 'Recent thirty days of history entries';
+      final toolbar = Toolbar.history(
+        testKey: const Key('toolbar-history'),
+        period: SegmentedControl(
+          segments: const [
+            SegmentItem(label: long, semanticLabel: 'a', testKey: Key('p-a')),
+            SegmentItem(label: long, semanticLabel: 'b', testKey: Key('p-b')),
+            SegmentItem(label: long, semanticLabel: 'c', testKey: Key('p-c')),
+          ],
+          selectedIndex: 0,
+          onChanged: (_) {},
+        ),
+        toggle: AppCheckbox(
+          label: 'Include ticket creation',
+          value: false,
+          onChanged: (_) {},
+          testKey: const Key('action-history-include-ticket-created'),
+        ),
+      );
+      await pumpHarness(tester, size: WindowSize.min, child: toolbar);
+      expectNoOverflow(tester);
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.text(long).first,
+      );
+      expect(paragraph.didExceedMaxLines, isTrue);
+    });
+  });
+
+  group('Toolbar default 高度不變', () {
+    testWidgets('框體高 = hitTargetMin + 2×Space.xs', (tester) async {
+      await pumpHarness(
+        tester,
+        size: WindowSize.min,
+        child: Toolbar(
+          search: _buildSearch(),
+          filters: _buildFilters(1),
+          testKey: const Key('toolbar-default'),
+        ),
+      );
+      final box = tester.getSize(find.byKey(const Key('toolbar-default')));
+      expect(box.height, closeTo(LayoutSize.hitTargetMin + 2 * Space.xs, 0.01));
+    });
   });
 }

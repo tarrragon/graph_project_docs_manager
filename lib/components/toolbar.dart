@@ -77,7 +77,13 @@ class Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final children = period != null ? _historyChildren() : _defaultChildren();
+    final isHistory = period != null;
+    final children = isHistory ? _historyChildren() : _defaultChildren();
+    // history 變體的子件列高為 SegmentedControl 固有高（段高 + 2 × 軌道內距
+    // Space.xxs，SPEC-004 4.10）；default 變體維持 hitTargetMin。
+    final rowHeight = isHistory
+        ? LayoutSize.hitTargetMin + 2 * Space.xxs
+        : LayoutSize.hitTargetMin;
 
     return Padding(
       padding: EdgeInsets.only(bottom: Space.sm.h),
@@ -90,9 +96,9 @@ class Toolbar extends StatelessWidget {
           ),
           child: SizedBox(
             // 高度與垂直內距不乘 ScreenUtil 縮放：SPEC-004 §4.32 尺寸契約為
-            // `hitTargetMin + 2 × Space.xs`（固定值），扣除內距後須恆等於子件
-            // 契約高 `hitTargetMin`（572 根因：縮放使 960x640 僅得 22.4）。
-            height: LayoutSize.hitTargetMin + 2 * Space.xs,
+            // 子件列高 + 2 × Space.xs（固定值），扣除內距後須恆等於子件
+            // 契約高（572 根因：縮放使 960x640 僅得 22.4）。
+            height: rowHeight + 2 * Space.xs,
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: Space.xs),
               child: Row(
@@ -107,7 +113,9 @@ class Toolbar extends StatelessWidget {
   }
 
   List<Widget> _historyChildren() {
-    return [period!, SizedBox(width: Space.sm.w), toggle!];
+    // period 取有界寬（可用寬 - toggle 固有寬 - Space.sm），超出時由
+    // SegmentedControl 各段 label 截斷承接（SPEC-004 4.10、5.6）。
+    return [Flexible(child: period!), SizedBox(width: Space.sm.w), toggle!];
   }
 
   List<Widget> _defaultChildren() {
