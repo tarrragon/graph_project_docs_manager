@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-11-10"
-version: "1.139"
+updated: "2026-11-11"
+version: "1.140"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.139（1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.140（1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -152,6 +152,10 @@ depends_on_domains: [layout]
 | `BlockedState`（阻擋狀態） | 元件 | L3 | 「這個專案不適用本 App」+ 版本值（不是框架專案無）+ 說明 + 切換專案出口（恆可用，FR-07）；無可消費的型別表時另提供「以 App 內建型別表檢視」條件式渲染出口（`action-domain-degraded-view`，SPEC-003 §3.1，`0.1.0-W1-035` 定案）。載入失敗不屬「不適用」，同以本元件承載但內容不同：訊息改為結果與原因（`domainLoadFailedMessage`）+ 「重新載入」（`action-domain-reload`，`onReload` 非 null 時渲染）+ 切換專案出口，無版本值、無說明（§3.6 該列，`0.5.0-W1-114.14.1`） | §1（不是框架專案、無可消費的型別表、schema 不相容、載入失敗） | `plain` / `withDetail`（附「檢視詳情」展開 `panel-domain-schema-detail`，內容為「App 已知版本範圍」一列標籤 + 值的 `Section`） |
 | `LoadingState`（載入態） | 元件 | L3 | 骨架或進度 + 計數文字 + 取消；取消契約 C1–C8 與生命週期 L1–L2（共 10 條，SPEC-003 §2.5、§2.8）由本元件單一承擔 | §1（載入中）、§5（掃描中）、§10（讀取中） | `skeleton`（indeterminate + 計數文字；骨架版位 slot：`matrix` / `sections` / `rows`） |
 | `AppCheckbox`（核取切換） | 元件 | L2 | 單一布林設定的常駐切換：核取框 + 文字，點擊切換值；變更記錄的「包含 ticket 建檔」，`action-history-include-ticket-created`（1.131 新增，既有元件不適用的理由見 4.43） | §10 | `default`；狀態 checked / unchecked |
+| `AppTextInput`（文字輸入） | 元件 | L2 | 表單欄位的自由文字值輸入，與過渡期無值域的列舉欄位（SPEC-009 FR-09；1.140 新增，不沿用 `SearchField` 的理由見 4.44） | 編輯畫面（待決，1.0.0-W3-553.3） | `singleLine` / `multiLine` |
+| `AppDropdown`（下拉） | 元件 | L2 | 表單欄位的列舉值選擇（等級、文件節點生命週期；1.140 新增，不沿用 `FilterDropdown` 的理由見 4.45） | 編輯畫面（待決） | `default`；狀態 empty / set / outOfDomain / open |
+| `ReferencePicker`（可搜尋下拉） | 元件 | L2 | 表單欄位的單一引用選擇（PROP target_version、SPEC domain；1.140 新增） | 編輯畫面（待決） | `default`；`allowEmpty` 為參數 |
+| `AppRadioGroup`（單選鈕組） | 元件 | L2 | 表單欄位的分類值選擇（SPEC has_functional_requirements、EVT category；1.140 新增，不沿用 `SegmentedControl` 的理由見 4.47） | 編輯畫面（待決） | `default`；選項 2–8、恆垂直（用戶裁定，`1.0.0-W3-675`） |
 | `AppSnackBar`（即時訊息） | 元件 | L2 | 「已在外部開啟」「找不到檔案」類的暫時訊息，Material 預設動畫不覆寫 | §1、§2、§4、§5、§6、§7（`denied` fallback 於任一畫面） | `plain`（停留 `Motion.snackBar`）/ `withAction`（帶一個動作，停留 `Motion.snackBarWithAction`）；封裝為元件（§3.7 第 8 項） |
 
 #### 容器
@@ -173,9 +177,12 @@ depends_on_domains: [layout]
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3、§6（來源鏈） | `default` / `sourceChain`（節點詳情主欄內嵌來源鏈：全部展開、無展開器、不持有展開集合，4.39） |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
+| `FieldBlock`（表單欄位） | 容器 | L2 | label（`AppText`）+ 值格（`AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup`，或唯讀 `AppText`）+ 提示格（`AppText.caption`，0..1）垂直；寫入結果與驗證狀態在此呈現（1.140 新增） | 編輯畫面（待決，1.0.0-W3-553.3） | `editable` / `readOnly` |
 | `SwitcherOverlay`（專案切換浮層） | 容器 | L3 | 覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc／點外部收合，焦點限制於浮層內 | §7（展開、無最近專案） | `default`；`RecentProjectItem` 數量無上限 → 空間不足策略為捲動 |
 
-**定案數（§3.7 核定後）**：元件 27（原 25 加 `MissingSourceState`，1.131 加 `AppCheckbox`）、容器 16（其中資料視圖 4：`DataTable`、`MatrixGrid`、`SwimlaneGrid`、`Tree`；0.1 版原記「17」為計數誤差，本表實列 16）。
+**1.140 新增（`1.0.0-W3-553.6`，PM 審查通過 2026-11-11；含待決欄位，不可被畫面票引用，見 §4.0.9）**：元件 `AppTextInput`、`AppDropdown`、`ReferencePicker`、`AppRadioGroup`（4.44–4.47），容器 `FieldBlock`（4.48、5.17）；含待決欄位，封鎖狀態見 §4.0.9。編輯畫面的欄位堆疊（多個 `FieldBlock` 的排列）待決（1.0.0-W3-553.3），未列容器。
+
+**定案數（§3.7 核定後）**：元件 31（原 25 加 `MissingSourceState`，1.131 加 `AppCheckbox`，1.140 加 4.44–4.47 共 4 個）、容器 17（1.140 前實列 16，1.140 加 `FieldBlock`；其中資料視圖 4：`DataTable`、`MatrixGrid`、`SwimlaneGrid`、`Tree`；0.1 版原記「17」為計數誤差，與現值 17 無關）。
 非資料視圖的容器 12 個，超過 skill〈Troubleshooting〉的十個門檻；3.5 記錄已做的歸併與未再歸併的理由，
 再往下歸併須把 slot 子件清單寫成「任意元件」，skill 明文視同原生佈局，§3.7 第 10 項核定接受此數。
 
@@ -931,6 +938,16 @@ EVT-CORPUS-004 項目說明：
 | `historyCancelledMessage` | 已取消讀取 | Reading was cancelled | — | §10 已取消（4.21 `page` 訊息） |
 | `historyReloadAction` | 重新讀取 | Read again | — | §10 已取消（`action-history-reload`，4.4 `primary`） |
 
+**1.140 新增（`1.0.0-W3-553.6`，對應 SPEC-009 FR-09；zh／en 為提案文案，ARB 由對應元件票建立）**：編輯用表單元件（4.44–4.48）的元件自帶文字。欄位 label、寫入與驗證訊息、唯讀原因不在本表，待決（1.0.0-W3-553.3）。欄位值（列舉值、版本、domain）為資料值，不進 i18n。過濾框 placeholder 沿用 `searchPlaceholder`，不重登。
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `fieldEmptyValue` | 未填 | Not set | — | 4.44 placeholder；4.45、4.46 空值文字 |
+| `fieldValueOutOfDomain` | 目前值「{value}」不在可選值內 | Current value "{value}" is not an allowed value | value（String） | 4.48 提示格（4.45、4.46、4.47 的 outOfDomain；用戶裁定，`1.0.0-W3-675`） |
+| `dropdownA11yLabel` | {label}，目前：{value} | {label}, current: {value} | label、value（String） | 4.45、4.46 觸發器朗讀 |
+| `referencePickerNoMatch` | 沒有符合的項目 | No matching items | — | 4.46 無符合項 |
+| `radioYes` / `radioNo` | 是 / 否 | Yes / No | — | 4.47 布林欄位選項（SPEC has_functional_requirements） |
+
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
 | 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
@@ -950,6 +967,8 @@ EVT-CORPUS-004 項目說明：
 #### 4.0.9 待決清單（元件封鎖表）
 
 全部 42 條目皆無待決欄位，可被畫面票引用（含新 key 者以既有 i18n 建置票為元件票 blockedBy，已建，不構成待決）；6 項尺寸 token 已建齊，原 6 條目自本清單去標（`matrixColumnWidth` 值已於 §3.7 第 24 項核定為 122）；4.13 `FilterDropdown`、4.14 `TableColumnHeader`（`sortable` 變體）已依 SPEC-003 §3.4 補齊回饋契約與播報值，元件票實作時自本清單去標。
+
+**1.140 新增的封鎖項**：4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup`、4.48 `FieldBlock`（5.17）含「待決（1.0.0-W3-553.3）」欄位（狀態矩陣 disabled／error 列、套用時點第 2、4 問、回饋契約 locate／state-change／等待與結果的寫入層、錨點、4.48 編輯狀態各列與組合規則），4.48 等待與結果的逾時段（SPEC-009 未定義，`1.0.0-W3-676`），以及仍標「提案」的值（文字輸入的失焦提交、錨點命名、欄位堆疊的父容器，皆隨 553.3 裁定），不得被畫面票引用。解除條件：`1.0.0-W3-553.3` 定稿並回填待決欄、`1.0.0-W3-676` 補定逾時段後，回 `1.0.0-W3-553.6` 重驗〈契約齊全的定義〉。提交時點、outOfDomain 呈現、`AppRadioGroup` 方向與鍵盤四項已於 2026-11-11 由用戶裁定（`1.0.0-W3-675`），不在封鎖項內。
 
 #### 4.0.10 定位提示（locate）的容器執行約定（提案）
 
@@ -6456,6 +6475,729 @@ EVT-CORPUS-004 項目說明：
 | 觸發一次性命令（重新整理、重試） | `AppButton` |
 | 需要「儲存」才生效的表單欄位 | 0.7 無此需求；出現時另建元件票 |
 
+### 4.44 AppTextInput
+
+> **1.140 新增（`1.0.0-W3-553.6`，依 SPEC-009 FR-09）。** 4.44–4.48 為 1.0 編輯用表單元件。依賴編輯狀態的子節與欄標「待決（1.0.0-W3-553.3）」：SPEC-001／003 的編輯狀態由該票撰寫。該票定稿、且 4.48 的逾時段由 `1.0.0-W3-676` 補定之前，本組條目**不可被畫面票引用**（§4.0.9）；本規格票 `1.0.0-W3-553.6` 維持進行中，兩者完成後重驗〈契約齊全的定義〉。仍標「提案」者為本規格票的結論，隨 553.3 裁定；標「用戶裁定」者已定案（`1.0.0-W3-675`）。
+
+**實作類別**：`AppTextInput`（以 Material `TextField` 為內部實作；頁面層禁直用 `TextField`，§6）。
+
+**用途**：表單欄位的自由文字值輸入（SPEC-009 FR-09「自由文字：單行；段落為多行」），以及值域尚無機器定義的列舉欄位在過渡期的輸入（FR-09〈值域來源〉）。只放在 `FieldBlock` 的值格；欄位 label、提示、錯誤文字由 `FieldBlock` 承載，本元件不帶 label。
+**新增元件而非沿用 4.12 `SearchField` 的理由**：`SearchField` 是對清單的即時過濾，每次輸入即 `onChanged`、結果是清單子集，退出路徑是清空；本元件的輸入是待提交的欄位值，退出路徑是提交（寫入）或還原，兩者退出路徑不同。`SearchField` 另帶搜尋圖示、清除鈕與固定錨點，組合規則只允許 `Toolbar` 首格。
+**內容角色**：數值（可編輯的欄位值）+ 標籤（空值時的 placeholder）。
+**何時不用**：搜尋過濾（`SearchField`）；值域有機器定義的列舉（`AppDropdown`、`AppRadioGroup`）；單一引用（`ReferencePicker`）；唯讀值（`FieldBlock.readOnly` 值格放 `AppText`）；文件內文（1.3，不在本版）。
+**出現畫面**：編輯畫面（SPEC-001 節號待決（1.0.0-W3-553.3））。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `singleLine` | 單行，固定高 | Enter 提交；值超出寬度時隨游標水平捲動 | FR-09 單行欄位（title、proposed_by、subdomain、owner、primary_actor、name、canonical_name，及過渡期以單行輸入的列舉欄位） |
+| `multiLine` | 3–8 行可見，超出 8 行內部垂直捲動 | Enter 換行，⌘Enter 提交 | FR-09 多行欄位（EVT payload） |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| idle | 框 `AppColors.border`；值 `textPrimary`；值為空字串時顯示 placeholder `fieldEmptyValue`（`textSecondary`） | 點選或 Tab 進入 | 未取得焦點 | 取得焦點 → editing | —（`value` 由呼叫端傳入已落檔值，元件不 watch，§2） | 等確認才顯示（`value` 只在寫入結果為 `written` 後由呼叫端更新，SPEC-009 FR-05、§2 樂觀更新政策列） |
+| editing | 框 `AppColors.accent`（焦點裝飾，§4.0.1）+ 文字游標；顯示草稿 | 輸入、提交、還原 | 取得焦點 | 提交（`singleLine` Enter、`multiLine` ⌘Enter）→ 呼叫 `onSubmitted(draft)` 後回 idle；Esc → 草稿還原為 `value`、不呼叫、焦點保留；失焦 → 待決（1.0.0-W3-553.3，提案：草稿與 `value` 不同時視同提交） | 互動瞬態（草稿為元件內部 `TextEditingController`，只在 editing 期間存在，不存於 provider） | 本地即時（草稿回顯） |
+| error | 框 `AppColors.error` | 同 idle／editing | `hasError` 為 `true`：待決（1.0.0-W3-553.3 定哪些寫入結果標示到欄位） | `hasError` 改為 `false` | 待決（1.0.0-W3-553.3） | 等確認才顯示 |
+| disabled | 依 §4.0.1 disabled；值改 `textDisabled`；不可輸入、不進 Tab 順序 | 無 | `enabled` 為 `false`：待決（1.0.0-W3-553.3 定唯讀降級、寫入進行中是否鎖欄位） | `enabled` 改為 `true` | 待決（1.0.0-W3-553.3） | 等確認才顯示 |
+| hover（僅指標形態） | 依 §4.0.1（`InputDecoration` hover 底色，`ThemeData` 預設） | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 不適用：`TextField` 無 pressed 態 | — | — | — | 互動瞬態 | 本地即時 |
+
+editing 與 error 可並存（框色以 error 優先，焦點另以文字游標與 textField 語意承載）。
+
+#### 套用時點
+
+不適用：非選擇類元件（自由文字輸入，不從選項中選取）。提交時點由狀態矩陣 editing 列的退出路徑定義。
+
+#### 回饋契約
+
+> 六類事件與通道值的來源見 §1〈回饋通道子表〉，本表「回饋通道（桌機）」欄逐列引用不重抄。寫入的發出、受理、結果三時刻由 `FieldBlock`（4.48）承載，本元件只承載輸入層。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | `TextField` 內建 hover；指標形狀 `SystemMouseCursors.text` | 無（Material 內建） | 無（SPEC-003 無 hover 時限條文） | §1 子表「可互動提示」列 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 框 `accent` + 文字游標；朗讀 `semanticLabel` 與目前值 | 無 | 無 | §1 子表「焦點」列 | idle → editing → idle | 規格撰寫者；Tab 順序待決（1.0.0-W3-553.3） |
+| 按下確認 press-ack | 使用者 | 輸入字元即時回顯；IME 組字中不視為草稿變更；提交鍵呼叫 `onSubmitted(draft)` 恰一次（草稿與 `value` 相同時不呼叫）；Esc 還原草稿。掛載點為本元件第一層，不等寫入受理 | 無 | 回顯無時限條文（原生行為） | §1 子表「按下確認」列 | editing →（提交）→ idle | 規格撰寫者 |
+| 定位提示 locate | 系統 | 待決（1.0.0-W3-553.3：寫入失敗或驗證失敗時是否把焦點移回欄位） | — | — | 待決 | 待決 | 待決 |
+| 狀態變更提示 state-change | 呼叫端（寫入結果 `written` 後改傳 `value`） | idle 時值離散替換、無動畫；editing 期間 `value` 被外部改變（SPEC-009 FR-06 外部改動）時的處置待決（1.0.0-W3-553.3） | 無 | 無 | §1 子表「狀態變更提示」列 | 待決（1.0.0-W3-553.3） | 待決 |
+| 等待與結果 | 系統 | 掛載點：第一層為本元件（回顯與提交）；第二層（寫入進行中）與第三層（寫入結果、驗證狀態）由 `FieldBlock` 承載，四段結局見 4.48 回饋契約，待決（1.0.0-W3-553.3） | — | — | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者；第二、三層待決 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 鍵盤輸入（`TextInputType.text`；`multiLine` 為 `TextInputType.multiline`；IME 允許）；`singleLine` Enter 提交、`multiLine` ⌘Enter 提交；Esc 還原 | 字元級 | 足夠 | 無 | 視覺（值即時顯示） |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位（`FieldBlock` 值格）；高：`singleLine` 固定，`multiLine` 隨行數 |
+| 最小尺寸 | 寬：`Space.sm` + 4 字元（`AppFontSize.body`，§4.0.3）+ `Space.sm`；高：`singleLine` 為 `LayoutSize.hitTargetMin`，`multiLine` 為 3 行 + 2 × `Space.xs` |
+| 最小命中區 | `LayoutSize.hitTargetMin`（整個輸入框） |
+| 最大尺寸 | 寬：父格位寬；高：`singleLine` 為 `LayoutSize.hitTargetMin`，`multiLine` 為 8 行 + 2 × `Space.xs`（超出內部捲動） |
+| `singleLine` 高的內部條件 | 一行（`AppFontSize.body` 行高）+ 2 × `Space.xs` ≤ `LayoutSize.hitTargetMin`。測試字型（Ahem，行高 = 字級）：12 + 8 = 20 ≤ 28 成立。實機字型：body 行高 ≤ 20 即成立，由 `integration_test/real_font_layout_test.dart` 斷言 |
+| `kMinWindowSize` 下的行為 | 維持（約束由 `FieldBlock` 與其父格位決定） |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| `value`（`singleLine`，可編輯） | 否 | 1 | 不截斷：隨游標水平捲動（可編輯文字不適用顯示文字的四選一） | `TestCopy.nodeTitle`；`TestCopy.longToken` |
+| `value`（`multiLine`，可編輯） | 是 | 8（可見） | 不截斷：超出內部垂直捲動 | `TestCopy.longZh`；`TestCopy.longEn` |
+| placeholder | 否 | 1 | 截斷 | `fieldEmptyValue`（en「Not set」） |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `value` | `String` | 是（受控，已落檔值；欄位缺值時傳空字串） | 呼叫端（文件 frontmatter 值，資料值不進 i18n） |
+| `onSubmitted` | `ValueChanged<String>` | 是 | 不適用 |
+| `semanticLabel` | `String` | 是 | 呼叫端（與 `FieldBlock` label 同一字串） |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `hasError` | `bool` | 否（預設 `false`） | 不適用 |
+| `testKey` | `Key` | 是（提案：`input-edit-<field>`；錨點命名待決（1.0.0-W3-553.3 於 SPEC-003 定）） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.border`、`accent`（focused 框）、`error`（error 框）、`textPrimary`（值）、`textSecondary`（placeholder）、`textDisabled`（disabled）、`surfaceBase`（底） |
+| 間距 | 內距 `Space.sm`（水平）× `Space.xs`（垂直） |
+| 字體 | `AppFontSize.body` |
+| 圓角 | `Radius.md` |
+| 尺寸 | `LayoutSize.hitTargetMin` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| placeholder | `fieldEmptyValue`（§4.0.6 1.140 新增） |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊 |
+| 作為表格或列表的一欄時 | 不適用（1.0 無表格列編輯，FR-09 結構化區塊自 1.4 起） |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | `Semantics.textField`；label 為 `semanticLabel`，value 為目前值；`multiLine` 帶 multiline 旗標 |
+| 狀態變化播報 | 值改變由 textField 語意播報；錯誤文字由 `FieldBlock` 提示格承載（4.48 無障礙） |
+| 非視覺替代訊號 | error 框色非唯一訊號：錯誤文字由 `FieldBlock` 提示格以文字呈現 |
+| 焦點順序與操作路徑（桌機） | 進入 Tab 順序（disabled 除外）；提交與還原鍵見操作機制；欄位間 Tab 順序待決（1.0.0-W3-553.3） |
+| 對比 | 依 §4.0.2：值 `textPrimary` / `surfaceBase` 5.79:1、placeholder `textSecondary` / `surfaceBase` 4.71:1，通過；error 框 `error` / `surfaceBase` 屬表 1 通過列（非文字 3:1 亦通過） |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染兩變體 × idle / editing / error / disabled
+- [ ] 兩種視窗尺寸下不溢位；`singleLine` 高等於 `LayoutSize.hitTargetMin`；`multiLine` 高介於 3 行與 8 行之間
+- [ ] `TestCopy.longToken` 輸入後 `singleLine` 無溢位錯誤；`TestCopy.longZh` 於 `multiLine` 換行、超過 8 行內部捲動
+- [ ] zh / en placeholder 皆不溢位
+- [ ] `singleLine` Enter、`multiLine` ⌘Enter 各呼叫 `onSubmitted` 恰一次；對照：`multiLine` 按 Enter 不呼叫、插入換行；草稿與 `value` 相同時不呼叫
+- [ ] Esc 還原草稿為 `value` 且不呼叫 `onSubmitted`
+- [ ] 顏色、內距、圓角引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 清單搜尋過濾 | `SearchField` |
+| 值域已有機器定義的列舉欄位 | `AppDropdown` / `AppRadioGroup` |
+| 選另一個節點或版本 | `ReferencePicker` |
+| 顯示唯讀值 | `FieldBlock.readOnly`（值格 `AppText`） |
+
+### 4.45 AppDropdown
+
+**實作類別**：`AppDropdown`（選單以覆蓋層實作，同 4.13 的覆蓋層機制；頁面層禁直用 `DropdownButton` / `DropdownMenu`，§6）。
+
+**用途**：表單欄位的列舉值選擇（SPEC-009 FR-09「等級（有序）」「生命週期（文件節點）」：下拉），選項取自 `tracking_schema.json` 或 doc CLI 的機器定義值域（FR-09〈值域來源〉）。1.0 現行使用處：PROP status（`VALID_STATUSES`）；其餘列舉欄位於值域補上後改用本元件。
+**新增元件而非沿用 4.13 `FilterDropdown` 的理由**：`FilterDropdown` 首項固定為「全部」並回傳 `null`（F3），表單欄位沒有「不篩選」值；其 active 態（框色 `accent`）表示「有篩選」，表單無此語意；觸發器文字為「{label}：{value}」複合字串，表單的 label 由 `FieldBlock` 承載；表單另須呈現值域外的既有值（檔案內手寫值），篩選不會遇到。兩者的退出路徑也不同：篩選為本地即時、改選「全部」即復原，表單選取觸發寫入（SPEC-009 FR-05）。
+**內容角色**：標籤（取值來自有限列舉）。
+**何時不用**：篩選（`FilterDropdown`）；值域小且需並列比較的分類（`AppRadioGroup`，FR-09 分類列）；引用另一個對象（`ReferencePicker`）；無機器定義值域的欄位（`AppTextInput.singleLine`，FR-09〈值域來源〉）。
+**出現畫面**：編輯畫面（SPEC-001 節號待決（1.0.0-W3-553.3））。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體 | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| empty | 觸發器顯示 `fieldEmptyValue`（`textSecondary`）+ 向下箭頭 | 點選 → open | `selected` 為 `null`（欄位缺值） | 選取任一選項 → 待決（1.0.0-W3-553.3：寫入結果為 `written` 後呼叫端改傳 `selected`） | —（`selected` 由呼叫端傳入已落檔值，元件不 watch，§2） | 等確認才顯示（SPEC-009 FR-05、§2） |
+| set | 觸發器顯示目前選項的 `label`（`textPrimary`）+ 向下箭頭 | 點選 → open | `selected` 為 `options` 之一 | 同 empty | — | 等確認才顯示 |
+| outOfDomain | 觸發器顯示原值（`textPrimary`）+ 向下箭頭；`FieldBlock` 提示格顯示 `fieldValueOutOfDomain`（用戶裁定 2026-11-11，`1.0.0-W3-675`） | 點選 → open | `selected` 非 `null` 且不在 `options` 內（檔案內手寫值） | 同 empty | — | 等確認才顯示 |
+| open | 選單以覆蓋層展開（D1–D7）；觸發器顯示不變 | 走選項、選取、Esc、點外部、再點觸發器、Tab | 點選觸發器或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合，呼叫 `onChanged(value)`；值相同、Esc、點外部、再點觸發器、Tab → 收合，不呼叫 | 互動瞬態（選單開合為元件內部 overlay 狀態） | 本地即時 |
+| disabled | 依 §4.0.1 disabled；不可展開 | 無 | `enabled` 為 `false`：待決（1.0.0-W3-553.3） | `enabled` 改為 `true` | 待決（1.0.0-W3-553.3） | 等確認才顯示 |
+| hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | Enter / Space / ↓ 展開 | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+
+不允許樂觀更新：選取後觸發器不立即顯示新值，等呼叫端依寫入結果改傳 `selected`（§2）。寫入進行中的觸發器顯示待決（1.0.0-W3-553.3）。
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——選取改變欄位值，不執行命令、不開視窗（選單為本元件內部覆蓋層） |
+| 2 | 套用時點 | 待決（1.0.0-W3-553.3）。提案：(a) 不成立（一次寫入只改目標欄位，SPEC-009 FR-03）；(b) 寫入延遲依 SPEC-009 NFR-01；(d) 可經 FR-02 快照取回；(e) 不成立：逐欄立即提交，沒有表單層級的儲存（用戶裁定 2026-11-11，`1.0.0-W3-675`）→ 立即提交，提交點為「選取且值改變」 |
+| 3 | 容器何時關閉 | 是——選單只含本欄位一組單選 → 選取即收合 |
+| 4 | 生效是否當下可見 | 待決（1.0.0-W3-553.3）。提案：有——寫入結果為 `written` 後觸發器顯示新值，`FieldBlock` 同時呈現驗證狀態；選取標示不算已生效（不允許樂觀更新） |
+
+#### 回饋契約
+
+> 選單內的逐操作反應為本元件的操作路徑，規格在〈選單的元件級契約〉D1–D7。寫入的三時刻由 `FieldBlock` 承載。
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 觸發器與各選項 hover 態（§4.0.1）；指標形狀 `SystemMouseCursors.click` | 無（Material 內建） | 無 | §1 子表「可互動提示」列 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 觸發器焦點環；展開時焦點移至目前值對應選項（empty、outOfDomain 時為首項），↑／↓／Home／End 移動不循環、不呼叫 `onChanged`；Esc／選取後焦點回觸發器 | 無 | 無 | §1 子表「焦點」列 | empty / set / outOfDomain → focused → 原狀態 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 觸發器 pressed + ripple，選單展開；選項 pressed + ripple，選取且值改變 → `onChanged(value)` 恰一次、選單收合；掛載點為本元件第一層，不等寫入受理 | Material 內建 ripple；選單 `Motion.overlay` | pressed 於 `Motion.feedback` 內；選單於 `Motion.overlay` 內 | §1 子表「按下確認」列 | 原狀態 → pressed → open；open →（選取）→ 原狀態 | 規格撰寫者（時限沿用 4.13 所抄 SPEC-003 §2.2、§3.4） |
+| 定位提示 locate | 系統 | 待決（1.0.0-W3-553.3） | — | — | 待決 | 待決 | 待決 |
+| 狀態變更提示 state-change | 呼叫端（寫入結果 `written` 後改傳 `selected`） | 觸發器文字離散替換、無動畫；重建即唸出新值（`dropdownA11yLabel`） | 無 | 無 | §1 子表「狀態變更提示」列 | empty / set / outOfDomain → set；寫入進行中的中間態待決（1.0.0-W3-553.3） | 規格撰寫者；中間態待決 |
+| 等待與結果 | 系統 | 掛載點：第一層為本元件（選取的 pressed 與選單收合）；第二、三層由 `FieldBlock` 承載，四段結局見 4.48，待決（1.0.0-W3-553.3） | — | — | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者；第二、三層待決 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 依 §4.0.7 點選列（觸發器）；選單內 ↑／↓／Home／End 走選項，Enter／Space 選取，Esc 收合 | | | | |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位（`FieldBlock` 值格；與 4.13 取固有寬不同，表單欄位對齊值格）；高固有 |
+| 最小尺寸 | 寬：`Space.sm` + 4 字元（`AppFontSize.body`）+ `Space.xs` + `LayoutSize.iconMd`（箭頭）+ `Space.sm`；高：`LayoutSize.hitTargetMin` |
+| 最小命中區 | `LayoutSize.hitTargetMin`（觸發器與每個選項） |
+| 最大尺寸 | 寬：父格位寬；高：`LayoutSize.hitTargetMin` |
+| 選單尺寸 | 寬等於觸發器寬；高 = N × `LayoutSize.hitTargetMin` + 2 × `Space.xs`，N ≤ 8（slot 契約上限），全數展開不捲動 |
+| `kMinWindowSize` 下的行為 | 維持。選單最大高 = 8 × `LayoutSize.hitTargetMin` + 2 × `Space.xs` = 232（不隨字型）；觸發器上下兩側中較大者 ≥ (640 − 28) / 2 = 306 ≥ 232，依 D4 選側即放得下 |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| 觸發器與選項 `options[i].label`、outOfDomain 原值 | 否 | 1 | 截斷 | `TestCopy.status`；`TestCopy.longToken` |
+| 空值文字 | 否 | 1 | 截斷 | `fieldEmptyValue` |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `options` | `List<DropdownOption{value, label}>`，1..8 項（提案上限；超過時屬 FR-09 不適用下拉的值域，回規格裁定） | 是 | 呼叫端（值域原值，資料值不進 i18n） |
+| `selected` | `String?`（`null` = 欄位缺值；不在 `options` 內 = outOfDomain） | 是 | 不適用 |
+| `onChanged` | `ValueChanged<String>` | 是 | 不適用 |
+| `semanticLabel` | `String` | 是 | 呼叫端（與 `FieldBlock` label 同一字串） |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `testKey` | `Key` | 是（提案：觸發器 `action-edit-<field>`，選單 `menu-edit-<field>`、選項 `option-edit-<field>-<value>` 由元件推導；錨點命名待決（1.0.0-W3-553.3）） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.surfaceBase`、`border`、`textPrimary`、`textSecondary`（空值文字）、`textDisabled`（箭頭，純裝飾，§4.0.2 表 2；disabled） |
+| 間距 | 內距 `Space.sm`（水平）× `Space.xs`（垂直）；文字與箭頭間 `Space.xs`；選單內距 `Space.xs` |
+| 字體 | `AppFontSize.body` |
+| 圓角 | `Radius.md` |
+| 動畫 | `Motion.feedback`；`Motion.overlay`（選單） |
+| 尺寸 | `LayoutSize.hitTargetMin`、`iconMd` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| 空值文字 | `fieldEmptyValue` |
+| 朗讀標籤 | `dropdownA11yLabel`（§4.0.6 1.140 新增） |
+| outOfDomain 提示（由 `FieldBlock` 提示格顯示） | `fieldValueOutOfDomain`（§4.0.6 1.140 新增） |
+
+#### 選單的元件級契約（跨操作恆成立，由本元件單一承擔）
+
+| # | 條件 | 可觀察結果 |
+|---|------|-----------|
+| D1 | 任一時刻 | 全 App 同時至多一個選單展開（與 4.13 F1 共用同一約束） |
+| D2 | 選單展開時 | 觸發器顯示只由 `selected` 決定，不因展開或走選項改變 |
+| D3 | 選單展開時（內容） | 依 `options` 順序列出，無「全部」項；outOfDomain 的原值不列入選項；目前值項（若在 `options` 內）`selected` 為 `true` |
+| D4 | 選單展開時（幾何） | 覆蓋層，左緣對齊觸發器左緣、寬等於觸發器寬；預設頂緣貼觸發器底緣，底緣超出視窗且觸發器上方空間較大時改為底緣貼觸發器頂緣；版面其餘元素 rect 不變 |
+| D5 | 展開／走選項／收合 | 皆不呼叫 `onChanged`；唯一呼叫點是「選取且值改變」 |
+| D6 | 選單展開時（播報） | 選單根 `role` 為 `menu`、選項 `role` 為 `menuItem`；觸發器 `expanded` 隨展開與收合改變 |
+| D7 | 選單展開期間 | 點外部吸收收合，不穿透 |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | `Semantics.button`；label 為 `dropdownA11yLabel`（`semanticLabel` 與目前值代入；empty 時代入 `fieldEmptyValue`）；`expanded` 等於是否 open |
+| 狀態變化播報 | 呼叫端改傳 `selected` 後重建即唸出新值，不另發 `SemanticsService.announce` |
+| 非視覺替代訊號 | 值以文字呈現；outOfDomain 以 `FieldBlock` 提示格文字說明，不只靠顏色 |
+| 焦點順序與操作路徑（桌機） | 觸發器進入 Tab 順序；選單內鍵盤操作見操作機制；欄位間 Tab 順序待決（1.0.0-W3-553.3） |
+| 對比 | 依 §4.0.2：值 `textPrimary` / `surfaceBase` 5.79:1、空值文字 `textSecondary` / `surfaceBase` 4.71:1，通過；箭頭 `textDisabled` 3.06:1 達非文字 3:1，純裝飾 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 empty / set / outOfDomain / open / disabled
+- [ ] 兩種視窗尺寸下不溢位；觸發器高等於 `LayoutSize.hitTargetMin`
+- [ ] 最長測試文案截斷；zh / en 空值文字不溢位
+- [ ] 選取且值改變呼叫 `onChanged` 恰一次；對照：選取目前值不呼叫；選取後觸發器文字在 `selected` 改傳前不變（不允許樂觀更新）
+- [ ] D3：無「全部」項、順序同 `options`、outOfDomain 原值不在選項內；D4：觸發器置於視窗底部時選單向上展開且整體在視窗內；D6、D7 同 4.13 F6、F7 的斷言形式
+- [ ] 顏色、內距、圓角引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 清單篩選 | `FilterDropdown` |
+| 選項數隨資料增減的引用 | `ReferencePicker` |
+| 2–8 個需並列比較的分類 | `AppRadioGroup` |
+
+### 4.46 ReferencePicker
+
+**實作類別**：`ReferencePicker`（觸發器 + 覆蓋層，覆蓋層內含元件自帶的過濾輸入框與可捲動選項清單；頁面層禁直用 `DropdownMenu`、`Autocomplete`，§6）。
+
+**用途**：表單欄位的單一引用選擇（SPEC-009 FR-09「單一引用：可搜尋下拉」）。1.0 使用處：PROP target_version（選項為 todolist 的版本）、SPEC domain（選項為已宣告的 domain，以 `DomainBundle` 的 `domain` 原值呈現，CLAUDE.md §6 domain 名稱權威寫法）。
+**新增元件而非併入 `AppDropdown` 的理由**：內容角色不同——引用值指名另一個對象（版本、DomainBundle），讀者據以辨認「是哪一個」，屬標題類；`AppDropdown` 的值是列舉，屬標籤類。行為不同——選項來自專案資料、數量隨專案增減，需捲動與文字過濾；列舉選項固定且至多 8 項、全數展開不捲動。選單內的過濾框屬本元件自帶子件，不放 4.12 `SearchField`（其組合規則只允許 `Toolbar` 首格，且語意為清單過濾而非選取）。
+**內容角色**：標題（被引用對象的識別值）。
+**何時不用**：列舉值（`AppDropdown`）；多值引用（1.1 chips 加搜尋，不在本版）；清單篩選（`FilterDropdown`、`SearchField`）。
+**出現畫面**：編輯畫面（SPEC-001 節號待決（1.0.0-W3-553.3））。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體；可否選空值為參數 `allowEmpty`（選單首項為 `fieldEmptyValue`），不另立變體 | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| empty | 觸發器 `fieldEmptyValue`（`textSecondary`）+ 向下箭頭 | 點選 → open | `selected` 為 `null` | 選取 → 待決（1.0.0-W3-553.3：`written` 後呼叫端改傳 `selected`） | —（`selected` 與 `options` 由呼叫端傳入，元件不 watch，§2） | 等確認才顯示 |
+| set | 觸發器顯示目前選項 `label`（`textPrimary`） | 點選 → open | `selected` 在 `options` 內 | 同 empty | — | 等確認才顯示 |
+| outOfDomain | 觸發器顯示原值；`FieldBlock` 提示格 `fieldValueOutOfDomain`（用戶裁定 2026-11-11，`1.0.0-W3-675`） | 點選 → open | `selected` 非 `null` 且不在 `options` 內（版本不在 todolist、domain 未宣告） | 同 empty | — | 等確認才顯示 |
+| open | 覆蓋層展開：首列過濾輸入框（placeholder `searchPlaceholder`，焦點自動移入），其下選項清單；無符合項時清單區顯示 `referencePickerNoMatch` | 輸入過濾、走選項、選取、Esc、點外部 | 點選觸發器或聚焦時 Enter／Space／↓ | 選取且值改變 → 收合並呼叫 `onChanged`；值相同、Esc、點外部 → 收合，不呼叫；過濾字串於收合時清空 | 互動瞬態（開合、過濾字串、走選項位置皆為元件內部狀態） | 本地即時（過濾為已傳入選項的子集運算） |
+| disabled | 依 §4.0.1 disabled | 無 | `enabled` 為 `false`：待決（1.0.0-W3-553.3） | `enabled` 改為 `true` | 待決（1.0.0-W3-553.3） | 等確認才顯示 |
+| hover（僅指標形態） | 依 §4.0.1 | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1 | Enter / Space / ↓ 展開 | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——選取改變欄位值；不導覽至被引用對象 |
+| 2 | 套用時點 | 待決（1.0.0-W3-553.3）。同 4.45：立即提交（用戶裁定，`1.0.0-W3-675`），提交點為「選取且值改變」 |
+| 3 | 容器何時關閉 | 是——覆蓋層只含本欄位一組單選 → 選取即收合 |
+| 4 | 生效是否當下可見 | 待決（1.0.0-W3-553.3）。提案同 4.45 |
+
+#### 回饋契約
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 觸發器與選項 hover 態（§4.0.1）；過濾框指標 `SystemMouseCursors.text` | 無（Material 內建） | 無 | §1 子表「可互動提示」列 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 觸發器焦點環；展開時焦點移入過濾框，↑／↓ 在過濾後的選項間移動高亮（焦點留在過濾框，選項以 `selected` 以外的 active 標示）；Esc／選取後焦點回觸發器 | 無 | 無 | §1 子表「焦點」列 | 原狀態 → open → 原狀態 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 觸發器 pressed + ripple，覆蓋層展開；過濾框輸入即時縮減清單；選項點選或 Enter：值改變時 `onChanged(value)` 恰一次、收合。掛載點為本元件第一層 | Material 內建 ripple；覆蓋層 `Motion.overlay` | pressed 於 `Motion.feedback` 內；覆蓋層於 `Motion.overlay` 內；過濾回顯無時限條文（本地即時，不防抖） | §1 子表「按下確認」列 | 原狀態 → open →（選取）→ 原狀態 | 規格撰寫者 |
+| 定位提示 locate | 系統 | 展開時清單捲動至目前值所在列（`jumpTo`，§4.0.10 捲動方式）；寫入失敗後是否定位回欄位待決（1.0.0-W3-553.3） | 無 | 無 | §1 子表「定位提示」列 | open | 規格撰寫者；欄位定位待決 |
+| 狀態變更提示 state-change | 呼叫端（`written` 後改傳 `selected`） | 觸發器文字離散替換、重建唸出新值（`dropdownA11yLabel`） | 無 | 無 | §1 子表「狀態變更提示」列 | → set；寫入進行中的中間態待決（1.0.0-W3-553.3） | 規格撰寫者；中間態待決 |
+| 等待與結果 | 系統 | 掛載點：第一層為本元件；過濾為本地即時，不經服務：讀取的選項於呼叫端傳入 `options` 時已載入（todolist 與 DomainBundle 由掃描結果提供），選項為空時顯示 `referencePickerNoMatch`；寫入的第二、三層由 `FieldBlock` 承載，待決（1.0.0-W3-553.3） | — | — | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者；寫入層待決 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 依 §4.0.7 點選列（觸發器）；展開後鍵盤輸入過濾（IME 允許，組字中不過濾）、↑／↓ 走選項、Enter 選取、Esc 收合；指標點選選項 | 字元級（過濾）；命中一列（選取） | 足夠 | 無 | 視覺 |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 觸發器寬填滿父格位；高固有 |
+| 最小尺寸 | 寬：同 4.45（`Space.sm` + 4 字元 + `Space.xs` + `LayoutSize.iconMd` + `Space.sm`）；高：`LayoutSize.hitTargetMin` |
+| 最小命中區 | `LayoutSize.hitTargetMin`（觸發器、過濾框、每個選項） |
+| 最大尺寸 | 寬：父格位寬；高：`LayoutSize.hitTargetMin` |
+| 覆蓋層尺寸 | 寬 = 觸發器寬；高 = `Space.xs` + `LayoutSize.hitTargetMin`（過濾框）+ `Space.xs` + min(N, 8) × `LayoutSize.hitTargetMin` + `Space.xs`；N > 8 時清單區垂直捲動；向上或向下展開規則同 4.45 D4，選定方向的可用高不足時清單區再縮至可用高並捲動 |
+| `kMinWindowSize` 下的行為 | 維持。覆蓋層最大高 = 3 × `Space.xs` + 9 × `LayoutSize.hitTargetMin` = 264（不隨字型：只由 token 組成）；觸發器上下兩側中較大者 ≥ (640 − 28) / 2 = 306 ≥ 264，選較大一側展開即放得下；D4 先試向下，向下不足且向上較大時改向上 |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| 觸發器與選項 `label`、outOfDomain 原值 | 否 | 1 | 截斷 | `TestCopy.domainName`；`TestCopy.longToken` |
+| 過濾輸入（可編輯） | 否 | 1 | 不截斷：隨游標水平捲動 | `TestCopy.longToken` |
+| 無符合項文字 | 否 | 1 | 截斷 | `referencePickerNoMatch`（en「No matching items」） |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `options` | `List<ReferenceOption{value, label}>`，0..N（無上限） | 是 | 呼叫端（識別值原文，資料值不進 i18n） |
+| `selected` | `String?` | 是 | 不適用 |
+| `allowEmpty` | `bool` | 否（預設 `false`；PROP target_version 可否為空待決（1.0.0-W3-553.3，取決於 doc CLI 是否接受缺值）） | 不適用 |
+| `onChanged` | `ValueChanged<String?>` | 是（`allowEmpty` 時可傳 `null`） | 不適用 |
+| `semanticLabel` | `String` | 是 | 呼叫端 |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `testKey` | `Key` | 是（提案：觸發器 `action-edit-<field>`，過濾框 `input-edit-<field>-filter`、選項 `option-edit-<field>-<value>` 由元件推導；待決（1.0.0-W3-553.3）） | 不適用 |
+
+過濾規則：對 `value` 與 `label` 做不分大小寫的子字串比對，順序保持 `options` 原序。
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.surfaceBase`、`border`、`accent`（過濾框焦點框）、`surfaceIconTint`（走選項高亮，同 §4.0.10 高亮 token）、`textPrimary`、`textSecondary`、`textDisabled`（箭頭，純裝飾） |
+| 間距 | 觸發器內距 `Space.sm` × `Space.xs`；覆蓋層內距 `Space.xs` |
+| 字體 | `AppFontSize.body` |
+| 圓角 | `Radius.md` |
+| 動畫 | `Motion.feedback`；`Motion.overlay` |
+| 尺寸 | `LayoutSize.hitTargetMin`、`iconMd` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| 空值文字 | `fieldEmptyValue` |
+| 過濾框 placeholder | `searchPlaceholder`（沿用 4.12 既有 key） |
+| 無符合項 | `referencePickerNoMatch`（§4.0.6 1.140 新增） |
+| 朗讀標籤 | `dropdownA11yLabel` |
+| outOfDomain 提示 | `fieldValueOutOfDomain` |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | 觸發器 `Semantics.button`，label `dropdownA11yLabel`，`expanded` 隨開合；過濾框 `Semantics.textField`，label `searchPlaceholder`；選項 `role` 為 `menuItem`，目前值 `selected` 為 `true` |
+| 狀態變化播報 | 過濾後清單筆數不另播報（清單本身可走訪）；無符合項時 `referencePickerNoMatch` 為 live region |
+| 非視覺替代訊號 | 走選項高亮以焦點語意（active descendant）承載，非只靠底色 |
+| 焦點順序與操作路徑（桌機） | 觸發器進入 Tab 順序；展開後焦點在過濾框，↑／↓ 走選項，Enter 選取，Esc 收合回觸發器；Tab 收合並離開 |
+| 對比 | 依 §4.0.2：`textPrimary` / `surfaceBase` 5.79:1、`textPrimary` / `surfaceIconTint` 4.89:1、`textSecondary` / `surfaceBase` 4.71:1，通過 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 empty / set / outOfDomain / open / open 無符合項 / disabled
+- [ ] 兩種視窗尺寸下不溢位；選項 20 筆時清單區捲動、覆蓋層在視窗內
+- [ ] 最長測試文案截斷
+- [ ] 輸入過濾字串後清單只剩符合項且順序不變；對照：清空過濾字串後恢復全部
+- [ ] 選取且值改變呼叫 `onChanged` 恰一次；對照：選取目前值不呼叫；`allowEmpty` 為 `true` 時首項存在且傳 `null`，為 `false` 時首項不存在
+- [ ] 展開時焦點在過濾框；Esc 收合後焦點回觸發器
+- [ ] 顏色、內距、圓角引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 列舉值 | `AppDropdown` |
+| 跳轉到被引用的節點 | `RelationItem` |
+| 清單搜尋 | `SearchField` |
+
+### 4.47 AppRadioGroup
+
+**實作類別**：`AppRadioGroup`（以 Material `Radio` 為內部實作；頁面層禁直用 `Radio` / `RadioListTile`，§6）。
+
+**用途**：表單欄位的分類值選擇（SPEC-009 FR-09「分類（互斥、值域小且固定、需並列比較）：單選鈕組」）。1.0 使用處：SPEC has_functional_requirements（是／否）、EVT category；UC platform、extension_status、runtime_surface 於值域補上後改用本元件。
+**新增元件而非沿用既有元件的理由**：4.10 `SegmentedControl`——SPEC-009 FR-09 約束已裁定不借用（`1.0.0-W1-104` WRAP 的 P）：它是檢視模式與期間的常駐切換，選取為本地即時；本元件的選取觸發寫入，受 FR-05 三時刻與「不允許樂觀更新」約束，借用會讓同一元件承載兩種提交語意。4.43 `AppCheckbox`——布林單值單一 label，FR-09 指定是／否以兩個可讀選項呈現。4.40 `ListRow.option`——清單中的導覽式選取（選 UC），選項數隨資料增減，不是欄位值。
+**內容角色**：標籤（每個選項一個 label slot）。
+**何時不用**：檢視模式切換（`SegmentedControl`）；單一布林篩選（`AppCheckbox`）；有序等級或超過 8 項的列舉（`AppDropdown`）；引用（`ReferencePicker`）。
+**出現畫面**：編輯畫面（SPEC-001 節號待決（1.0.0-W3-553.3））。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體；選項恆垂直堆疊（用戶裁定 2026-11-11，`1.0.0-W3-675`） | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| none | 全部選項未選（外圈 `textSecondary`） | 選取任一項 | `selected` 為 `null` | 選取 → 待決（1.0.0-W3-553.3：`written` 後呼叫端改傳 `selected`） | —（`selected` 由呼叫端傳入已落檔值，元件不 watch，§2） | 等確認才顯示 |
+| set | 目前值選項為選中（外圈與內點 `accent`），其餘未選 | 選取另一項 | `selected` 在 `options` 內 | 同 none | — | 等確認才顯示 |
+| outOfDomain | 全部選項未選；`FieldBlock` 提示格 `fieldValueOutOfDomain`（用戶裁定 2026-11-11，`1.0.0-W3-675`） | 選取任一項 | `selected` 非 `null` 且不在 `options` 內 | 同 none | — | 等確認才顯示 |
+| disabled | 依 §4.0.1 disabled（選項外圈與 label 改 `textDisabled`） | 無 | `enabled` 為 `false`：待決（1.0.0-W3-553.3） | `enabled` 改為 `true` | 待決（1.0.0-W3-553.3） | 等確認才顯示 |
+| hover（僅指標形態） | 依 §4.0.1（命中區為單一選項的圓鈕 + label） | 選取 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
+| pressed | 依 §4.0.1 | 選取 | 按下 | 放開 | 互動瞬態 | 本地即時 |
+| focused | 依 §4.0.1（焦點環在單一選項） | ↑／↓ 移動、Space 選取 | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+
+不允許樂觀更新：點選後選中標示不立即移動，等呼叫端依寫入結果改傳 `selected`（§2）。
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——選取改變欄位值 |
+| 2 | 套用時點 | 待決（1.0.0-W3-553.3）。同 4.45：立即提交（用戶裁定，`1.0.0-W3-675`） |
+| 3 | 容器何時關閉 | 無可關閉的容器——常駐於 `FieldBlock` 值格 |
+| 4 | 生效是否當下可見 | 待決（1.0.0-W3-553.3）。提案同 4.45 |
+
+#### 回饋契約
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 單一選項 hover 態（§4.0.1）；指標形狀 `SystemMouseCursors.click` | 無（Material 內建） | 無 | §1 子表「可互動提示」列 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 全組一個 Tab 停留點：進入時焦點在選中項（none／outOfDomain 時為首項）；↑／↓ 移動焦點**不選取**（用戶裁定 2026-11-11，`1.0.0-W3-675`；偏離 WAI-ARIA radio group「焦點即選取」，理由：每次選取即寫入）；Space 選取 | 無 | 無 | §1 子表「焦點」列 | 原狀態 → focused → 原狀態 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 選項 pressed + ripple；選取值與 `selected` 不同時 `onChanged(value)` 恰一次；掛載點為本元件第一層 | Material 內建 ripple | `Motion.feedback` 內 | §1 子表「按下確認」列 | 原狀態 → pressed → 原狀態（選中標示待 `selected` 改傳） | 規格撰寫者 |
+| 定位提示 locate | 系統 | 待決（1.0.0-W3-553.3） | — | — | 待決 | 待決 | 待決 |
+| 狀態變更提示 state-change | 呼叫端（`written` 後改傳 `selected`） | 選中標示離散移動、無動畫；`checked` 旗標改變由輔助技術播報 | 無 | 無 | §1 子表「狀態變更提示」列 | none / set / outOfDomain → set；中間態待決（1.0.0-W3-553.3） | 規格撰寫者；中間態待決 |
+| 等待與結果 | 系統 | 掛載點：第一層為本元件；第二、三層由 `FieldBlock` 承載，待決（1.0.0-W3-553.3） | — | — | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者；第二、三層待決 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 依 §4.0.7 點選列（每個選項的圓鈕與 label 共用一個命中區）；鍵盤 ↑／↓ 移動焦點、Space 選取（用戶裁定，`1.0.0-W3-675`） | | | | |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位；高 = N × 選項高 + (N − 1) × `Space.xxs` |
+| 選項尺寸 | 高 `LayoutSize.hitTargetMin`；寬 = `Space.xs` + `LayoutSize.iconLg`（圓鈕）+ `Space.xs` + label 寬 + `Space.xs` |
+| 最小尺寸 | 寬：`Space.xs` + `LayoutSize.iconLg` + `Space.xs` + 4 字元（`AppFontSize.body`）+ `Space.xs`（label 截斷）；高：2 × `LayoutSize.hitTargetMin` + `Space.xxs`（N 下限 2） |
+| 最小命中區 | `LayoutSize.hitTargetMin`（每個選項） |
+| 最大尺寸 | 寬：父格位寬；高：8 × `LayoutSize.hitTargetMin` + 7 × `Space.xxs`（N 上限 8） |
+| `kMinWindowSize` 下的行為 | 維持（主軸高由 `FieldBlock` 父格位捲動承接，5.17） |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| `options[i].label` | 否 | 1 | 截斷 | `TestCopy.status`；`TestCopy.longToken`；has_functional_requirements 的兩選項取 `radioYes`／`radioNo`（en「Yes」／「No」） |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `options` | `List<RadioOption{value, label}>`，2..8 項（提案上限） | 是 | 呼叫端（值域原值；布林欄位的是／否取 `radioYes`／`radioNo`） |
+| `selected` | `String?` | 是 | 不適用 |
+| `onChanged` | `ValueChanged<String>` | 是 | 不適用 |
+| `semanticLabel` | `String`（群組名） | 是 | 呼叫端（與 `FieldBlock` label 同一字串） |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `testKey` | `Key` | 是（提案：群組 `group-edit-<field>`，選項 `option-edit-<field>-<value>` 由元件推導；待決（1.0.0-W3-553.3）） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.textSecondary`（未選外圈）、`accent`（選中）、`textPrimary`（label）、`textDisabled`（disabled） |
+| 間距 | 選項內距 `Space.xs`；圓鈕與 label 間 `Space.xs`；選項間 `Space.xxs` |
+| 字體 | `AppFontSize.body` |
+| 動畫 | `Motion.feedback` |
+| 尺寸 | `LayoutSize.iconLg`（圓鈕）、`LayoutSize.hitTargetMin` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| 布林欄位選項 | `radioYes` / `radioNo`（§4.0.6 1.140 新增） |
+| outOfDomain 提示 | `fieldValueOutOfDomain` |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊；選項內圓鈕與 label 垂直置中 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | 群組 `Semantics` label 為 `semanticLabel`；每個選項 `inMutuallyExclusiveGroup` 為 `true`、`checked` 對應是否選中、label 為選項文字；圓鈕與 label 合併為單一語意節點 |
+| 狀態變化播報 | `checked` 旗標改變由輔助技術播報 |
+| 非視覺替代訊號 | 選中以內點、外圈色與 `checked` 旗標三者承載 |
+| 焦點順序與操作路徑（桌機） | 全組一個 Tab 停留點；↑／↓ 移動、Space 選取（用戶裁定，`1.0.0-W3-675`） |
+| 對比 | 依 §4.0.2：label `textPrimary` / `surfaceBase` 5.79:1；選中 `accent` / `surfaceBase` 5.84:1；未選外圈 `textSecondary` / `surfaceBase` 4.71:1（非文字 3:1），皆通過 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 none / set / outOfDomain / disabled，選項 2 與 8 各一次
+- [ ] 兩種視窗尺寸下不溢位；選項高等於 `LayoutSize.hitTargetMin`
+- [ ] 最長測試文案截斷
+- [ ] 點選非選中項呼叫 `onChanged` 恰一次；對照：點選目前選中項不呼叫；點選後選中標示在 `selected` 改傳前不移動
+- [ ] ↑／↓ 只移動焦點、不呼叫 `onChanged`；Space 呼叫一次
+- [ ] `Semantics` 的 `checked` 與 `selected` 一致，`inMutuallyExclusiveGroup` 為 `true`
+- [ ] 顏色、間距引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 檢視模式切換 | `SegmentedControl` |
+| 有序等級、超過 8 項 | `AppDropdown` |
+| 單一布林篩選 | `AppCheckbox` |
+
+### 4.48 FieldBlock（容器）
+
+**實作類別**：`FieldBlock`（頁面層禁直用 `FormField` / `TextFormField` / `InputDecorator` 自組欄位，§6）。
+
+**用途**：一個文件欄位的承載：label + 值格 + 提示或錯誤文字的垂直堆疊；值格依欄位放輸入元件或唯讀值。寫入的三個可觀測時刻（SPEC-009 FR-05：發出、受理、結果）與驗證狀態在本容器呈現，輸入元件只承載輸入層。
+**內容角色**：標籤（欄位 label）+ 數值（值格）+ 內文（提示或錯誤）。
+**何時不用**：非編輯畫面的欄位顯示（節點詳情的 meta 列用 `ListRow.meta`）；篩選列（`Toolbar`）。
+**出現畫面**：編輯畫面（SPEC-001 節號待決（1.0.0-W3-553.3））。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `editable` | 值格放 `AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` 之一 | 呈現寫入結果與驗證狀態 | FR-09「自」為 1.0 的欄位 |
+| `readOnly` | 值格放 `AppText`（`body`；ID、路徑、日期用 `mono`） | 無寫入 | FR-09 標唯讀或「自」不是 1.0 的欄位 |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| idle | label + 值格；提示格不渲染，outOfDomain 時渲染 `fieldValueOutOfDomain`（用戶裁定 2026-11-11，`1.0.0-W3-675`） | 依值格 | 無進行中的寫入 | 值格提交 → writing | 待決（1.0.0-W3-553.3：編輯狀態 provider） | 等確認才顯示 |
+| writing | 待決（1.0.0-W3-553.3） | 待決 | 值格提交、閘門通過、寫入發出（FR-05 發出時刻） | 受理 → written / blocked / ioFailed | 待決 | 等確認才顯示 |
+| written · 驗證中 | 待決（1.0.0-W3-553.3；值格顯示新值為定案，§2） | 依值格 | `WriteResult.written` 且 `ValidationStatus.running` | → passed / failed / unavailable | 待決 | 等確認才顯示 |
+| written · 驗證通過 | 待決（1.0.0-W3-553.3） | 依值格 | `ValidationStatus.passed` | 下一次提交 → writing | 待決 | 等確認才顯示 |
+| written · 驗證失敗 | 待決（1.0.0-W3-553.3；檔案不自動回滾，FR-05） | 待決 | `ValidationStatus.failed`（攜帶新增問題數） | 待決 | 待決 | 等確認才顯示 |
+| written · 驗證不可用 | 待決（1.0.0-W3-553.3） | 待決 | `ValidationStatus.unavailable` | 待決 | 待決 | 等確認才顯示 |
+| blocked | 待決（1.0.0-W3-553.3；`externallyModified` 由編輯狀態承載、不發暫態提示，載體不得為 `AppSnackBar`） | 待決 | `WriteResult.blocked`（`externallyModified`／`snapshotFailed`／`rewriteNotIsolated`） | 待決（`externallyModified` 依 FR-06 放棄並重讀） | 待決 | 等確認才顯示 |
+| ioFailed | 待決（1.0.0-W3-553.3；載體不得為 `AppSnackBar`） | 待決 | `WriteResult.ioFailed` | 待決 | 待決 | 等確認才顯示 |
+| readOnly | label + `AppText` 值；提示格渲染唯讀原因（待決（1.0.0-W3-553.3）：工作區唯讀降級時的原因文案） | 無 | `readOnly` 變體 | 不適用（變體由欄位決定，不轉換） | — | 本地即時 |
+
+容器自身無互動瞬態，hover／pressed／focused 由值格元件承載。
+
+#### 回饋契約
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 由值格元件承載 | — | — | 由值格承載 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 由值格元件承載；label 與提示格經語意關聯朗讀（無障礙） | — | — | 由值格承載 | 不適用 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 由值格元件承載（第一層） | — | — | 由值格承載 | 不適用 | 規格撰寫者 |
+| 定位提示 locate | 系統 | 待決（1.0.0-W3-553.3） | — | — | 待決 | 待決 | 待決 |
+| 狀態變更提示 state-change | 呼叫端（編輯狀態改變） | 待決（1.0.0-W3-553.3） | 待決 | 待決 | §1 子表「狀態變更提示」列 | idle → writing → written · 驗證中 → 通過／失敗／不可用；writing → blocked / ioFailed | 待決 |
+| 等待與結果 | 系統 | 掛載點：第一層為值格元件；第二層為本容器 writing；第三層為本容器 written · 驗證四態與 blocked／ioFailed。四段結局（提案對應，呈現形式待決（1.0.0-W3-553.3））：成功 = `written` 後驗證 `passed`；失敗 = `blocked`、`ioFailed`、驗證 `failed`；逾時 = 待決（SPEC-009 未定寫入逾時，見本規格票〈待裁〉第 6 題）；服務不可用 = 驗證 `unavailable`（`uv` 或 doc CLI 不可執行） | 待決 | 待決（SPEC-009 NFR-01） | §1 子表「等待與結果」列 | 同上 | 待決 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 容器本身無操作；由值格元件承載（4.44–4.47 各自的操作機制） | | | | |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位；高隨子件（主軸無界） |
+| 最小尺寸 | 寬：子件最小寬的最大值（5.17 交叉軸代入）；高：label 一行 + `Space.xs` + 值格最小高 |
+| 最小命中區 | 不適用於容器本身（由值格元件承載） |
+| 最大尺寸 | 寬：父格位寬；高：無上限（父格位須可垂直捲動） |
+| `kMinWindowSize` 下的行為 | 維持（5.17） |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| `label` | 否 | 1 | 截斷（完整文字由朗讀承載） | `TestCopy.longZh`；`TestCopy.longEn` |
+| 唯讀值（`readOnly` 值格） | 是 | 3 | 末行截斷 | `TestCopy.nodeTitle`；`TestCopy.filePath`（`mono`） |
+| 提示或錯誤文字 | 是 | 3 | 末行截斷 | `fieldValueOutOfDomain`（代入 `TestCopy.longToken`）；寫入與驗證訊息待決（1.0.0-W3-553.3） |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `label` | `String` | 是 | 呼叫端（欄位名的 i18n key，由畫面票登記；待決（1.0.0-W3-553.3）） |
+| `value`（值格） | `editable`：`AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` 之一；`readOnly`：`AppText` | 是（恰 1） | 依值格元件 |
+| `supportingText` | `String?` | 否 | 呼叫端（i18n key 取值） |
+| `isError` | `bool` | 否（預設 `false`；`true` 時提示格以錯誤色呈現） | 不適用 |
+| 編輯狀態 | 待決（1.0.0-W3-553.3：寫入結果與驗證狀態的傳入形式） | 待決 | 待決 |
+| `testKey` | `Key` | 是（提案：`field-edit-<field>`；待決（1.0.0-W3-553.3）） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.textSecondary`（label、提示）、`error`（錯誤文字）、`textPrimary`（唯讀值） |
+| 間距 | 子件間 `Space.xs` |
+| 字體 | `AppFontSize.body`（label、值）、`caption`（提示） |
+| 動畫 | 待決（1.0.0-W3-553.3） |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| outOfDomain 提示 | `fieldValueOutOfDomain` |
+| 欄位 label、寫入與驗證訊息、唯讀原因 | 待決（1.0.0-W3-553.3） |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | 待決（1.0.0-W3-553.3 定編輯畫面版位）；提案：`Panel.scrollable`，屆時修改 4.30 子件清單（本規格票〈待裁〉第 3 題） |
+| 不得放置的區域 | 依 §4.0.8；父格位不可垂直捲動者不得放（主軸無界） |
+| 對齊基準 | 子件起始側對齊 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | 值格元件的 `semanticLabel` 等於 `label`；提示或錯誤文字以 `Semantics` hint 關聯至值格，焦點進入值格時一併朗讀 |
+| 狀態變化播報 | 寫入結果與驗證狀態的播報待決（1.0.0-W3-553.3） |
+| 非視覺替代訊號 | 錯誤以文字呈現，錯誤色非唯一訊號 |
+| 焦點順序與操作路徑（桌機） | 容器不是停留點；值格元件為停留點；`readOnly` 的唯讀值不進 Tab 順序 |
+| 對比 | 依 §4.0.2：label `textSecondary` / `surfaceBase` 4.71:1、錯誤 `error` / `surfaceBase` 通過；父格位底色若非 `surfaceBase`，依帶色表面規則改 `textPrimary` |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 `editable`（四種值格各一）與 `readOnly`，提示格有／無、`isError` 真／假
+- [ ] 兩種視窗尺寸、5.17 交叉軸最小格位下不溢位
+- [ ] label 最長文案截斷、唯讀值與提示超過 3 行末行截斷
+- [ ] 值格元件的語意節點含 label 與提示文字
+- [ ] 寫入與驗證各態的呈現：待決（1.0.0-W3-553.3）
+- [ ] 顏色、間距引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 節點詳情的唯讀 meta 列 | `ListRow.meta` |
+| 多欄位並排 | 本容器只承載一個欄位；並排需求回規格裁定 |
+
 ---
 
 ## 5. 容器元件
@@ -6771,6 +7513,44 @@ EVT-CORPUS-004 項目說明：
 | 最小間距 | `Space.xxs`；內距 `Space.sm`；呼叫端不得覆寫 |
 | 空間不足策略 | 捲動（垂直，僅清單區，`scroll-switcher-recent`；標題、分隔線、按鈕、失敗原因文字不捲離）；觸發條件：標題高 + N × `RecentProjectItem` 高 + (N − 1) × `Space.xxs` + `Divider` 高 + `LayoutSize.hitTargetMin` + 失敗原因文字高（存在時，至多兩行，另加 `Space.xxs`）+ 2 × `Space.sm` > 最大高（入口下緣至視窗下緣 − `Space.xl`） |
 
+### 5.17 FieldBlock
+
+**對應第 4 章條目**：4.48（1.140 新增，`1.0.0-W3-553.6`）
+
+#### 子件契約
+
+| 項目 | 值 |
+|------|-----|
+| 接受的子件類型 | label：`AppText.body`（`secondary`）；值格：`editable` 為 `AppTextInput`、`AppDropdown`、`ReferencePicker`、`AppRadioGroup` 之一，`readOnly` 為 `AppText.body` 或 `AppText.mono`；提示格：`AppText.caption` |
+| 子件數量上限 | label 1、值格 1、提示格 0..1（共 3） |
+
+#### 排列不變式
+
+| 不變式 | 值 |
+|--------|-----|
+| 不重疊 | label / 值格 / 提示格垂直互斥，單欄堆疊；交叉軸（寬）各子件填滿容器寬 |
+| 最小間距 | `Space.xs`；呼叫端不得覆寫 |
+| 空間不足策略 | 主軸（垂直）：不觸發——主軸無界，容器高 = 子件高之和 + 間距，不設固定高；溢出由父格位的垂直捲動承接（4.48 組合規則：父格位不可捲動者不得放）。交叉軸（寬）：固定為父格位寬，條件見下表 |
+
+**交叉軸條件**（容器寬固定為父格位寬，無自身內距；三個子件皆可收縮：label 與唯讀值截斷或換行、輸入元件寬填滿且內部截斷或捲動，故代入尺寸契約的最小寬，§4.0.3「一字元」= 該 slot 字級 1em）：
+
+| 子件 | 最小寬（token 式） | 實機字型代入 | 測試字型（Ahem）代入 |
+|------|-------------------|-------------|--------------------|
+| label（`AppText.body`，截斷） | 一字元 + 省略號（4.1） | 12 + 省略號寬 ≤ 24 | 12 + 12 = 24 |
+| `AppTextInput` | `Space.sm` + 4 × `AppFontSize.body` + `Space.sm` | 64 | 64 |
+| `AppDropdown` / `ReferencePicker` | `Space.sm` + 4 × `AppFontSize.body` + `Space.xs` + `LayoutSize.iconMd` + `Space.sm` | 83 | 83 |
+| `AppRadioGroup` | `Space.xs` + `LayoutSize.iconLg` + `Space.xs` + 4 × `AppFontSize.body` + `Space.xs` | 77 | 77 |
+| 唯讀值、提示格（換行或截斷） | 一字元 + 省略號 | ≤ 24 | 24 |
+| **容器最小寬（最大值）** | | **83** | **83** |
+
+輸入元件的最小寬是約束值（內容在其內截斷或捲動），不量測字形，故兩欄同值；label 與文字子件在實機字型下省略號寬小於 1em，取 ≤ 24。比較對象：父格位寬。父容器待決（1.0.0-W3-553.3）；以既有版面中最窄的面板格位代入——`TwoColumnLayout` 右欄 `Panel.scrollable` 內寬 = `LayoutSize.detailPaneWidth` − 2 × `Space.md` = 236 − 24 = 212（不隨視窗尺寸，`kMinWindowSize` 與 `kDesignSize` 同值）。
+
+| 比較 | 實機字型 | 測試字型（Ahem） |
+|------|---------|----------------|
+| 容器最小寬 ≤ 父格位寬 | 83 ≤ 212，成立 | 83 ≤ 212，成立 |
+
+父容器定案後若格位寬小於 83，屬兩份契約互斥，須改父格位或本容器子件的最小寬，不得以截斷吸收。
+
 ---
 
 ## 6. 原生元件禁用對照表
@@ -6784,8 +7564,10 @@ EVT-CORPUS-004 項目說明：
 | `Divider` / `VerticalDivider` | `Divider`（本檔 4.3）；側欄與主區分隔為 `AppShell` 內部 | 顏色與線寬統一 |
 | `ElevatedButton` / `FilledButton` / `OutlinedButton` / `TextButton` / `IconButton` | `AppButton` | 三變體與 disabled 常駐說明契約；禁 icon-only |
 | `Chip` / `ActionChip` / `FilterChip` | `Badge`（非互動）/ `FilterDropdown`（篩選） | 徽章明訂非互動；篩選有自己的狀態集 |
-| `TextField` / `TextFormField` | `SearchField` | 防抖動與清除契約 |
-| `DropdownButton` / `DropdownMenu` / `PopupMenuButton` | `FilterDropdown` | 篩選狀態集與播報（待 W1-057） |
+| `TextField` / `TextFormField` | `SearchField`（清單搜尋）/ `AppTextInput`（表單欄位，1.140） | 防抖動與清除契約；表單欄位的提交與還原契約 |
+| `DropdownButton` / `DropdownMenu` / `PopupMenuButton` / `Autocomplete` | `FilterDropdown`（篩選）/ `AppDropdown`（表單列舉）/ `ReferencePicker`（表單引用）（後兩者 1.140） | 篩選狀態集與播報（待 W1-057）；表單無「全部」項、值域外值的呈現 |
+| `Radio` / `RadioListTile` / `RadioGroup`（Flutter） | `AppRadioGroup`（1.140） | 選取等寫入確認才移動標示、鍵盤只移焦點不選取（用戶裁定，`1.0.0-W3-675`） |
+| `FormField` / `Form` / `InputDecorator` 自組欄位 | `FieldBlock`（1.140） | label、提示與寫入狀態集中於單一容器 |
 | `DataTable`（Material）/ `Table` | `DataTable`（本檔 4.36）+ `TableRow` | 虛擬捲動與欄規格 |
 | `ListTile` | `ListRow` | 五變體與兩端固定策略 |
 | `Checkbox` / `CheckboxListTile` / `Switch` / `SwitchListTile` | `AppCheckbox` | 文字與核取框同一命中區、朗讀 `checked` 旗標（1.131） |
@@ -6839,6 +7621,8 @@ EVT-CORPUS-004 項目說明：
 - [ ] 元件清單總表中每個排列關係都有容器元件，容器的排列不變式三項齊全
 - [ ] 原生禁用對照表與豁免清單完整
 - [ ] 元件文字經中英文溢位測試
+- [ ] 容器的排列不變式與「不觸發」判定，代入值分列實機字型與測試字型兩欄（CCD 3.15.0；1.140 起新增條目適用，例 5.17）
+- [ ] 編輯用表單元件（4.44–4.48、5.17）的「待決（1.0.0-W3-553.3）」欄位已依編輯狀態定稿回填，提案值已核定（§4.0.9 封鎖項解除）
 
 ---
 
@@ -6846,6 +7630,7 @@ EVT-CORPUS-004 項目說明：
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.140 | 2026-11-11 | `1.0.0-W3-553.6`（依 SPEC-009 FR-09，`component-contract-design` step 2～4 路徑 A）：新增編輯用表單元件 4.44 `AppTextInput`（`singleLine`／`multiLine`）、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48 `FieldBlock`（`editable`／`readOnly`），§5 新增 5.17（交叉軸代入值分實機字型與測試字型兩欄）；各條目記不沿用 `SearchField`／`FilterDropdown`／`SegmentedControl`／`AppCheckbox`／`ListRow.option` 的理由。依賴編輯狀態的子節與欄標「待決（1.0.0-W3-553.3）」，outOfDomain 呈現、單選方向與鍵盤、文字失焦提交為提案；§4.0.9 登記封鎖項。§3.1 總表補五列與定案數註記；§4.0.6 新增〈1.140 新增〉表六個 key（zh／en 提案，ARB 由元件票建立）；§6 `TextField`、`DropdownButton` 兩列補表單對應元件並新增 `Radio`、`FormField` 兩列；§9 新增兩項驗收。未改既有元件契約。同版經用戶裁定（2026-11-11，`1.0.0-W3-675`）定案四項：逐欄立即提交、outOfDomain 觸發器顯示原值並以提示格註明、`AppRadioGroup` 恆垂直、↑↓ 只移焦點且 Space 選取；文字失焦提交、錨點命名、欄位堆疊父容器仍為提案，隨 `1.0.0-W3-553.3` 裁定；4.48 逾時段待 `1.0.0-W3-676`。兩者完成前本組條目不可被畫面票引用 |
 | 1.139 | 2026-11-10 | `1.0.0-W3-553.1`：§2 樂觀更新政策列對編輯能力規格的引用改為指名 SPEC-009 FR-05（原寫「edit domain 的編輯能力規格」，當時 SPEC-009 尚未建立）。條文不變 |
 | 1.138 | 2026-11-10 | 引用字面更正（`1.0.0-W1-110` 停放票分診，用戶裁決移入 1.1.0 候選池）：4.6 `IssueMarker` default 列「恢復條件見 SPEC-001 §6」的票 ID 由 `1.0.0-W3-656` 改為 `1.1.0-W3-656`；變更歷史列保留原文。條文不變 |
 | 1.137 | 2026-11-10 | `1.0.0-W3-553`（用戶裁定，1.0 編輯能力四項架構決策）：§2 樂觀更新政策列由「0.x 不允許（提案）＋ 1.0 規劃時重評」改為「0.x 與 1.0 皆不允許」；1.0 寫入等位元組落檔才顯示新值，CLI 驗證結果以獨立的驗證狀態呈現（進行中 → 通過／失敗），驗證失敗不自動回滾；三個可觀測時刻與寫入結果型別改由 edit domain 的編輯能力規格定義；刪除原重評條件與「允許類別限低風險可逆欄位」的預想。決策依據見 `docs/tech-decisions.md`〈補記：2026-11-10 — 1.0 編輯能力四項架構決策定案〉。未新增元件與 i18n key |
