@@ -67,6 +67,7 @@ class _AppShellState extends ConsumerState<AppShell>
     with WidgetsBindingObserver {
   late final ScanNotificationController _scanNotificationController;
   StreamSubscription<void>? _preferencesRequests;
+  StreamSubscription<void>? _shortcutsRequests;
 
   @override
   void initState() {
@@ -78,6 +79,11 @@ class _AppShellState extends ConsumerState<AppShell>
         .read(preferencesChannelProvider)
         .openRequested
         .listen((_) => ref.read(preferencesOpenProvider.notifier).state = true);
+    // 說明選單「鍵盤快捷鍵」開啟快捷鍵面板；與偏好設定互斥由 build 的 ref.listen 處理。
+    _shortcutsRequests = ref
+        .read(preferencesChannelProvider)
+        .openKeyboardShortcutsRequested
+        .listen((_) => ref.read(shortcutsOpenProvider.notifier).state = true);
     // SPEC-006 FR-11 規則 1：常駐殼啟動即掛上監看，早於還原工作區後的首輪掃描。
     ref.read(corpusWatchProvider);
     // 每輪掃描完成寫入最近專案計數快照（SPEC-005 §2.4〈計數快照〉）。
@@ -137,6 +143,7 @@ class _AppShellState extends ConsumerState<AppShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _preferencesRequests?.cancel();
+    _shortcutsRequests?.cancel();
     _scanNotificationController.dispose();
     super.dispose();
   }
