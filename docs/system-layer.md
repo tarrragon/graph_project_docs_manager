@@ -58,7 +58,7 @@ updated: "2026-11-10"
 
 | 詞 | 語意 | 用在哪 |
 |----|------|--------|
-| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（畫面狀態層）為 `[]`。計數由 Graph 聚合（Graph domain map §3） | Domain 視圖矩陣的格、UC-02、UC-03 |
+| **貫穿**（traverse） | 一條 UC flow **經過**某個 domain。是圖上的水平關係，可計數（「這個 domain 被 3 條 flow 貫穿」）。**資料來源**：FlowStep 的 `traverses` 欄位（domain 名清單，0..n）；只列步驟**直接觸及**的 domain 公開面，經依賴邊間接到達者不列，純畫面步驟（畫面狀態層）為 `[]`。Observability 不列入 traverses：每個步驟都發日誌，列入後無法區分步驟（`1.0.0-W3-553.5`）。計數由 Graph 聚合（Graph domain map §3） | Domain 視圖矩陣的格、UC-02、UC-03 |
 | **穿透**（drill-through） | 使用者在兩個視圖之間**雙向導覽**的操作行為（domain → UC、UC → domain） | PROP-004 §核心場景、`tech-decisions.md` §3.1 |
 | **鄰接查詢** | Graph domain 的公開 API，沿邊取相鄰節點（1 hop）。簽章定於 SPEC-007 FR-08：輸入節點 ID、可選邊型集合與方向，回傳邊型、另一端 ID、方向、宣告來源 | Graph domain map §3 的公開面 |
 
