@@ -73,6 +73,12 @@ class AppDelegate: FlutterAppDelegate, UNUserNotificationCenterDelegate {
     preferencesChannel?.invokeMethod("openPreferences", arguments: nil)
   }
 
+  /// 說明選單「鍵盤快捷鍵」：交給 Dart 端開啟快捷鍵面板（SPEC-003 §3.11）。
+  @IBAction func openKeyboardShortcuts(_ sender: Any?) {
+    NSLog("[AppDelegate] openKeyboardShortcuts invoked")
+    preferencesChannel?.invokeMethod("openKeyboardShortcuts", arguments: nil)
+  }
+
   /// 取得 `FlutterViewController` 並掛上 channel handler。
   ///
   /// 取不到 controller 時必須留下可見訊號（quality-baseline 規則 4）：這條路徑

@@ -31,6 +31,7 @@ import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/screens/preferences/preferences_panel.dart';
+import 'package:graph_project_docs_manager/services/macos_preferences_channel.dart';
 import 'package:graph_project_docs_manager/screens/shortcuts/shortcuts_panel.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -445,6 +446,25 @@ void _registerBottomItemTests() {
       await tester.pump();
       expect(container.read(shortcutsOpenProvider), isFalse);
       expect(container.read(preferencesOpenProvider), isTrue);
+    });
+
+    testWidgets('收到 openKeyboardShortcuts：快捷鍵面板開啟，偏好設定面板關閉', (tester) async {
+      late ProviderContainer container;
+      await _pumpShell(tester, onReady: (c) => container = c);
+      container.read(preferencesOpenProvider.notifier).state = true;
+      await tester.pump();
+
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        preferencesChannelName,
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('openKeyboardShortcuts'),
+        ),
+        (_) {},
+      );
+      await tester.pump();
+
+      expect(container.read(shortcutsOpenProvider), isTrue);
+      expect(container.read(preferencesOpenProvider), isFalse);
     });
 
     testWidgets('底部項不改變導覽狀態', (tester) async {
