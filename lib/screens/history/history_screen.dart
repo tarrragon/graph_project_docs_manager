@@ -21,6 +21,8 @@ import '../../history/query/history_query.dart';
 import '../../l10n/app_localizations.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/workspace_types.dart';
+import 'history_event_list.dart';
+import 'history_filter_bar.dart';
 
 /// 邊界日期未知時淺層標示的佔位（淺層 clone 必有邊界 commit，僅防禦用）。
 const String _unknownBoundaryDate = '-';
@@ -260,13 +262,11 @@ class _ResultView extends ConsumerWidget {
                   events.length,
                 ),
         ),
+        if (!snapshot.hasNoCommit) const HistoryFilterBar(),
         Expanded(
           child: isEmpty
               ? _EmptyBody(hasNoCommit: snapshot.hasNoCommit)
-              : const Panel.scrollable(
-                  scrollKey: Key('scroll-history-events'),
-                  children: <Widget>[],
-                ),
+              : HistoryEventList(events: events),
         ),
       ],
     );
