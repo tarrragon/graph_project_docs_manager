@@ -82,10 +82,13 @@ HistoryScanInputs _inputsFromSchemaState(Ref ref) {
   final table = round is ScanRoundCompleted
       ? round.result.schemaResolution.typeTable
       : null;
+  final resolution = round is ScanRoundCompleted
+      ? round.result.edgeResolution
+      : null;
   return HistoryScanInputs(
     schemaReadiness: _readinessOf(domain, degraded),
     tableIdentity: _tableIdentityOf(table, degraded),
-    createBuilder: () => _newBuilder(ref, table),
+    createBuilder: () => _newBuilder(ref, table, resolution),
   );
 }
 
@@ -112,14 +115,24 @@ String _tableIdentityOf(TypeTable? table, bool degraded) {
 
 /// 事件建構器：使用中邊型取內建表決議後，限縮到實際型別表宣告的邊型；
 /// ticket 與 closed_by 略過規則的 id_pattern 取自實際型別表。
-EdgeEventBuilder _newBuilder(Ref ref, TypeTable? table) {
-  final builtin = ref.read(builtinTrackingSchemaJsonProvider).value;
+EdgeEventBuilder _newBuilder(
+  Ref ref,
+  TypeTable? table,
+  EdgeTypeResolution? roundResolution,
+) {
+  final resolution = roundResolution ?? _fallbackResolution(ref);
   final declared = table?.edgeTypes?.keys.toSet();
-  final active = builtin == null
-      ? const <EdgeTypeEntry>[]
-      : resolveEdgeTypes(projectSchemaJson: null, builtinSchemaJson: builtin)
-            .activeEdgeTypes
-            .where((e) => declared == null || declared.contains(e.name));
+  final active = (resolution?.activeEdgeTypes ?? const <EdgeTypeEntry>[])
+      .where((e) => declared == null || declared.contains(e.name))
+      .toList();
+  if (active.isEmpty) {
+    developer.log(
+      // i18n-exempt: 開發者 log
+      'no active edge types: reason=${resolution?.unavailableReason?.name ?? 'resolution-missing'}',
+      name: _tag,
+      level: 900,
+    );
+  }
   final nodeTypes = table?.nodeTypes ?? const <String, NodeTypeEntry>{};
   return EdgeEventBuilder(
     extractor: DeclarationExtractor(
@@ -130,6 +143,16 @@ EdgeEventBuilder _newBuilder(Ref ref, TypeTable? table) {
       ],
     ),
     ticketIdPattern: nodeTypes['Ticket']?.idRegExp ?? RegExp(r'(?!)'),
+  );
+}
+
+/// 本輪未記錄決議結果時（輪次未完成或替身）：以內建表同時作專案表決議。
+EdgeTypeResolution? _fallbackResolution(Ref ref) {
+  final builtin = ref.read(builtinTrackingSchemaJsonProvider).value;
+  if (builtin == null) return null;
+  return resolveEdgeTypes(
+    projectSchemaJson: builtin,
+    builtinSchemaJson: builtin,
   );
 }
 
