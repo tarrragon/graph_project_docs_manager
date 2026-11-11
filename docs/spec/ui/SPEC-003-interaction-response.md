@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-11"
-version: "1.94"
+version: "1.95"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -2203,9 +2203,11 @@ flow 缺陷「事件引用未解析」（SPEC-007 FR-09 子類表、FR-10〈事�
 | 重新整理 | `action-nodeDetail-refresh` | 點擊 | 見下方三分支 |
 | 前往 Domain 視圖（專案未就緒、圖不可用） | `action-nodeDetail-goto-domain` | 點擊 | jump 至 `nav-page-domain`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.37` R9，SPEC-001 共用定義；圖不可用沿用同一錨點，`0.6.0-W1-105.2`） |
 | 前往追溯視圖（未選節點、節點不在目前的圖上） | `action-nodeDetail-goto-traceability` | 點擊（僅於 `state-nodeDetail-unset` 與 `state-nodeDetail-node-absent` 渲染；後者 `0.6.0-W1-105.2`） | jump 至 `nav-page-traceability`；`returnTo` 設為 `nodeDetail`（`0.1.0-W3-335.59` S3-6） |
-| 編輯欄位 | `action-nodeDetail-edit` | 點擊（僅於 `state-nodeDetail-normal` 且選定節點不是 Ticket 時渲染；唯讀降級時 disabled，tooltip 為唯讀原因） | Edit 讀取目標檔記下 M 並啟動驗證 baseline（SPEC-009 FR-01、FR-05）；讀取成功 → `state-nodeDetail-editing`，`panel-nodeDetail-field-list` 取代 meta 列；讀取得 `notFound` → `state-nodeDetail-missing`（不出現 SnackBar，同開啟原始檔）；其他讀取失敗 → 維持 `state-nodeDetail-normal`，按鈕下方出現 `badge-nodeDetail-edit-read-failed`（`nodeDetailEditReadFailedMessage`），不出現 SnackBar。baseline 不阻擋進入模式：baseline 跑完前送出的寫入照常執行，驗證以 baseline 完成後的集合判定 |
-| 欄位送出 | `card-nodeDetail-field-<fieldKey>` 內的送出操作（SPEC-004 4.48） | 送出（僅於 `state-nodeDetail-editing`、`state-nodeDetail-edit-warning`，且沒有其他寫入進行中） | 寫入發出：該欄提示格顯示寫入中，其他欄位的送出與 `action-nodeDetail-edit-done` disabled；受理後依寫入結果：`written` → 該欄顯示新值（不做樂觀更新），提示格顯示驗證中，之後依驗證結果更新；有快照時提示格另寫「見寫入清單」；`blocked(externallyModified)` → `state-nodeDetail-edit-blocked`；`blocked(snapshotFailed)`、`blocked(rewriteNotIsolated)`、`ioFailed` → 維持原狀態，該欄提示格為錯誤樣式並說明檔案未改（改寫不隔離另提示改用外部編輯器）。每次發出皆在寫入清單新增一列。全程不出現 SnackBar（§2.14 列 23–25） |
+| 編輯欄位 | `action-nodeDetail-edit` | 點擊（僅於 `state-nodeDetail-normal` 且選定節點不是 Ticket 時渲染；唯讀降級時 disabled，tooltip 為唯讀原因） | Edit 讀取目標檔記下 M 並啟動驗證 baseline（SPEC-009 FR-01、FR-05）；讀取成功 → `state-nodeDetail-editing`，`panel-nodeDetail-field-list` 取代分隔線以上整區（meta 列、標題、狀態徽章）；讀取得 `notFound` → `state-nodeDetail-missing`（不出現 SnackBar，同開啟原始檔）；其他讀取失敗 → 維持 `state-nodeDetail-normal`，按鈕下方出現 `badge-nodeDetail-edit-read-failed`（`nodeDetailEditReadFailedMessage`），不出現 SnackBar。baseline 不阻擋進入模式：baseline 跑完前送出的寫入照常執行，驗證以 baseline 完成後的集合判定 |
+| 欄位送出 | `card-nodeDetail-field-<fieldKey>` 內的送出操作（SPEC-004 4.48） | 送出（僅於 `state-nodeDetail-editing`、`state-nodeDetail-edit-warning`，且沒有其他寫入進行中） | 寫入發出：該欄提示格顯示寫入中，全部欄位的值格唯讀鎖定（保留焦點、不可輸入與送出，SPEC-004 4.44〈值格鎖定〉），`action-nodeDetail-edit-done` 與 `action-nodeDetail-edit-reload` disabled；受理後依寫入結果：`written` → 該欄顯示新值（不做樂觀更新），提示格顯示驗證中，之後依驗證結果更新；有快照時提示格另寫「見寫入清單」；`blocked(externallyModified)` → `state-nodeDetail-edit-blocked`；`blocked(snapshotFailed)`、`blocked(rewriteNotIsolated)`、`ioFailed` → 維持原狀態，該欄提示格為錯誤樣式並說明檔案未改（改寫不隔離另提示改用外部編輯器）。每次發出皆在寫入清單新增一列。全程不出現 SnackBar（§2.14 列 23–25） |
 | 欄位 Esc | `card-nodeDetail-field-<fieldKey>` 取得焦點時 | Esc | 該欄草稿還原為目前值，不發出寫入；畫面狀態不變 |
+| 欄位失焦 | `card-nodeDetail-field-<fieldKey>` 內的文字輸入 | 焦點移出（點別處、Tab） | 草稿保留，不發出寫入；草稿與目前值不同時，該欄提示格顯示 `fieldDraftUnsentHint`（多行欄位 `fieldDraftUnsentHintMultiLine`）；畫面狀態不變。選取類欄位（下拉、引用選擇器、單選）選取即送出，沒有草稿（用戶裁定 2026-11-11，`1.0.0-W3-553.3.1` 題 1） |
+| 欄位間 Tab | `panel-nodeDetail-field-list` 內 | Tab／Shift+Tab | 順序：「放棄並重讀」（有橫幅時）→ 可編輯欄位的值格，依 SPEC-009 FR-09 該型別的表列序 →「完成」；唯讀值、唯讀鎖定中與 disabled 的值格不停留。進入編輯模式與放棄並重讀成功後，焦點落在序列的第一個停留點。寫入結果、驗證結果與橫幅出現時不移動焦點，結果以提示格文字與 `liveRegion` 播報承載（用戶裁定 2026-11-11，`1.0.0-W3-553.3.1` 題 2、題 3） |
 | 完成 | `action-nodeDetail-edit-done` | 點擊（三個編輯狀態皆渲染；寫入進行中 disabled） | 各欄未送出的草稿捨棄；轉 `state-nodeDetail-normal`，meta 列以最近一次 `written` 之後的值顯示（輪次尚未完成時用寫入受理的值，下一輪完成後以輪次為準） |
 | 放棄並重讀 | `action-nodeDetail-edit-reload` | 點擊（僅於 `state-nodeDetail-edit-warning`、`state-nodeDetail-edit-blocked` 渲染；寫入進行中 disabled） | 各欄未送出的草稿捨棄；Edit 重讀目標檔，M 改為新內容並重跑 baseline（SPEC-009 FR-06）；讀取成功 → `state-nodeDetail-editing`，欄位顯示磁碟上的值；`notFound` → `state-nodeDetail-missing`；其他讀取失敗 → 維持原狀態，橫幅改為讀取失敗說明 |
 
@@ -2887,6 +2889,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.95 | 2026-11-11 | `1.0.0-W3-553.3.1`（用戶裁定 2026-11-11 題 1–3，題 2 依 (e)）：§3.6〈互動反應〉「欄位送出」列的寫入期間鎖定由「其他欄位的送出與完成 disabled」改為「全部值格唯讀鎖定（保留焦點），完成與放棄並重讀 disabled」；「編輯欄位」列的「取代 meta 列」改為「取代分隔線以上整區（meta 列、標題、狀態徽章）」；新增「欄位失焦」（草稿保留、不送出、提示格標示未送出）與「欄位間 Tab」（順序依 SPEC-009 FR-09 表列序，進入模式的焦點落點，結果不移動焦點）兩列。對應 SPEC-001 v1.90、SPEC-004 v1.143 |
 | 1.94 | 2026-11-11 | `1.0.0-W3-553.3`：§3.5〈破洞項的指向節點〉前補一段：破洞報告的編輯入口 1.0 不渲染，依 SPEC-001 §5〈破洞報告的編輯入口〉，互動反應由 1.1 規劃波補上 |
 | 1.93 | 2026-11-11 | 對齊 SPEC-001 v1.88（`1.0.0-W3-553.3`，畫面形式依用戶裁定 2026-11-11）：§2.9 新增〈節點詳情編輯模式的錨點〉與寫入清單面板錨點，側欄底部項改為三項（補 `nav-action-writeLog`）；§3.6〈互動反應〉新增編輯欄位、欄位送出、欄位 Esc、完成、放棄並重讀五列，〈動畫提示〉補兩列，〈導航跳轉與退出〉補三個編輯狀態，〈生命週期〉補 EVT-CORPUS-001、判定順序 1–4 命中、輪次更新、切導覽項四列；新增 §3.12 寫入清單面板；§3.10 互斥與側欄底部項段改為三項；§2.14 新增列 23–25（寫入被拒兩列為等待型×不可棄，載體為編輯區橫幅與欄位提示格，非 AppSnackBar、不掛進三個阻擋狀態；寫入後驗證結果為自發型×須留痕，載體為寫入清單），〈明確排除〉補外部已改預警；§2.15 分組註記列 23–25 的覆核結論；§2.17 第 3 項改為 5 格適用、4 格空成立，證據鏈依 1.23 版末段要求重跑並改寫為〈推送型與等待型×須留痕空集合的證據鏈〉，等待型×不可棄的空成立補列由本版取代，新增〈1.0 新增兩格的測試設計〉；§4 新增 #58–#62，標題、覆蓋完整性算式、同步提醒、FR-01 驗收與 §0 概述改為 60。§3.5 破洞報告的編輯入口待 `1.0.0-W3-553.3` 發現 A 裁定後另補 |
 | 1.92 | 2026-11-10 | 〈概述〉補一段：日誌事件的記錄信封、錯誤來源分類、欄位值白名單與落地位置依 SPEC-010（`1.0.0-W3-553.2.1`）；§3.5 的「畫面層（L4，非 domain）」改為「畫面狀態層」（domain 層號推導到 L4 後撞號，系統層 §2 改為不帶層號）。不改互動契約 |
