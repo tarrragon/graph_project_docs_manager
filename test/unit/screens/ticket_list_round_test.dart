@@ -5,7 +5,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
+import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
@@ -59,6 +62,10 @@ ScanRoundResult _round({
     overrides: [scanRoundProvider.overrideWith(() => fake), ...overrides],
   );
   addTearDown(container.dispose);
+  // 原因取自 Domain 視圖狀態（1.0.0-W3-661）：預設 Loading 會落未就緒。
+  container.read(domainViewStateProvider.notifier).state = const DomainReady(
+    mode: DomainMode.matrix,
+  );
   container.read(currentWorkspaceStateProvider.notifier).state =
       const WorkspaceReady('/ws/fake');
   container.read(scanRoundProvider);
