@@ -10,7 +10,8 @@ import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 /// SPEC-010 契約守衛（test-design O3-1、O4-1、O4-3）。
 ///
 /// 靜態守衛的失效方向是放行，故每個守衛皆含正向對照輸入：
-/// O4-1 以記憶體樣本證明掃描函式會判紅；O3-1 以 positive/negative 成對 fixture
+/// O4-1 對 lib/ 的實掃（恰一處 typedef）由 1.0.0-W3-553.2.3.6 落地，本檔只保留
+/// 掃描函式與其正向對照；O4-1 以記憶體樣本證明掃描函式會判紅；O3-1 以 positive/negative 成對 fixture
 /// 證明紅燈來自字串值而非 fixture 本身壞掉。
 final RegExp _logSinkTypedef = RegExp(
   r'^\s*typedef\s+\w*LogSink\b',
@@ -32,18 +33,6 @@ typedef LogSink<E extends Enum> = void Function(E event);
 typedef WorkspaceLogSink = void Function(String message);
 ''';
       expect(countLogSinkTypedefs(sample), 2);
-    });
-
-    test('lib/ 內恰一處 typedef ... LogSink', () {
-      final hits = <String>[];
-      for (final entity in Directory('lib').listSync(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.dart')) continue;
-        final count = countLogSinkTypedefs(entity.readAsStringSync());
-        for (var i = 0; i < count; i++) {
-          hits.add(entity.path);
-        }
-      }
-      expect(hits, ['lib/observability/log_sink.dart']);
     });
   });
 
