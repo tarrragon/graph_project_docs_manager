@@ -1912,5 +1912,21 @@
         "type": "String"
       }
     }
+  },
+  "editDiscardAndReloadAction": "放棄並重讀",
+  "@editDiscardAndReloadAction": {
+    "description": "SPEC-004 4.49 動作（action-nodeDetail-edit-reload）"
+  },
+  "editBannerExternallyModifiedWarning": "這個檔案已在 App 外被修改。未送出的值仍保留，放棄並重讀可載入目前的檔案內容",
+  "@editBannerExternallyModifiedWarning": {
+    "description": "SPEC-004 4.49 warning（外部已改預警）"
+  },
+  "editBannerExternallyModifiedBlocked": "這個檔案已在 App 外被修改，這次寫入沒有執行。放棄並重讀後才能繼續編輯",
+  "@editBannerExternallyModifiedBlocked": {
+    "description": "SPEC-004 4.49 negative（外部已改阻擋）"
+  },
+  "editBannerReloadFailed": "無法重新讀取這個檔案，請再按一次放棄並重讀",
+  "@editBannerReloadFailed": {
+    "description": "SPEC-004 4.49 negative（重讀讀取失敗）"
   }
 }

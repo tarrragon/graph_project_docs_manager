@@ -286,5 +286,9 @@
   "shortcutContextFilterFocused": "When a filter button in the Ticket list has focus",
   "shortcutRowA11yLabel": "{keys}: {action}, {context}",
   "sourceChainTitle": "Source chain",
-  "sourceChainNoUpstream": "(Missing upstream {layer})"
+  "sourceChainNoUpstream": "(Missing upstream {layer})",
+  "editDiscardAndReloadAction": "Discard and reload",
+  "editBannerExternallyModifiedWarning": "This file was changed outside the app. Unsent values are kept; discard and reload to load the current file",
+  "editBannerExternallyModifiedBlocked": "This file was changed outside the app, so this write was not performed. Discard and reload to continue editing",
+  "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again"
 }
