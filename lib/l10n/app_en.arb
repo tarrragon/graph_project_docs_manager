@@ -286,5 +286,6 @@
   "shortcutContextFilterFocused": "When a filter button in the Ticket list has focus",
   "shortcutRowA11yLabel": "{keys}: {action}, {context}",
   "sourceChainTitle": "Source chain",
-  "sourceChainNoUpstream": "(Missing upstream {layer})"
+  "sourceChainNoUpstream": "(Missing upstream {layer})",
+  "nodeDetailBodyUnavailableMessage": "Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan"
 }

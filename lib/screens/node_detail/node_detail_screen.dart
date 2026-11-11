@@ -139,6 +139,21 @@ class _NodeAbsentView extends ConsumerWidget {
   }
 }
 
+/// 需求：[SPEC-004 4.20 本文來源的界線] 本文為 `null`（讀取或切分失敗）時
+/// 改放 `nodeDetailBodyUnavailableMessage`，不建構 `DocumentBody`。
+Widget _bodyOrUnavailable(BuildContext context, String? body) {
+  if (body == null) {
+    return AppText.multiLine(
+      AppLocalizations.of(context).nodeDetailBodyUnavailableMessage,
+      maxLines: 3,
+    );
+  }
+  return DocumentBody(
+    markdown: body,
+    testKey: const Key('panel-nodeDetail-document-body'),
+  );
+}
+
 /// 正常／部分損壞共用：`TwoColumnLayout`[主欄「meta + 標題 + 徽章 + 分隔線
 /// + 內文」、右欄「關聯分節」]（SPEC-004 §3.6 §6「正常」列）。
 class _ReadyView extends ConsumerWidget {
@@ -165,10 +180,7 @@ class _ReadyView extends ConsumerWidget {
         AppText.singleLine(node.title, variant: AppTextVariant.title),
         BadgeRow(children: [Badge.status(label: node.status)]),
         const Divider(),
-        DocumentBody(
-          markdown: ref.watch(nodeDetailBodyProvider(nodeId)),
-          testKey: const Key('panel-nodeDetail-document-body'),
-        ),
+        _bodyOrUnavailable(context, ref.watch(nodeDetailBodyProvider(nodeId))),
       ],
     );
 

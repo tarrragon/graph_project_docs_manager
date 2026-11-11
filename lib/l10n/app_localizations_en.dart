@@ -1122,4 +1122,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String sourceChainNoUpstream(String layer) {
     return '(Missing upstream $layer)';
   }
+
+  @override
+  String get nodeDetailBodyUnavailableMessage =>
+      'Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan';
 }

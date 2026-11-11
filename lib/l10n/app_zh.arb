@@ -1912,5 +1912,9 @@
         "type": "String"
       }
     }
+  },
+  "nodeDetailBodyUnavailableMessage": "無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新",
+  "@nodeDetailBodyUnavailableMessage": {
+    "description": "SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明"
   }
 }

@@ -1830,6 +1830,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'（缺上游 {layer}）'**
   String sourceChainNoUpstream(String layer);
+
+  /// SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明
+  ///
+  /// In zh, this message translates to:
+  /// **'無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新'**
+  String get nodeDetailBodyUnavailableMessage;
 }
 
 class _AppLocalizationsDelegate

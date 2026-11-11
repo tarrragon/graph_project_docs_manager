@@ -1048,4 +1048,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String sourceChainNoUpstream(String layer) {
     return '（缺上游 $layer）';
   }
+
+  @override
+  String get nodeDetailBodyUnavailableMessage =>
+      '無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新';
 }

@@ -4,8 +4,10 @@
 /// [NodeDetailFixtures] 只供測試以 `overrideWithValue` 注入。
 library;
 
+import 'dart:developer' as developer;
 import 'dart:io';
 
+import 'package:graph_project_docs_manager/corpus/frontmatter_classifier.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,9 +82,11 @@ final nodeDetailNodesProvider = Provider<Map<String, NodeDetailFixture>>((ref) {
   return projectNodeDetails(graph.event);
 });
 
-/// 選定節點的內文：fixture 自帶內文優先；否則只讀該節點一個檔案，
-/// 讀不到退回 `# 標題`。
-final nodeDetailBodyProvider = Provider.family<String, String>((ref, nodeId) {
+/// 需求：[SPEC-001 §6 主欄分隔線上下的內容] 選定節點的本文：fixture 自帶內文
+/// 優先；否則只讀該節點一個檔案，取 frontmatter 結尾分隔線之後的內容
+/// （切分委由 Corpus 的 [bodyLinesAfterFrontmatter]，本層不另寫切分）。
+/// 讀取或切分失敗回傳 `null`，由畫面層改放 `nodeDetailBodyUnavailableMessage`。
+final nodeDetailBodyProvider = Provider.family<String?, String>((ref, nodeId) {
   final node = ref.watch(nodeDetailNodesProvider)[nodeId];
   if (node == null) return '';
   if (node.markdown.isNotEmpty) return node.markdown;
@@ -90,10 +94,23 @@ final nodeDetailBodyProvider = Provider.family<String, String>((ref, nodeId) {
     ref.watch(currentWorkspaceStateProvider),
     node.filePath,
   );
-  final file = path == null ? null : File(path);
-  if (file != null && file.existsSync()) return file.readAsStringSync();
-  return '# ${node.title}';
+  return path == null ? null : _readBodyOrNull(path);
 });
+
+String? _readBodyOrNull(String path) {
+  try {
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    return bodyLinesAfterFrontmatter(file.readAsBytesSync())?.join('\n');
+  } on FileSystemException catch (error) {
+    developer.log(
+      '節點本文讀取失敗：$path（$error）', // i18n-exempt: 開發者診斷 log
+      name: 'node_detail',
+      level: 900,
+    );
+    return null;
+  }
+}
 
 /// 需求：[SPEC-001 §6] 由建圖結果投影節點詳情；關聯依邊型分節（語意約定
 /// 3：不同邊型不合併），每節 `isProposed` 取該邊型 layer。內文延遲讀取。
