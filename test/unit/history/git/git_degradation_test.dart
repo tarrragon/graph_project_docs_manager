@@ -3,16 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_port.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_types.dart';
 import 'package:graph_project_docs_manager/history/git/git_process_runner.dart';
+import 'package:graph_project_docs_manager/history/git/history_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import '../../../helpers/history/fake_process_runner.dart';
 
 const String _root = '/work/proj';
 
 void _silent(
-  String message, {
-  required event,
-  required Map<String, Object?> payload,
-  int? level,
+  HistoryLogEvent event,
+  LogFields fields, {
+  LogLevel level = LogLevel.info,
+  ErrorSource? source,
+  Object? error,
 }) {}
 
 GitHistoryPort _port(FakeProcessRunner runner) =>

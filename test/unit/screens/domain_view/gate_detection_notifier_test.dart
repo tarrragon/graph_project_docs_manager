@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
@@ -221,7 +222,8 @@ void main() {
           builtinSchemaVersionProvider.overrideWith((ref) async => '2.40.3'),
           scanRoundProvider.overrideWith(() => _GatedScanRound(gate)),
           domainViewLogSinkProvider.overrideWithValue(
-            (message, {level = 500}) => logs.add((message, level)),
+            (event, fields, {level = LogLevel.debug, source, error}) =>
+                logs.add((event.name, level.devLogLevel)),
           ),
         ],
       );

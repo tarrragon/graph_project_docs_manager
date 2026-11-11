@@ -11,6 +11,9 @@ import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 /// 需求：[SPEC-007 FR-01、FR-06] 建圖入口。
@@ -21,7 +24,7 @@ GraphBuildResult buildGraph({
   required List<RawNode> rawNodes,
   required Map<String, dynamic>? projectSchemaJson,
   required Map<String, dynamic> builtinSchemaJson,
-  GraphLogSink? logSink,
+  LogSink<GraphLogEvent>? logSink,
 }) {
   final log = logSink ?? defaultGraphLogSink;
   final resolution = resolveEdgeTypes(
@@ -31,10 +34,9 @@ GraphBuildResult buildGraph({
   final reason = resolution.unavailableReason;
   if (reason != null) {
     log(
-      'graph build unavailable: ${reason.name}', // i18n-exempt: debug log
-      event: GraphLogEvent.buildUnavailable,
-      payload: {GraphLogKeys.reason: reason.name},
-      level: 900,
+      GraphLogEvent.buildUnavailable,
+      LogFields({GraphLogKeys.reason: LogValue.enumValue(reason)}),
+      level: LogLevel.warning,
     );
     return GraphBuildUnavailable(reason);
   }
@@ -46,25 +48,21 @@ GraphBuildResult buildGraph({
     edgeTypes: resolution.activeEdgeTypes,
     nodeTypes: nodeTypes,
   );
-  log(
-    'graph build completed', // i18n-exempt: debug log
-    event: GraphLogEvent.buildCompleted,
-    payload: _completedPayload(event),
-  );
+  log(GraphLogEvent.buildCompleted, _completedFields(event));
   return GraphBuildAvailable(event);
 }
 
-Map<String, Object?> _completedPayload(GraphBuiltEvent event) => {
-  GraphLogKeys.nodeCount: event.nodeCount,
-  GraphLogKeys.edgeCount: event.edgeCount,
-  GraphLogKeys.danglingRefCount: event.danglingRefCount,
-  GraphLogKeys.malformedRefCount: event.malformedRefCount,
-  GraphLogKeys.duplicateIdCount: event.duplicateIdCount,
-  GraphLogKeys.multiSourceCount: event.multiSourceCount,
-  GraphLogKeys.flowDefectCount: event.flowDefectCount,
-  GraphLogKeys.resolvedCount: event.resolvedCount,
-  GraphLogKeys.totalReferences: event.totalReferences,
-};
+LogFields _completedFields(GraphBuiltEvent event) => LogFields({
+  GraphLogKeys.nodeCount: LogValue.integer(event.nodeCount),
+  GraphLogKeys.edgeCount: LogValue.integer(event.edgeCount),
+  GraphLogKeys.danglingRefCount: LogValue.integer(event.danglingRefCount),
+  GraphLogKeys.malformedRefCount: LogValue.integer(event.malformedRefCount),
+  GraphLogKeys.duplicateIdCount: LogValue.integer(event.duplicateIdCount),
+  GraphLogKeys.multiSourceCount: LogValue.integer(event.multiSourceCount),
+  GraphLogKeys.flowDefectCount: LogValue.integer(event.flowDefectCount),
+  GraphLogKeys.resolvedCount: LogValue.integer(event.resolvedCount),
+  GraphLogKeys.totalReferences: LogValue.integer(event.totalReferences),
+});
 
 /// 需求：[SPEC-007 FR-04～FR-06] 由使用中邊型與節點型別建圖（純函式，不記日誌）。
 GraphBuiltEvent buildGraphFromInputs({

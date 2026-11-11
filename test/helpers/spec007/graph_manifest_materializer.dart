@@ -11,6 +11,7 @@ import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_builder.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 
 const _fixtureDir = 'test/fixtures/spec007';
@@ -211,8 +212,8 @@ CorpusGraphRun buildFromRawNodes(
     rawNodes: rawNodes,
     projectSchemaJson: schemaJson ?? loadSpec007Fixture('type_table'),
     builtinSchemaJson: loadBuiltinSchema(),
-    logSink: (message, {required event, required payload, level}) =>
-        logs.add((event: event, payload: payload)),
+    logSink: (event, fields, {level = LogLevel.info, source, error}) =>
+        logs.add((event: event, payload: fields.toJson())),
   );
   return CorpusGraphRun(rawNodes: rawNodes, buildResult: result, logs: logs);
 }

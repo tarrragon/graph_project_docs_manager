@@ -7,6 +7,8 @@ library;
 import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 
 /// 依賴邊的邊型名（型別表 `bundle_dependency`）。
@@ -66,11 +68,11 @@ class BundleOrderGraphUnavailable extends BundleOrderResult {
 /// 圖不可用時，與 FR-08 同形：同一 buildResult 只記一次
 /// [GraphLogEvent.bundleOrderUnavailable]；buildResult 為 null 時以實例為單位。
 class BundleLayerQuery {
-  BundleLayerQuery({required this.buildResult, GraphLogSink? logSink})
+  BundleLayerQuery({required this.buildResult, LogSink<GraphLogEvent>? logSink})
     : _log = logSink ?? defaultGraphLogSink;
 
   final GraphBuildResult? buildResult;
-  final GraphLogSink _log;
+  final LogSink<GraphLogEvent> _log;
   final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>('bundleOrderLogged');
 
@@ -95,10 +97,9 @@ class BundleLayerQuery {
   BundleOrderGraphUnavailable _unavailable(BundleOrderGraphUnavailable r) {
     if (_once.mark(buildResult)) {
       _log(
-        'bundle order query unavailable: ${r.reasonCode}', // i18n-exempt: debug log
-        event: GraphLogEvent.bundleOrderUnavailable,
-        payload: {GraphLogKeys.reason: r.reasonCode},
-        level: 900,
+        GraphLogEvent.bundleOrderUnavailable,
+        graphReasonFields(r.reasonCode),
+        level: LogLevel.warning,
       );
     }
     return r;

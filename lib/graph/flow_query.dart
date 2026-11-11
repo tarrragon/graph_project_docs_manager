@@ -5,6 +5,8 @@ import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 
 /// `flowOf` 結果：子圖、不存在、圖不可用三者可窮舉區分。
 sealed class FlowOfResult {
@@ -34,11 +36,11 @@ class FlowOfGraphUnavailable extends FlowOfResult {
 /// buildResult 只記一次 [GraphLogEvent.flowUnavailable]；buildResult 為 null
 /// 時以實例為單位。
 class FlowQuery {
-  FlowQuery({required this.buildResult, GraphLogSink? logSink})
+  FlowQuery({required this.buildResult, LogSink<GraphLogEvent>? logSink})
     : _log = logSink ?? defaultGraphLogSink;
 
   final GraphBuildResult? buildResult;
-  final GraphLogSink _log;
+  final LogSink<GraphLogEvent> _log;
   final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>('flowLogged');
 
@@ -68,10 +70,9 @@ class FlowQuery {
   FlowOfGraphUnavailable _unavailable(FlowOfGraphUnavailable result) {
     if (_once.mark(buildResult)) {
       _log(
-        'flow query unavailable: ${result.reasonCode}', // i18n-exempt: debug log
-        event: GraphLogEvent.flowUnavailable,
-        payload: {GraphLogKeys.reason: result.reasonCode},
-        level: 900,
+        GraphLogEvent.flowUnavailable,
+        graphReasonFields(result.reasonCode),
+        level: LogLevel.warning,
       );
     }
     return result;

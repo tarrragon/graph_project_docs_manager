@@ -1,0 +1,11 @@
+// O3-1 負向：以字串字面值作為 fields 的值，必須在標記行產生 error。
+// 副檔名為 .txt 以免被 analyze 掃到；測試執行時複製到 .dart_tool 再分析。
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+enum SampleEvent { sampled }
+
+void emit(LogSink<SampleEvent> sink) {
+  sink(SampleEvent.sampled, LogFields({'path': '/Users/someone/secret.md'})); // NEGATIVE-LINE
+}

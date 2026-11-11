@@ -8,6 +8,8 @@ import 'package:graph_project_docs_manager/graph/adjacency_query.dart';
 import 'package:graph_project_docs_manager/graph/bundle_layer_order.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 
 /// 格 (DomainBundle, UC) 的關係種類。
 enum DomainUcRelationKind { direct, indirect, unrelated }
@@ -47,11 +49,13 @@ class DomainUcRelationGraphUnavailable extends DomainUcRelationResult {
 /// 圖不可用時，與 FR-08 同形：同一 buildResult 只記一次
 /// [GraphLogEvent.domainUcRelationUnavailable]；buildResult 為 null 時以實例為單位。
 class DomainUcRelationQuery {
-  DomainUcRelationQuery({required this.buildResult, GraphLogSink? logSink})
-    : _log = logSink ?? defaultGraphLogSink;
+  DomainUcRelationQuery({
+    required this.buildResult,
+    LogSink<GraphLogEvent>? logSink,
+  }) : _log = logSink ?? defaultGraphLogSink;
 
   final GraphBuildResult? buildResult;
-  final GraphLogSink _log;
+  final LogSink<GraphLogEvent> _log;
   final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>(
     'domainUcRelationLogged',
@@ -85,10 +89,9 @@ class DomainUcRelationQuery {
   ) {
     if (_once.mark(buildResult)) {
       _log(
-        'domain uc relation query unavailable: ${r.reasonCode}', // i18n-exempt: debug log
-        event: GraphLogEvent.domainUcRelationUnavailable,
-        payload: {GraphLogKeys.reason: r.reasonCode},
-        level: 900,
+        GraphLogEvent.domainUcRelationUnavailable,
+        graphReasonFields(r.reasonCode),
+        level: LogLevel.warning,
       );
     }
     return r;

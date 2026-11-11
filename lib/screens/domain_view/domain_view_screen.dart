@@ -32,6 +32,8 @@ import '../../app/selected_uc.dart';
 import '../../app/workspace_selection.dart';
 import '../../components/components.dart';
 import '../../l10n/app_localizations.dart';
+import '../../observability/log_enums.dart';
+import '../../observability/log_values.dart';
 import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/workspace_types.dart';
@@ -498,8 +500,9 @@ class _GraphUnavailableBody extends ConsumerWidget {
 
   String _logVersionNotLoaded(WidgetRef ref) {
     ref.read(domainViewLogSinkProvider)(
-      '$_tag：型別表版本未載入即渲染圖不可用列', // i18n-exempt: 開發者 debug log
-      level: 900,
+      DomainViewLogEvent.versionNotLoaded,
+      LogFields.empty,
+      level: LogLevel.warning,
     );
     return '';
   }

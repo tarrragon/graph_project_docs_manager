@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/domain_uc_columns.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
@@ -66,7 +67,8 @@ _Harness _harness({
       ),
       builtinSchemaVersionProvider.overrideWith((ref) async => '1.0.0'),
       domainViewLogSinkProvider.overrideWithValue(
-        (message, {level = 500}) => logs.add((message, level)),
+        (event, fields, {level = LogLevel.debug, source, error}) =>
+            logs.add((event.name, level.devLogLevel)),
       ),
     ],
   );
