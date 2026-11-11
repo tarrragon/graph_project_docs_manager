@@ -12,11 +12,17 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/main.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/observability/log_writer.dart';
+
+import '../observability/observability_test_helpers.dart';
 
 void main() {
   final originalFlutterOnError = FlutterError.onError;
@@ -89,4 +95,93 @@ void main() {
       expect(fatalErrorNotifier.value, isA<Exception>());
     });
   });
+
+  group('structured log（SPEC-010 FR-07）', () {
+    late FakeLogFilePort port;
+    final originalWriter = fatalLogWriter;
+
+    setUp(() {
+      port = FakeLogFilePort();
+      fatalLogWriter = LogWriter(
+        port: port,
+        devLog: RecordingDevLog().call,
+        clock: fixedClock,
+      );
+    });
+
+    tearDown(() => fatalLogWriter = originalWriter);
+
+    Future<List<Map<String, dynamic>>> records() async {
+      await fatalLogWriter.flush();
+      final text = port.files['app.jsonl'] ?? '';
+      return const LineSplitter()
+          .convert(text)
+          .map((l) => jsonDecode(l) as Map<String, dynamic>)
+          .toList();
+    }
+
+    test('O7-1：三個來源各寫一筆 internal 記錄', () async {
+      reportFatalError('FlutterError', StateError('x'), StackTrace.current);
+      reportFatalError(
+        'PlatformDispatcher',
+        StateError('x'),
+        StackTrace.current,
+      );
+      reportFatalError('runZonedGuarded', StateError('x'), StackTrace.current);
+
+      final all = await records();
+      expect(all, hasLength(3));
+      for (final r in all) {
+        expect(r['domain'], 'presentation');
+        expect(r['event'], 'fatalUncaught');
+        expect(r['level'], 'error');
+        expect(r['error_source'], 'internal');
+        expect(r['error_type'], 'StateError');
+      }
+      expect(all.map((r) => (r['fields'] as Map)['interceptor']), [
+        'framework',
+        'platform',
+        'zone',
+      ]);
+    });
+
+    test('O7-2：例外訊息全文不進入記錄', () async {
+      reportFatalError(
+        'FlutterError',
+        StateError('leak $secretMarker'),
+        StackTrace.current,
+      );
+
+      await fatalLogWriter.flush();
+      final raw = port.files['app.jsonl'] ?? '';
+      expect(raw, isNotEmpty, reason: '正向對照：記錄確實寫出');
+      expect(raw, isNot(contains(secretMarker)));
+    });
+
+    test('O7-3：writer 拋例外時畫面通知照舊且出口不拋出', () {
+      fatalLogWriter = _ThrowingWriter();
+      final error = StateError('boom');
+
+      expect(
+        () => reportFatalError('FlutterError', error, StackTrace.current),
+        returnsNormally,
+      );
+      expect(fatalErrorNotifier.value, same(error));
+    });
+  });
+}
+
+class _ThrowingWriter extends LogWriter {
+  _ThrowingWriter() : super(port: null);
+
+  @override
+  void log(
+    String domain,
+    Enum event,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
+    Object? error,
+    StackTrace? stackTrace,
+  }) => throw StateError('writer down');
 }
