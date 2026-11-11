@@ -9,6 +9,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/spec_first_marker.dart';
+
 const _libDir = 'lib';
 const _snackBarPath = 'lib/components/app_snack_bar.dart';
 const _levelPath = 'lib/components/attention_level.dart';
@@ -62,6 +64,39 @@ String _stripComments(String source) {
     }
   }
   return buffer.toString();
+}
+
+const _specHeadings = [
+  '注意力通道的到達類別與級別指派表',
+  '讓步規則的可驗收形態',
+  '鑑別「綁級別」與「綁呼叫路徑」兩種實作',
+  '截斷事件的日誌等級',
+  '顯示位爭用時的約束與 0.1 的處置規則',
+];
+
+/// 章節標題契約的違規描述；空即通過。
+///
+/// 規格先行（1.1.0-W1-108）：標題列帶「規格先行」標記表示該段標題已先於
+/// dartdoc 引用改名。缺失的期望標題數不超過帶標記標題列數時容忍；
+/// 帶標記的標題列若仍含期望標題（即實作已一致），判紅並提示移除標記。
+List<String> _headingViolations(String spec, List<String> headings) {
+  final lines = spec.split('\n');
+  final markedHeadingLines = lines
+      .where((l) => l.startsWith('#') && specFirstTicketOf(l) != null)
+      .toList();
+  final violations = <String>[];
+  for (final h in headings) {
+    for (final l in markedHeadingLines) {
+      if (l.contains(h)) {
+        violations.add('標題「$h」所在列帶規格先行標記但標題未變，請移除該標記');
+      }
+    }
+  }
+  final missing = headings.where((h) => !spec.contains(h)).toList();
+  if (missing.length > markedHeadingLines.length) {
+    violations.add('標題缺失且無足夠的規格先行標記承接：$missing');
+  }
+  return violations;
 }
 
 String _readFile(String path) {
@@ -580,23 +615,42 @@ void main() {
 
     test('T-205-21(c)：SPEC-003 五段章節標題文字存在', () {
       final spec = _readFile(_specPath);
-      for (final heading in [
-        '注意力通道的到達類別與級別指派表',
-        '讓步規則的可驗收形態',
-        '鑑別「綁級別」與「綁呼叫路徑」兩種實作',
-        '截斷事件的日誌等級',
-        '顯示位爭用時的約束與 0.1 的處置規則',
-      ]) {
-        expect(
-          spec.contains(heading),
-          isTrue,
-          reason:
-              '0.1.0-W3-205 T-205-21(c)：SPEC-003 的章節標題「$heading」'
-              '已變更或消失，請同步更新 lib/components/attention_level.dart 與 '
-              'lib/components/app_snack_bar.dart 的 dartdoc 章節引用'
-              '（本斷言為該引用的唯一守衛）。',
-        );
-      }
+      final violations = _headingViolations(spec, _specHeadings);
+      expect(
+        violations,
+        isEmpty,
+        reason:
+            '0.1.0-W3-205 T-205-21(c)：SPEC-003 的章節標題已變更或消失，'
+            '請同步更新 lib/components/attention_level.dart 與 '
+            'lib/components/app_snack_bar.dart 的 dartdoc 章節引用'
+            '（本斷言為該引用的唯一守衛）。\n${violations.join('\n')}',
+      );
+    });
+
+    test('規格先行標記（1.1.0-W1-108）：標題改名且該標題行帶標記 -> 容忍', () {
+      final spec = [
+        for (final h in _specHeadings.skip(1)) '### $h',
+        '### 改名後的新標題（規格先行：1.1.0-W9-1）',
+      ].join('\n');
+      expect(_headingViolations(spec, _specHeadings), isEmpty);
+    });
+
+    test('規格先行標記（E2 對照）：標題改名但無標記 -> 判紅', () {
+      final spec = [
+        for (final h in _specHeadings.skip(1)) '### $h',
+        '### 改名後的新標題',
+      ].join('\n');
+      expect(_headingViolations(spec, _specHeadings), hasLength(1));
+    });
+
+    test('規格先行標記（E2 對照）：標題行帶標記但原標題仍在 -> 判紅並提示移除', () {
+      final spec = [
+        for (final h in _specHeadings) '### $h',
+        '### ${_specHeadings.first}（規格先行：1.1.0-W9-1）',
+      ].join('\n');
+      final v = _headingViolations(spec, _specHeadings);
+      expect(v, hasLength(1));
+      expect(v.single, contains('移除該標記'));
     });
   });
 }

@@ -32,6 +32,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';
+import '../../helpers/spec_first_marker.dart';
 
 const _lineKey = Key('text-gaps-declaration-line');
 const _nonDomainKey = 'non_domain_path_patterns';
@@ -631,8 +632,36 @@ void main() {
       return (cells[2], cells[3]);
     }
 
+    /// 帶「規格先行」標記的列（1.1.0-W1-108）：跳過比對，回傳 true；
+    /// 但 ARB 已與該列一致時判紅，提示移除標記。
+    bool skipSpecFirst(String k, [String? rowLine]) {
+      final line =
+          rowLine ??
+          spec.split('\n').firstWhere((l) => l.startsWith('| `$k` |'));
+      final ticket = specFirstTicketOf(line);
+      if (ticket == null) return false;
+      final cells = splitSpecRow(line);
+      expect(
+        arbAlreadyMatchesSpecRow(k, cells[2], cells[3], zh, en),
+        isFalse,
+        reason: staleSpecFirstMessage(k, ticket),
+      );
+      return true;
+    }
+
+    test('K4（規格先行）帶標記的列跳過比對；ARB 已一致則判紅（E2）', () {
+      const k = 'pathDeclarationNoneLine';
+      final row = '| `$k` | ${zh[k]} | ${en[k]} | 備註 |';
+      expect(skipSpecFirst(k, row), isFalse);
+      final marked = '$row（規格先行：1.1.0-W9-1）';
+      expect(() => skipSpecFirst(k, marked), throwsA(isA<TestFailure>()));
+      final changed = '| `$k` | 改過的文案 | ${en[k]} | 備註（規格先行：1.1.0-W9-1） |';
+      expect(skipSpecFirst(k, changed), isTrue);
+    });
+
     test('K4-1／K4-2 五 key zh／en ARB 存在且值與規格表相同', () {
       for (final k in keys) {
+        if (skipSpecFirst(k)) continue;
         final (zhText, enText) = specRow(k);
         expect(zh.containsKey(k), isTrue, reason: 'zh 缺 $k');
         expect(en.containsKey(k), isTrue, reason: 'en 缺 $k');
@@ -643,6 +672,7 @@ void main() {
 
     test('K4-3 pathDeclarationNoBundles zh／en ARB 與 SPEC-004 v1.93 逐字一致', () {
       const k = 'pathDeclarationNoBundles';
+      if (skipSpecFirst(k)) return;
       final (zhText, enText) = specRow(k);
       expect(zh[k], zhText);
       expect(en[k], enText);
@@ -658,6 +688,7 @@ void main() {
         'gapEventProducerUnmatched',
       ];
       for (final k in eventKeys) {
+        if (skipSpecFirst(k)) continue;
         final (zhText, enText) = specRow(k);
         expect(zh[k], zhText, reason: 'zh $k');
         expect(en[k], enText, reason: 'en $k');

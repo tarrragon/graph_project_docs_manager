@@ -21,6 +21,7 @@ import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/helpers.dart';
+import '../../helpers/spec_first_marker.dart';
 
 ProviderContainer _container({
   required ScanRoundResult? Function() produce,
@@ -68,6 +69,25 @@ void _expectArbMatches(
     expect(zh[key], value.$1, reason: key);
     expect(en[key], value.$2, reason: key);
   });
+}
+
+/// 帶「規格先行」標記的列跳過比對並回傳 true；ARB 已與該列一致則判紅
+/// （1.1.0-W1-108）。無標記回傳 false。
+bool _skipSpecFirstRow(
+  String key,
+  String row,
+  Map<String, dynamic> zh,
+  Map<String, dynamic> en,
+) {
+  final ticket = specFirstTicketOf(row);
+  if (ticket == null) return false;
+  final cells = splitSpecRow(row);
+  expect(
+    arbAlreadyMatchesSpecRow(key, cells[2], cells[3], zh, en),
+    isFalse,
+    reason: staleSpecFirstMessage(key, ticket),
+  );
+  return true;
 }
 
 ScanRoundResult _throwing() => throw StateError('scan boom');
@@ -324,9 +344,33 @@ void main() {
         final row = spec
             .split('\n')
             .firstWhere((l) => l.startsWith('| `$key` |'));
+        if (_skipSpecFirstRow(key, row, arb('app_zh'), arb('app_en'))) return;
         expect(row, contains(value.$1), reason: key);
         expect(row, contains(value.$2), reason: key);
       });
+    });
+
+    test('規格先行標記：帶標記的列跳過比對；ARB 已一致則判紅（E2）', () {
+      final zh = arb('app_zh');
+      final en = arb('app_en');
+      final row =
+          '| `reloadAction` | ${zh['reloadAction']} | '
+          "${en['reloadAction']} | 備註 |";
+      expect(_skipSpecFirstRow('reloadAction', row, zh, en), isFalse);
+      expect(
+        () =>
+            _skipSpecFirstRow('reloadAction', '$row（規格先行：1.1.0-W9-1）', zh, en),
+        throwsA(isA<TestFailure>()),
+      );
+      expect(
+        _skipSpecFirstRow(
+          'reloadAction',
+          '| `reloadAction` | 改過 | Changed | 備註（規格先行：1.1.0-W9-1） |',
+          zh,
+          en,
+        ),
+        isTrue,
+      );
     });
   });
 }
