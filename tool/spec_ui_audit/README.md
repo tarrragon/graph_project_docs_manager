@@ -15,12 +15,12 @@ SPEC-004 定義元件層 slot／i18n）、可點擊錨點（testKey，三份文�
 
 ## 執行指令
 
-於專案根目錄執行（腳本以 `Path(__file__).resolve().parents[4]` 定位專案根，
+於專案根目錄執行（腳本以 `Path(__file__).resolve().parents[2]` 定位專案根，
 與目前工作目錄無關，但仍建議在根目錄執行以符合下方相對路徑輸出範例）：
 
 ```bash
-python3 docs/spec/ui/audit/matrix.py > /tmp/spec-audit-matrix.md; echo "exit=$?"
-python3 docs/spec/ui/audit/counts.py > /tmp/spec-audit-counts.txt
+python3 tool/spec_ui_audit/matrix.py > /tmp/spec-audit-matrix.md; echo "exit=$?"
+python3 tool/spec_ui_audit/counts.py > /tmp/spec-audit-counts.txt
 ```
 
 ## 各集合權威表定義
