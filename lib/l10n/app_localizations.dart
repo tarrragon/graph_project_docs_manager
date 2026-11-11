@@ -1854,6 +1854,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'無法重新讀取這個檔案，請再按一次放棄並重讀'**
   String get editBannerReloadFailed;
+
+  /// SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）
+  ///
+  /// In zh, this message translates to:
+  /// **'目前值「{value}」不在可選值內'**
+  String fieldValueOutOfDomain(String value);
+
+  /// SPEC-004 4.47 布林欄位選項
+  ///
+  /// In zh, this message translates to:
+  /// **'是'**
+  String get radioYes;
+
+  /// SPEC-004 4.47 布林欄位選項
+  ///
+  /// In zh, this message translates to:
+  /// **'否'**
+  String get radioNo;
 }
 
 class _AppLocalizationsDelegate

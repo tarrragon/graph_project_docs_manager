@@ -1928,5 +1928,22 @@
   "editBannerReloadFailed": "無法重新讀取這個檔案，請再按一次放棄並重讀",
   "@editBannerReloadFailed": {
     "description": "SPEC-004 4.49 negative（重讀讀取失敗）"
+  },
+  "fieldValueOutOfDomain": "目前值「{value}」不在可選值內",
+  "@fieldValueOutOfDomain": {
+    "description": "SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "radioYes": "是",
+  "@radioYes": {
+    "description": "SPEC-004 4.47 布林欄位選項"
+  },
+  "radioNo": "否",
+  "@radioNo": {
+    "description": "SPEC-004 4.47 布林欄位選項"
   }
 }

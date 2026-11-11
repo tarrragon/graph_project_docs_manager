@@ -1137,4 +1137,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editBannerReloadFailed =>
       'Could not reload this file. Try Discard and reload again';
+
+  @override
+  String fieldValueOutOfDomain(String value) {
+    return 'Current value \"$value\" is not an allowed value';
+  }
+
+  @override
+  String get radioYes => 'Yes';
+
+  @override
+  String get radioNo => 'No';
 }
