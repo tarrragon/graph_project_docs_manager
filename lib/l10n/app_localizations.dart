@@ -536,6 +536,12 @@ abstract class AppLocalizations {
   /// **'搜尋'**
   String get searchPlaceholder;
 
+  /// SPEC-004 §4.44：AppTextInput 空值 placeholder；4.45、4.46 空值文字
+  ///
+  /// In zh, this message translates to:
+  /// **'未填'**
+  String get fieldEmptyValue;
+
   /// SPEC-004 §4.12：SearchField 清除按鈕文案
   ///
   /// In zh, this message translates to:
