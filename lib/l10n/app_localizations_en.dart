@@ -1122,4 +1122,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String sourceChainNoUpstream(String layer) {
     return '(Missing upstream $layer)';
   }
+
+  @override
+  String get editDiscardAndReloadAction => 'Discard and reload';
+
+  @override
+  String get editBannerExternallyModifiedWarning =>
+      'This file was changed outside the app. Unsent values are kept; discard and reload to load the current file';
+
+  @override
+  String get editBannerExternallyModifiedBlocked =>
+      'This file was changed outside the app, so this write was not performed. Discard and reload to continue editing';
+
+  @override
+  String get editBannerReloadFailed =>
+      'Could not reload this file. Try Discard and reload again';
 }

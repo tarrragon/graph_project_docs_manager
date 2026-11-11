@@ -1830,6 +1830,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'（缺上游 {layer}）'**
   String sourceChainNoUpstream(String layer);
+
+  /// SPEC-004 4.49 動作（action-nodeDetail-edit-reload）
+  ///
+  /// In zh, this message translates to:
+  /// **'放棄並重讀'**
+  String get editDiscardAndReloadAction;
+
+  /// SPEC-004 4.49 warning（外部已改預警）
+  ///
+  /// In zh, this message translates to:
+  /// **'這個檔案已在 App 外被修改。未送出的值仍保留，放棄並重讀可載入目前的檔案內容'**
+  String get editBannerExternallyModifiedWarning;
+
+  /// SPEC-004 4.49 negative（外部已改阻擋）
+  ///
+  /// In zh, this message translates to:
+  /// **'這個檔案已在 App 外被修改，這次寫入沒有執行。放棄並重讀後才能繼續編輯'**
+  String get editBannerExternallyModifiedBlocked;
+
+  /// SPEC-004 4.49 negative（重讀讀取失敗）
+  ///
+  /// In zh, this message translates to:
+  /// **'無法重新讀取這個檔案，請再按一次放棄並重讀'**
+  String get editBannerReloadFailed;
 }
 
 class _AppLocalizationsDelegate

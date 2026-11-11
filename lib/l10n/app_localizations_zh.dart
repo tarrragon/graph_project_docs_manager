@@ -1048,4 +1048,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String sourceChainNoUpstream(String layer) {
     return '（缺上游 $layer）';
   }
+
+  @override
+  String get editDiscardAndReloadAction => '放棄並重讀';
+
+  @override
+  String get editBannerExternallyModifiedWarning =>
+      '這個檔案已在 App 外被修改。未送出的值仍保留，放棄並重讀可載入目前的檔案內容';
+
+  @override
+  String get editBannerExternallyModifiedBlocked =>
+      '這個檔案已在 App 外被修改，這次寫入沒有執行。放棄並重讀後才能繼續編輯';
+
+  @override
+  String get editBannerReloadFailed => '無法重新讀取這個檔案，請再按一次放棄並重讀';
 }
