@@ -27,6 +27,7 @@ import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
@@ -1187,7 +1188,8 @@ void main() {
           ...overrides(mode: DomainMode.matrix),
           version,
           domainViewLogSinkProvider.overrideWithValue(
-            (message, {level = 500}) => logs.add((message, level)),
+            (event, fields, {level = LogLevel.debug, source, error}) =>
+                logs.add((event.name, level.devLogLevel)),
           ),
         ],
       );
@@ -1205,7 +1207,7 @@ void main() {
       expect(unavailable, findsOneWidget);
       final diagnostics = logs.where((l) => l.$2 == 900).toList();
       expect(diagnostics, hasLength(1));
-      expect(diagnostics.single.$1, contains('型別表版本未載入即渲染圖不可用列'));
+      expect(diagnostics.single.$1, DomainViewLogEvent.versionNotLoaded.name);
     });
 
     testWidgets('版本已載入：圖不可用列不記診斷', (tester) async {

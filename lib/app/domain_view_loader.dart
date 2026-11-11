@@ -17,18 +17,26 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 const String _tag = 'domain_view_loader';
 
-/// 不變式違反與失敗的 log 出口；測試以 override 收集訊息。
-typedef DomainViewLogSink = void Function(String message, {int level});
+/// Domain 視圖的日誌事件（SPEC-010 FR-04：取代原純字串 sink）。
+enum DomainViewLogEvent {
+  /// 載入時收到建圖不可用的輪次（gate 與輪次不同步），負載帶原因碼 `reason`。
+  graphUnavailableRound,
 
-final domainViewLogSinkProvider = Provider<DomainViewLogSink>(
-  (ref) =>
-      (message, {level = 500}) =>
-          developer.log(message, name: _tag, level: level),
+  /// 型別表版本未載入即渲染圖不可用列。
+  versionNotLoaded,
+}
+
+/// 不變式違反與失敗的 log 出口；測試以 override 收集事件。
+final domainViewLogSinkProvider = Provider<LogSink<DomainViewLogEvent>>(
+  (ref) => defaultLogSink<DomainViewLogEvent>('domain_view'),
 );
 
 /// 載入編排的 Riverpod 掛點。
@@ -202,9 +210,11 @@ class DomainViewLoader extends Notifier<void> {
   /// 於此不可得，以 `null`（型別表版本無法判讀）呈現，不代位為其他值。
   Future<DomainViewState> _unavailableGraph(GraphBuildResult graph) async {
     final reason = graph is GraphBuildUnavailable ? graph.reason : null;
-    final message = // i18n-exempt: 開發者 debug log
-        'Domain 視圖收到建圖不可用的輪次（gate 與輪次不同步）：$reason';
-    ref.read(domainViewLogSinkProvider)(message, level: 900);
+    ref.read(domainViewLogSinkProvider)(
+      DomainViewLogEvent.graphUnavailableRound,
+      LogFields({if (reason != null) 'reason': LogValue.enumValue(reason)}),
+      level: LogLevel.warning,
+    );
     final appVersion = await ref.read(builtinSchemaVersionProvider.future);
     return DomainSchemaIncompatible(
       appVersion: appVersion,

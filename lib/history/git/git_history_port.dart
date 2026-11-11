@@ -10,6 +10,9 @@ import 'package:graph_project_docs_manager/history/git/git_history_types.dart';
 import 'package:graph_project_docs_manager/history/git/git_process_runner.dart';
 import 'package:graph_project_docs_manager/history/git/git_scan_command.dart';
 import 'package:graph_project_docs_manager/history/git/history_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// tripwire 閾值（FR-10 規則 2）：輸出位元組數超過 256 MiB。
 const int tripwireOutputBytes = 256 * 1024 * 1024;
@@ -23,13 +26,21 @@ String summarizeStderr(String stderr) => stderr.length <= stderrSummaryMaxChars
     ? stderr
     : stderr.substring(0, stderrSummaryMaxChars);
 
-/// 以事件名為訊息（事件名是穩定契約，訊息僅供除錯）。
+/// 發出一筆事件（事件名是穩定契約）；負載值只收 FR-03 白名單型別。
 void _emit(
-  HistoryLogSink sink,
+  LogSink<HistoryLogEvent> sink,
   HistoryLogEvent event,
-  Map<String, Object?> payload, {
-  int? level,
-}) => sink(event.name, event: event, payload: payload, level: level);
+  Map<String, LogValue> payload, {
+  LogLevel level = LogLevel.info,
+}) => sink(event, LogFields(payload), level: level);
+
+/// 一次性呼叫無法啟動：不記 `GitLaunchException.message`（自由文字）。
+void _emitLaunchFailed(LogSink<HistoryLogEvent> sink) => _emit(
+  sink,
+  HistoryLogEvent.processLaunchFailed,
+  const {},
+  level: LogLevel.warning,
+);
 
 /// [GitHistoryPort.open] 的結果。
 sealed class GitOpenOutcome {
@@ -73,12 +84,12 @@ class _Diagnostics {
 class GitHistoryPort {
   GitHistoryPort({
     required GitProcessRunner runner,
-    HistoryLogSink logSink = defaultHistoryLogSink,
+    LogSink<HistoryLogEvent>? logSink,
   }) : _runner = runner, // ignore: prefer_initializing_formals
-       _log = logSink;
+       _log = logSink ?? defaultHistoryLogSink;
 
   final GitProcessRunner _runner;
-  final HistoryLogSink _log;
+  final LogSink<HistoryLogEvent> _log;
 
   /// Schema 就緒度決定是否進入 git；阻擋時不呼叫任何 git（FR-08 規則 6）。
   Future<GitOpenOutcome> open({
@@ -87,8 +98,10 @@ class GitHistoryPort {
   }) async {
     if (schema == HistorySchemaReadiness.blocked) {
       _emit(_log, HistoryLogEvent.degraded, {
-        HistoryLogKeys.reason: 'schemaBlocked',
-      }, level: HistoryLogLevel.warning);
+        HistoryLogKeys.reason: const LogEnumValue(
+          HistoryDegradeReason.schemaBlocked,
+        ),
+      }, level: LogLevel.warning);
       return const GitOpenBlocked();
     }
     final outcome = await preflight(root);
@@ -104,7 +117,7 @@ class GitHistoryPort {
 
   /// 前置檢查（FR-01 規則 2）：版本 → 工作樹 → HEAD → 主線 → tag。
   Future<GitPreflightOutcome> preflight(String root) async {
-    _emit(_log, HistoryLogEvent.preflightEntered, {HistoryLogKeys.root: root});
+    _emit(_log, HistoryLogEvent.preflightEntered, const {});
     final diagnostics = _Diagnostics();
     final outcome = await _classify(root, diagnostics);
     _logPreflightResult(outcome, diagnostics);
@@ -211,59 +224,57 @@ class GitHistoryPort {
   /// 執行一次性呼叫；無法啟動回傳 null（FR-08 規則 2）。
   Future<GitCommandResult?> _runOrNull(GitInvocation invocation) async {
     _emit(_log, HistoryLogEvent.processStarted, {
-      HistoryLogKeys.arguments: invocation.arguments,
-    }, level: HistoryLogLevel.debug);
+      HistoryLogKeys.argumentCount: LogValue.integer(
+        invocation.arguments.length,
+      ),
+    }, level: LogLevel.debug);
     try {
       final result = await _runner.run(invocation);
       _emit(_log, HistoryLogEvent.processExited, {
-        HistoryLogKeys.exitCode: result.exitCode,
-      }, level: HistoryLogLevel.debug);
+        HistoryLogKeys.exitCode: LogValue.integer(result.exitCode),
+      }, level: LogLevel.debug);
       return result;
-    } on GitLaunchException catch (error) {
-      _emit(_log, HistoryLogEvent.processLaunchFailed, {
-        HistoryLogKeys.reason: error.message,
-      }, level: HistoryLogLevel.warning);
+    } on GitLaunchException {
+      _emitLaunchFailed(_log);
       return null;
     }
   }
 
   void _logPreflightResult(GitPreflightOutcome outcome, _Diagnostics diag) {
-    final category = switch (outcome) {
-      GitPreflightReady() => 'ready',
-      GitPreflightNotWorkTree() => 'notWorkTree',
-      GitPreflightGitNotFound() => 'gitNotFound',
-      GitPreflightNoCommit() => 'noCommit',
-      GitPreflightFailed() => 'failed',
-    };
+    final category = LogEnumValue(switch (outcome) {
+      GitPreflightReady() => HistoryLogCategory.ready,
+      GitPreflightNotWorkTree() => HistoryLogCategory.notWorkTree,
+      GitPreflightGitNotFound() => HistoryLogCategory.gitNotFound,
+      GitPreflightNoCommit() => HistoryLogCategory.noCommit,
+      GitPreflightFailed() => HistoryLogCategory.failed,
+    });
     _emit(_log, HistoryLogEvent.preflightResult, {
       HistoryLogKeys.category: category,
-      HistoryLogKeys.gitVersion: diag.version,
     });
     if (outcome is GitPreflightReady) return;
+    final exitCode = diag.exitCode;
     _emit(_log, HistoryLogEvent.degraded, {
       HistoryLogKeys.category: category,
-      HistoryLogKeys.exitCode: diag.exitCode,
-      HistoryLogKeys.stderrSummary: diag.stderr,
-    }, level: HistoryLogLevel.warning);
+      if (exitCode != null) HistoryLogKeys.exitCode: LogValue.integer(exitCode),
+    }, level: LogLevel.warning);
   }
 
   /// 啟動掃描（FR-01 規則 3）。啟動失敗時回傳結果為 [GitScanFailed] 的掃描。
   Future<GitScan> startScan(String root, GitPreflightReady ready) async {
     final invocation = gitScanInvocation(root);
     _emit(_log, HistoryLogEvent.scanStarted, {
-      HistoryLogKeys.root: root,
-      HistoryLogKeys.head: ready.head,
+      HistoryLogKeys.head: LogValue.commitSha(ready.head),
     });
     _emit(_log, HistoryLogEvent.processStarted, {
-      HistoryLogKeys.arguments: invocation.arguments,
-    }, level: HistoryLogLevel.debug);
+      HistoryLogKeys.argumentCount: LogValue.integer(
+        invocation.arguments.length,
+      ),
+    }, level: LogLevel.debug);
     try {
       final process = await _runner.start(invocation);
       return GitScan._(process, _log);
-    } on GitLaunchException catch (error) {
-      _emit(_log, HistoryLogEvent.processLaunchFailed, {
-        HistoryLogKeys.reason: error.message,
-      }, level: HistoryLogLevel.warning);
+    } on GitLaunchException {
+      _emitLaunchFailed(_log);
       return GitScan._failedToLaunch(_log);
     }
   }
@@ -299,7 +310,7 @@ class GitScan {
   }
 
   final GitScanProcess? _process;
-  final HistoryLogSink _log;
+  final LogSink<HistoryLogEvent> _log;
   final Stopwatch _stopwatch = Stopwatch();
   final StreamController<List<int>> _controller = StreamController<List<int>>();
   final Completer<GitScanResult> _result = Completer<GitScanResult>();
@@ -329,17 +340,18 @@ class GitScan {
     if (_tripwireLogged || _bytes <= tripwireOutputBytes) return;
     _tripwireLogged = true;
     _emit(_log, HistoryLogEvent.tripwire, {
-      HistoryLogKeys.outputBytes: _bytes,
-      HistoryLogKeys.commitCount: _commits,
-    }, level: HistoryLogLevel.warning);
+      HistoryLogKeys.outputBytes: LogValue.integer(_bytes),
+      HistoryLogKeys.commitCount: LogValue.integer(_commits),
+    }, level: LogLevel.warning);
   }
 
   void _onStreamError(Object error, StackTrace stackTrace) {
     if (_cancelled) return;
     _emit(_log, HistoryLogEvent.degraded, {
-      HistoryLogKeys.reason: 'streamError',
-      HistoryLogKeys.stderrSummary: summarizeStderr('$error'),
-    }, level: HistoryLogLevel.warning);
+      HistoryLogKeys.reason: const LogEnumValue(
+        HistoryDegradeReason.streamError,
+      ),
+    }, level: LogLevel.warning);
     _controller.close();
     _finish(
       GitScanFailed(
@@ -359,17 +371,19 @@ class GitScan {
     // 不 await：無人訂閱時單訂閱 controller 的 close 不會完成。
     unawaited(_controller.close());
     _emit(_log, HistoryLogEvent.processExited, {
-      HistoryLogKeys.exitCode: exit,
-    }, level: HistoryLogLevel.debug);
+      HistoryLogKeys.exitCode: LogValue.integer(exit),
+    }, level: LogLevel.debug);
     _finish(_resultFor(exit, stderr));
   }
 
   GitScanResult _resultFor(int exit, String stderr) {
     if (exit == 0) {
       _emit(_log, HistoryLogEvent.scanFinished, {
-        HistoryLogKeys.commitCount: _commits,
-        HistoryLogKeys.outputBytes: _bytes,
-        HistoryLogKeys.gitDurationMs: _stopwatch.elapsedMilliseconds,
+        HistoryLogKeys.commitCount: LogValue.integer(_commits),
+        HistoryLogKeys.outputBytes: LogValue.integer(_bytes),
+        HistoryLogKeys.gitDurationMs: LogValue.integer(
+          _stopwatch.elapsedMilliseconds,
+        ),
       });
       return GitScanCompleted(
         outputBytes: _bytes,
@@ -378,10 +392,9 @@ class GitScan {
       );
     }
     _emit(_log, HistoryLogEvent.degraded, {
-      HistoryLogKeys.category: 'failed',
-      HistoryLogKeys.exitCode: exit,
-      HistoryLogKeys.stderrSummary: stderr,
-    }, level: HistoryLogLevel.warning);
+      HistoryLogKeys.category: const LogEnumValue(HistoryLogCategory.failed),
+      HistoryLogKeys.exitCode: LogValue.integer(exit),
+    }, level: LogLevel.warning);
     return GitScanFailed(
       reason: exit < 0
           ? GitFailureReason.processTerminated
@@ -401,11 +414,11 @@ class GitScan {
       _log,
       HistoryLogEvent.processKilled,
       const {},
-      level: HistoryLogLevel.warning,
+      level: LogLevel.warning,
     );
     _emit(_log, HistoryLogEvent.scanCancelled, {
-      HistoryLogKeys.outputBytes: _bytes,
-      HistoryLogKeys.commitCount: _commits,
+      HistoryLogKeys.outputBytes: LogValue.integer(_bytes),
+      HistoryLogKeys.commitCount: LogValue.integer(_commits),
     });
     _controller.close();
     _finish(const GitScanCancelled());
@@ -418,9 +431,13 @@ class GitScan {
     required Map<String, int> counters,
   }) {
     _emit(_log, HistoryLogEvent.scanParseReported, {
-      HistoryLogKeys.parseDurationMs: parseDuration.inMilliseconds,
-      HistoryLogKeys.eventCount: eventCount,
-      HistoryLogKeys.counters: counters,
+      HistoryLogKeys.parseDurationMs: LogValue.integer(
+        parseDuration.inMilliseconds,
+      ),
+      HistoryLogKeys.eventCount: LogValue.integer(eventCount),
+      // 計數器逐項攤平為整數欄位（FR-03 只收白名單值，不收 Map）。
+      for (final entry in counters.entries)
+        entry.key: LogValue.integer(entry.value),
     });
   }
 

@@ -78,7 +78,7 @@ Future<Map<String, Object?>> _measure(String root) async {
     containsAll([
       HistoryLogKeys.parseDurationMs,
       HistoryLogKeys.eventCount,
-      HistoryLogKeys.counters,
+      'undecodableLines',
     ]),
   );
   return _record(result, scan, totalWatch.elapsed);

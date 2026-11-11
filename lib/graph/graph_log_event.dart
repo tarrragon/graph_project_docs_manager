@@ -1,10 +1,10 @@
-/// SPEC-007 版本契約第 5 欄日誌事件：事件名、負載鍵與注入接縫。
+/// SPEC-007 版本契約第 5 欄日誌事件：事件名與負載鍵。
 ///
-/// 形態沿用 `WorkspaceRepository.logSink`：事件名是測試斷言綁定的穩定契約，
-/// `message` 只是可自由改寫的除錯文案。生產預設轉呼 `developer.log`。
+/// 事件名是測試斷言綁定的穩定契約；接縫為 SPEC-010 的 `LogSink<GraphLogEvent>`，
+/// 生產預設經共用 writer 輸出。
 library;
 
-import 'dart:developer' as developer;
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 
 /// 建圖日誌事件（穩定契約）。
 enum GraphLogEvent {
@@ -65,24 +65,6 @@ abstract final class GraphLogKeys {
   static const reason = 'reason';
 }
 
-/// 日誌投影的接縫。
-typedef GraphLogSink = void Function(
-  String message, {
-  required GraphLogEvent event,
-  required Map<String, Object?> payload,
-  int? level,
-});
-
-/// 生產預設：轉呼 `developer.log(name: 'GraphBuilder')`。
-void defaultGraphLogSink(
-  String message, {
-  required GraphLogEvent event,
-  required Map<String, Object?> payload,
-  int? level,
-}) {
-  developer.log(
-    '[${event.name}] $message $payload', // i18n-exempt: 開發者 debug log
-    name: 'GraphBuilder',
-    level: level ?? 0,
-  );
-}
+/// 生產預設：經共用 writer 輸出，domain 為 `graph`。
+final LogSink<GraphLogEvent> defaultGraphLogSink =
+    defaultLogSink<GraphLogEvent>('graph');

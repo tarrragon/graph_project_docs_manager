@@ -3,6 +3,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:yaml/yaml.dart';
 
 // git 輸出格式字面（非使用者可見字串）。
@@ -12,10 +15,18 @@ const String _deletedFileMode = 'deleted file mode'; // i18n-exempt: git 輸出�
 const String _devNull = '/dev/null'; // i18n-exempt: git 輸出格式
 const String _fmFence = '---'; // i18n-exempt: frontmatter 界線
 
-/// 日誌級別：失步為 warning，無法解析的版本為 debug。
-enum ParseLogLevel { debug, warning }
+/// 解析器日誌事件：失步為 warning，無法解析的版本為 debug。
+enum ParseLogEvent { scanDesync, scanUnparsable }
 
-typedef ParseLogSink = void Function(ParseLogLevel level, String message);
+/// 事件負載鍵。
+abstract final class ParseLogKeys {
+  static const String path = 'path';
+  static const String commit = 'commit';
+}
+
+/// 生產預設：經共用 writer 輸出，domain 為 `history`。
+final LogSink<ParseLogEvent> defaultParseLogSink =
+    defaultLogSink<ParseLogEvent>('history');
 
 /// 判斷 frontmatter 文字能否解析；預設以 YAML 解碼。
 typedef FrontmatterParseCheck = bool Function(String frontmatterText);
@@ -86,15 +97,18 @@ class _Touch {
 }
 
 class ScanStreamParser {
-  ScanStreamParser({FrontmatterParseCheck? parseCheck, this.logSink})
-    : _parseCheck = parseCheck ?? _defaultParseCheck;
+  ScanStreamParser({
+    FrontmatterParseCheck? parseCheck,
+    LogSink<ParseLogEvent>? logSink,
+  }) : _parseCheck = parseCheck ?? _defaultParseCheck,
+       _log = logSink ?? defaultParseLogSink;
 
   static final RegExp _hunkHeader = RegExp(
     r'^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@',
   );
 
   final FrontmatterParseCheck _parseCheck;
-  final ParseLogSink? logSink;
+  final LogSink<ParseLogEvent> _log;
   final ScanCounters counters = ScanCounters();
   final Map<String, _FileState> _states = {};
   final BytesBuilder _carry = BytesBuilder(copy: false);
@@ -408,10 +422,20 @@ class ScanStreamParser {
 
   void _markDesync(String path) {
     counters.desyncs++;
-    logSink?.call(
-      ParseLogLevel.warning,
-      'history.scan.desync path=$path commit=${_commit?.id ?? ''}',
-    ); // i18n-exempt: 日誌
+    _log(
+      ParseLogEvent.scanDesync,
+      _pathCommitFields(path),
+      level: LogLevel.warning,
+    );
+  }
+
+  /// git 輸出的路徑本就是儲存庫相對路徑，以 `/` 為根轉白名單型別。
+  LogFields _pathCommitFields(String path) {
+    final commitId = _commit?.id;
+    return LogFields({
+      ParseLogKeys.path: LogValue.path('/', '/$path'),
+      if (commitId != null) ParseLogKeys.commit: LogValue.commitSha(commitId),
+    });
   }
 
   // ---- commit 結算與 frontmatter ----
@@ -472,10 +496,11 @@ class ScanStreamParser {
       return;
     }
     counters.unparsableVersions++;
-    logSink?.call(
-      ParseLogLevel.debug,
-      'history.scan.unparsable path=$path commit=${_commit?.id ?? ''}',
-    ); // i18n-exempt: 日誌
+    _log(
+      ParseLogEvent.scanUnparsable,
+      _pathCommitFields(path),
+      level: LogLevel.debug,
+    );
   }
 
   /// 效能捷徑（規則 6）：全部 hunk 都落在上次 frontmatter 結束行之後。

@@ -3,6 +3,9 @@ library;
 
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 /// 查詢方向篩選。
@@ -81,12 +84,29 @@ class AdjacencyBuildUnavailable extends AdjacencyUnavailable {
   String get reasonCode => edgeTypeReason.name;
 }
 
+/// 圖不可用原因碼轉白名單負載（SPEC-010 FR-03）：原因碼必為
+/// [AdjacencyUnavailableCause] 或 [EdgeTypeUnavailableReason] 的值名稱，
+/// 對不上時退為 [LogLocation.other]。
+LogFields graphReasonFields(String reasonCode) {
+  for (final Enum value in [
+    ...AdjacencyUnavailableCause.values,
+    ...EdgeTypeUnavailableReason.values,
+  ]) {
+    if (value.name == reasonCode) {
+      return LogFields({GraphLogKeys.reason: LogValue.enumValue(value)});
+    }
+  }
+  return LogFields({
+    GraphLogKeys.reason: LogValue.enumValue(LogLocation.other),
+  });
+}
+
 /// 需求：[SPEC-007 FR-08] 1 hop 鄰接查詢。
 ///
 /// [buildResult] 為 null 代表尚未完成建圖。圖不可用時，同一 buildResult
 /// 只記一次「鄰接查詢圖不可用」日誌（L3）；buildResult 為 null 時以實例為單位。
 class AdjacencyQuery {
-  AdjacencyQuery({required this.buildResult, GraphLogSink? logSink})
+  AdjacencyQuery({required this.buildResult, LogSink<GraphLogEvent>? logSink})
     : _log = logSink ?? defaultGraphLogSink {
     final result = buildResult;
     if (result is GraphBuildAvailable) {
@@ -95,7 +115,7 @@ class AdjacencyQuery {
   }
 
   final GraphBuildResult? buildResult;
-  final GraphLogSink _log;
+  final LogSink<GraphLogEvent> _log;
   Map<String, List<GraphEdge>> _index = const {};
   final _once = UnavailableLogOnce(_loggedBuilds);
   static final Expando<bool> _loggedBuilds = Expando<bool>('adjacencyLogged');
@@ -122,10 +142,9 @@ class AdjacencyQuery {
   AdjacencyUnavailable _unavailable(AdjacencyUnavailable unavailable) {
     if (_once.mark(buildResult)) {
       _log(
-        'adjacency query unavailable: ${unavailable.reasonCode}', // i18n-exempt: debug log
-        event: GraphLogEvent.adjacencyUnavailable,
-        payload: {GraphLogKeys.reason: unavailable.reasonCode},
-        level: 900,
+        GraphLogEvent.adjacencyUnavailable,
+        graphReasonFields(unavailable.reasonCode),
+        level: LogLevel.warning,
       );
     }
     return unavailable;

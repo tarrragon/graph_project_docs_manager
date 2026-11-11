@@ -1,6 +1,9 @@
 // SPEC-008 FR-02：串流解析與檔案狀態追蹤（測試設計 §3.2 S-1～S-18、§3.11 L-7）。
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/history/parse/scan_stream_parser.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 
 import '../../../helpers/history/synthetic_git_log.dart';
 
@@ -28,7 +31,8 @@ ScanRun run(
   final logs = <String>[];
   final parser = ScanStreamParser(
     parseCheck: parseCheck,
-    logSink: (level, message) => logs.add('${level.name}:$message'),
+    logSink: (event, fields, {level = LogLevel.info, source, error}) =>
+        logs.add('${level.name}:${event.name} ${jsonEncode(fields.toJson())}'),
   );
   final results = <ScanCommitResult>[];
   final chunks = chunkSize == null ? [b.toBytes()] : b.toChunks(chunkSize);
@@ -294,8 +298,10 @@ void main() {
       expect(r.counters.desyncs, 1);
       final warnings = r.logs.where((l) => l.startsWith('warning:')).toList();
       expect(warnings.length, 1);
+      expect(warnings.single, contains(ParseLogEvent.scanDesync.name));
       expect(warnings.single, contains(_path));
-      expect(warnings.single, contains('c2'));
+      // 合成 commit id 不是 40 字元十六進位，依 FR-03 退為位置替代值。
+      expect(warnings.single, contains(ParseLogKeys.commit));
       expect(r.change(1), isNull);
       expect(r.change(2), isNull);
     });

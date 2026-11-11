@@ -13,6 +13,7 @@ import 'package:graph_project_docs_manager/history/git/git_history_port.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_types.dart';
 import 'package:graph_project_docs_manager/history/git/git_process_runner.dart';
 import 'package:graph_project_docs_manager/history/git/history_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/history/parse/scan_stream_parser.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
@@ -277,8 +278,8 @@ Future<HistoryPipelineResult> runHistoryPipeline(
   final logs = <RecordedHistoryLog>[];
   final port = GitHistoryPort(
     runner: runner,
-    logSink: (message, {required event, required payload, level}) =>
-        logs.add(RecordedHistoryLog(event, payload)),
+    logSink: (event, fields, {level = LogLevel.info, source, error}) =>
+        logs.add(RecordedHistoryLog(event, fields.toJson())),
   );
   final open = await port.open(
     root: root,
