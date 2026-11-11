@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """0.1.0-W3-335 系列集合同步稽核：成員 x 位置矩陣產生器與閘門（可重跑）。
 
-用法：python3 docs/spec/ui/audit/matrix.py > /tmp/matrix_auto.md; echo $?
+用法：python3 tool/spec_ui_audit/matrix.py > /tmp/matrix_auto.md; echo $?
 （或於任意工作目錄執行：python3 <此檔絕對路徑> > ...）
 輸出三張機械矩陣（狀態、SnackBar key、錨點）、狀態集合相等檢查與真缺漏清單。
 格值：Y=出現；~<id>=未出現但屬合理不出現（id 見 MASKS，附出處與理由）；
@@ -24,7 +24,7 @@ from fnmatch import fnmatchcase
 from collections import Counter
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[2]
 S1 = str(ROOT / 'docs/spec/ui/SPEC-001-screen-state-matrix.md')
 S3 = str(ROOT / 'docs/spec/ui/SPEC-003-interaction-response.md')
 S4 = str(ROOT / 'docs/spec/ui/SPEC-004-component-library.md')

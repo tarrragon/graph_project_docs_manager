@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """0.1.0-W3-335 系列集合同步稽核：計數敘述擷取（可重跑）。
 輸出：每一處含集合計數字樣的片段（檔名 行號 片段），排除「變更歷史」表列。
-用法：python3 docs/spec/ui/audit/counts.py > /tmp/counts_raw.txt
+用法：python3 tool/spec_ui_audit/counts.py > /tmp/counts_raw.txt
 stderr 印命中筆數；本檔只列疑似片段，不自動判定，exit code 恆為 0。
 排除項：C1–C8、L1–L2、F1–F7、S1–S8、M1–M5 等契約代號範圍是識別碼而非集合大小，
 不列入樣式；契約集合的大小敘述（如「共 10 條」）仍由其他樣式擷取。
@@ -18,7 +18,7 @@ import glob
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[2]
 FILES = sorted(glob.glob(str(ROOT / 'docs/spec/ui/SPEC-00[134]-*.md'))) + sorted(glob.glob(str(ROOT / 'docs/usecases/UC-*.md')))
 HIST = re.compile(r'^\| *\d+\.\d+ *\| *20')
 NUM = r'(?:\d+|[一二三四五六七八九十兩]+)'  # i18n-exempt
