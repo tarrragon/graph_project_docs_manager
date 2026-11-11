@@ -6,10 +6,12 @@
 /// §2 傳值 + callback 慣例），不持有選中狀態，呼叫端傳入 [isSelected]。
 library;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Badge;
 
+import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_icon.dart';
+import 'badge.dart';
 import 'app_text.dart';
 
 /// 側欄導覽項元件（SPEC-004 §4.7）。
@@ -30,7 +32,8 @@ class NavItem extends StatefulWidget {
     required this.onTap,
     required this.testKey,
     this.focusNode,
-  }) : _isAction = false;
+  }) : badge = null,
+       _isAction = false;
 
   /// `action` 變體（SPEC-004 4.7）：側欄底部項，開啟面板，不屬
   /// `AppDestination`。外觀同 unselected、恆不呈選中，`Semantics.selected`
@@ -42,6 +45,7 @@ class NavItem extends StatefulWidget {
     required this.onTap,
     required this.testKey,
     this.focusNode,
+    this.badge,
   }) : isSelected = false,
        _isAction = true;
 
@@ -67,6 +71,11 @@ class NavItem extends StatefulWidget {
   /// 呼叫端持有的焦點節點（SPEC-004 4.7〈`action` 變體的焦點節點〉）；
   /// 為 `null` 時元件自建。傳入者由呼叫端 dispose，元件不 dispose。
   final FocusNode? focusNode;
+
+  /// 尾端徽章（SPEC-004 4.7〈badge slot〉）：限 `Badge.count`（tone
+  /// `negative`），只用於 `action` 變體；`null` 時不渲染、不保留空位。
+  /// 資料由組裝層傳入，元件不 watch。
+  final Badge? badge;
 
   @override
   State<NavItem> createState() => _NavItemState();
@@ -131,9 +140,15 @@ class _NavItemState extends State<NavItem> {
       semanticLabel: icon.semanticLabel,
     );
 
+    final badge = widget.badge;
+    final semanticLabel = badge == null
+        ? label
+        : AppLocalizations.of(context)
+              .writeLogNavA11yLabel(label, badge.count ?? 0);
+
     return Semantics(
       button: true,
-      label: label,
+      label: semanticLabel,
       selected: widget._isAction ? null : isSelected,
       // `hitTargetMin` 是**命中區下界**（SPEC-004 §1「可點元件的最小尺寸不得
       // 小於之」），不是內容容器的高度上界。以 `SizedBox(height:)` 釘死等於把
@@ -183,6 +198,7 @@ class _NavItemState extends State<NavItem> {
                               : AppTextTone.textPrimary,
                         ),
                       ),
+                      if (badge != null) ...[SizedBox(width: Space.sm), badge],
                     ],
                   ),
                 ),

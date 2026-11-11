@@ -51,7 +51,6 @@ const Set<String> pendingAdditionExemptions = <String>{
   'writeLogColumnResult',
   'writeLogColumnValidation',
   'writeLogEmptyMessage',
-  'writeLogNavA11yLabel',
   'writeLogProjectLabel',
   'writeLogRowA11yLabel',
   'writeLogSnapshotExpiryNote',

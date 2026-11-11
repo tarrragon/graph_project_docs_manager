@@ -1560,6 +1560,18 @@
     "description": "SPEC-001 §9 無可選編輯器狀態 state-preferences-no-editors 的說明文字；支援清單與 SPEC-003 §2.2〈編輯器對照表〉同步"
   },
 
+  "writeLogNavA11yLabel": "{label}，{count} 筆失敗",
+  "@writeLogNavA11yLabel": {
+    "description": "側欄寫入清單項有失敗計數徽章時的朗讀（SPEC-004 4.7 badge slot）",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "navHistory": "變更記錄",
   "@navHistory": {
     "description": "SPEC-004 §4.0.6 1.131：側欄 nav-item-history 與 §10 頁首標題"

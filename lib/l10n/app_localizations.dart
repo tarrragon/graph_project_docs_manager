@@ -1474,6 +1474,12 @@ abstract class AppLocalizations {
   /// **'本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed'**
   String get preferencesNoEditorsExplanation;
 
+  /// 側欄寫入清單項有失敗計數徽章時的朗讀（SPEC-004 4.7 badge slot）
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}，{count} 筆失敗'**
+  String writeLogNavA11yLabel(String label, int count);
+
   /// SPEC-004 §4.0.6 1.131：側欄 nav-item-history 與 §10 頁首標題
   ///
   /// In zh, this message translates to:
