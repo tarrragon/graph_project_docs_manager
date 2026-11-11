@@ -215,7 +215,61 @@ void main() {
       expect(e.graphDefects.whereType<DanglingRefGraphDefect>(), hasLength(1));
     });
 
-    test('G11-8d 本專案 docs/spec：25 條邊、0 假 targetMissing', () {
+    // 不變式：domain_dependency 邊數 == depends_on_domains 宣告數、宣告數 > 0、
+    // 0 假 targetMissing。不寫死邊數：真實規格會增減宣告，計數隨之變動。
+    void expectDomainDependencyInvariant(
+      GraphBuiltEvent e,
+      List<RawNode> nodes,
+    ) {
+      final domainDeps = e.edges.where(
+        (x) => x.edgeType == 'domain_dependency',
+      );
+      final declared = nodes
+          .map((n) => n.frontmatter['depends_on_domains'])
+          .whereType<List>()
+          .expand((l) => l)
+          .length;
+      expect(declared, greaterThan(0));
+      expect(domainDeps, hasLength(declared));
+      final fakeMissing = e.graphDefects
+          .whereType<DanglingRefGraphDefect>()
+          .where((d) => d.ref.edgeTypeName == 'domain_dependency');
+      expect(fakeMissing, isEmpty);
+    }
+
+    test('G11-8e 不變式的鑑別力：語料內新增宣告仍綠，少產一條邊判紅', () {
+      final base = [
+        buildRawNode(
+          id: 'SPEC-001',
+          typeName: 'SPEC',
+          extra: {
+            'depends_on_domains': ['corpus'],
+          },
+        ),
+        _bundle('DOMAIN-MAP-corpus', 'corpus'),
+        _bundle('DOMAIN-MAP-graph', 'graph'),
+      ];
+      expectDomainDependencyInvariant(_build(base), base);
+      final grown = [
+        buildRawNode(
+          id: 'SPEC-001',
+          typeName: 'SPEC',
+          extra: {
+            'depends_on_domains': ['corpus', 'graph'],
+          },
+        ),
+        base[1],
+        base[2],
+      ];
+      expectDomainDependencyInvariant(_build(grown), grown);
+      // 正向對照：以「宣告兩條、圖只有一條」的組合模擬解析器少產一條邊。
+      expect(
+        () => expectDomainDependencyInvariant(_build(base), grown),
+        throwsA(isA<TestFailure>()),
+      );
+    });
+
+    test('G11-8d 本專案 docs/spec：邊數等於宣告數、宣告數大於 0、0 假 targetMissing', () {
       final nodes = <RawNode>[];
       for (final f in Directory('docs/spec').listSync(recursive: true)) {
         if (f is! File || !f.path.endsWith('.md')) continue;
@@ -240,21 +294,7 @@ void main() {
           ),
         );
       }
-      final e = _build(nodes);
-      final domainDeps = e.edges.where(
-        (x) => x.edgeType == 'domain_dependency',
-      );
-      final declared = nodes
-          .map((n) => n.frontmatter['depends_on_domains'])
-          .whereType<List>()
-          .expand((l) => l)
-          .length;
-      expect(domainDeps, hasLength(25));
-      expect(declared, 25);
-      final fakeMissing = e.graphDefects
-          .whereType<DanglingRefGraphDefect>()
-          .where((d) => d.ref.edgeTypeName == 'domain_dependency');
-      expect(fakeMissing, isEmpty);
+      expectDomainDependencyInvariant(_build(nodes), nodes);
     });
 
     test('G11-9 解析器公開面：名稱字串進、節點 ID 或 null 出，可反查', () {
