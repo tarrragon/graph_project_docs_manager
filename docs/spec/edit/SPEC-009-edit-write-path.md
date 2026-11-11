@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-11"
-version: "1.3"
+version: "1.4"
 owner: L54-main
 has_functional_requirements: true
 
@@ -153,6 +153,13 @@ depends_on_domains: [workspace, schema, corpus, observability]
   2. 位元組層：改寫前後，允許變更集合的值所在範圍以外的位元組逐位元組相同。
   理由：局部改寫的欄位定位等於一個小型的第二套解析；兩道檢查把它與 Corpus 的分歧擋在寫入前，不讓它寫壞檔案。
 - **暫存檔**：放在目標檔同目錄，確保 `rename` 不跨檔案系統。檔名以 `.` 開頭、帶行程 ID 與隨機尾碼、不以 `.md` 結尾，使檔案監看與 Corpus 掃描不把它當文件。寫入後 fsync 再 `rename`；權限位元沿用原檔。任何一步失敗時刪除暫存檔。
+- **清空**（用戶裁定 2026-11-11，`1.0.0-W3-686`）：把欄位清空，就是把值的位元組範圍改寫為 `null`。不寫空字串，也不移除鍵。可清空的欄位見 FR-09〈可否清空〉。
+  - 理由：`tracking_schema` 完整性語意中，「鍵存在、值為 `null`」代表明確沒有值。既有 PROP 語料就是這樣寫 `target_version: null` 的。
+  - 空字串是一個值，在可搜尋下拉與下拉中會落入 outOfDomain（SPEC-004 4.45、4.46）。
+  - 隔離檢查的判定：
+    - 寫 `null`：解析層只有目標鍵的值改變，位元組層只有值範圍改變，兩道都通過。
+    - 移除鍵：解析結果少一個鍵，違反允許變更集合（理由同「`updated` 缺席時不新增」），回傳 `blocked(rewriteNotIsolated)`。
+  - 驗證器不區分 `null`、空字串與缺鍵：`1.0.0-W3-686` 以 fixture 實測，`doc validate` 與 `doc uc verify` 對三者回傳相同結束碼。所以清空的合法性由本條與 FR-09 決定，不交給驗證器。
 - **1.0 一次寫入只寫一個檔**，不存在批次中途失敗。1.1 的兩檔寫入（反向欄位）在 1.1 規劃波補進本規格：寫入順序、閘門是整批判定或逐檔判定，以及第二檔失敗時的回復（〈2026-09-10〉批次中途失敗；PROP-007〈失敗防護〉第 3 列）。
 
 **驗收標準**：
@@ -163,6 +170,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 目標欄位值為 anchor、alias 或 block scalar 時，回傳 `rewriteNotIsolated` 且目標檔不變
 - [ ] 以 fixture 構造改寫後解析結果多變一個欄位的情境，回傳 `rewriteNotIsolated` 且目標檔不變
 - [ ] 寫入後目標檔的權限位元與寫入前相同
+- [ ] 清空 PROP target_version 後，該鍵仍存在且值為 `null`；檔案除該值與 `updated` 外逐位元組相同
 
 ---
 
@@ -422,6 +430,21 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | EVT | producers、consumers | 核取清單 | — | 1.1 |
 | EVT | payload | 多行 | 多行 | 1.0 |
 
+**可否清空**（用戶裁定 2026-11-11，`1.0.0-W3-686`；Q1–Q3 由主控依該裁定推導）：清空的寫法見 FR-03〈清空〉。1.0 可編輯欄位依現行元件與是否屬完整性集合，分成三類。必填集合由 App 讀 `tracking_schema.json` 頂層的 `completeness_fields`，不在 App 端另建清單（CLAUDE.md §7）；下表是撰寫時依該欄位投影給讀者看的，實作以 JSON 為準：
+
+| 類別 | 欄位 | 行為 |
+|---|---|---|
+| 可清空 | PROP source、priority、evaluation_level、proposed_by、target_version；SPEC subdomain、owner；UC primary_actor、platform、extension_status、runtime_surface；EVT status、payload | 單行、多行送出的草稿 trim 後為空時，寫入 `null`；target_version 經 `ReferencePicker` 的 `allowEmpty` 首項寫入 `null`（SPEC-004 4.46） |
+| 必填，空白擋下 | title（PROP、SPEC、UC）；status（SPEC、UC）；EVT name、canonical_name | 送出的草稿 trim 後為空時，呼叫端不發出寫入，提示格顯示 `fieldRequiredEmpty`（SPEC-004 4.48），草稿保留 |
+| 元件無清空途徑 | status（PROP，下拉）；SPEC domain（`ReferencePicker`，`allowEmpty` 為 `false`）；SPEC has_functional_requirements、EVT category（單選鈕組） | 下拉與單選鈕組在 1.0 不提供清空 |
+
+- 理由：
+  - title、status 是識別與顯示最小集（`tracking_schema.py` 註解，上游 #99 第三項裁決）。App 內編輯不把它們寫成 `null`，以免節點失去顯示名與生命週期。
+  - EVT name、canonical_name 另有驗證器的非空規則，寫成 `null` 會得到 `failed`（FR-05）。
+  - 完整性集合本身只要求鍵存在，值可為 `null`（`completeness_semantics`）。擋下空白是 App 編輯端的附加規則，不是完整性集合的要求。
+- SPEC domain 雖不屬完整性集合，但 domain 視圖依它分列，1.0 不可清空。
+- trim 只用於判斷是否為空白。非空的值照原樣寫入，不修剪。
+
 Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時整張唯讀，要改須先以「還原」回到非終態）：
 
 | 欄位 | 元件 | CLI |
@@ -498,3 +521,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.1 | 2026-11-10 | FR-01 約束新增：App 發出的 `git` 呼叫一律設 `LC_ALL=C`；FR-02 註明 `hash-object` 同樣適用。出處為 `1.0.0-W3-553.4` 測試設計審查：H 的判定依賴 `git` stderr，stderr 會隨語系翻譯 |
 | 1.2 | 2026-11-11 | `1.0.0-W3-676`（用戶裁定 2026-11-11）：FR-01 新增 `git` 子行程逾時 5 秒（`git show` 逾時視同 H 無法判定、`hash-object` 逾時歸 `snapshotFailed`，不新增 `WriteResult` 型別）與本地檔案 IO 不設逾時；FR-02 快照失敗原因補逾時；FR-05 `unavailable` 原因列舉化並新增 `timedOut`，驗證子行程逾時 30 秒；FR-07 日誌欄位、〈錯誤處理〉表與 FR-02、FR-05 驗收同步。出處為 `1.0.0-W3-553.6` 待裁 6：FieldBlock 的逾時段無法填寫 |
 | 1.3 | 2026-11-11 | `1.0.0-W3-553.3`（主控裁定）：FR-06 預警觸發來源由監看事件改為 EVT-CORPUS-001，收到後重讀正在編輯的檔案與 M 比較；明寫 EVT-CORPUS-002 不跨界、Edit 不消費；驗收補「內容相同時狀態不變」；對應用例補 UC-08（UC-08 已照此寫）。`1.0.0-W3-683`（主控裁定，規格自相矛盾當期修）：FR-01 約束新增〈M 的更新〉——`written` 之後 M 改為寫入落檔的位元組，`blocked`、`ioFailed` 時 M 不變，M 只在開始編輯、`written` 受理、放棄並重讀三個時點設定；驗收補連續兩次寫入一條 |
+| 1.4 | 2026-11-11 | `1.0.0-W3-686`。依用戶裁定 2026-11-11；Q1–Q3 由主控依該裁定推導。<br>**FR-03**<br>- 新增〈清空〉：清空就是把值的位元組範圍改寫為 `null`，不寫空字串，也不移除鍵。<br>- 寫明兩道隔離檢查對 `null` 的判定，以及移除鍵為何回傳 `rewriteNotIsolated`。<br>- 寫明驗證器不區分三種寫法（fixture 實測）。<br>- 驗收補一條：清空 target_version。<br>**FR-09**<br>- 新增〈可否清空〉，把 1.0 可編輯欄位分成三類：可清空（寫 `null`）、必填空白擋下（提示 `fieldRequiredEmpty`）、元件無清空途徑。<br>- 草稿 trim 後為空即視為空白；非空的值不修剪。<br>- SPEC domain 不可清空。 |
