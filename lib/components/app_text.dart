@@ -6,6 +6,8 @@
 /// `maxLines`。
 library;
 
+import 'package:flutter/material.dart'
+    show SelectableText; // §4.1：SelectableText 只經 AppText.code
 import 'package:flutter/widgets.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -49,6 +51,10 @@ enum AppTextVariant {
 
   /// ID、路徑、版本值。單行、等寬字型。
   mono,
+
+  /// 供複製執行的指令（SPEC-004 §4.1，1.143）。等寬、換行不截斷、可選取
+  /// （內部 `SelectableText`）、進入 Tab 順序。經 [AppText.code] 建構。
+  code,
 }
 
 /// 所有可見文字的唯一載體。
@@ -84,6 +90,18 @@ class AppText extends StatelessWidget {
   }) : variant = AppTextVariant.body,
        _forceSingleLine = false,
        _explicitWrap = true;
+
+  /// 指令文字：等寬、換行、不截斷、可選取（SPEC-004 §4.1 `code`）。
+  ///
+  /// 不用於顯示性的路徑或 ID（那是 `mono`）。所在容器不得在本元件範圍內掛
+  /// 點擊手勢（會與選取手勢競爭）。
+  const AppText.code(this.text, {super.key, this.emphasis = false, this.tone})
+    : variant = AppTextVariant.code,
+      maxLines = null,
+      secondary = false,
+      textAlign = null,
+      _forceSingleLine = false,
+      _explicitWrap = true;
 
   const AppText._(
     this.text, {
@@ -150,6 +168,11 @@ class AppText extends StatelessWidget {
     final style = _resolveStyle(context);
     final isHeader =
         variant == AppTextVariant.title || variant == AppTextVariant.subtitle;
+    if (variant == AppTextVariant.code) {
+      return Semantics(
+        child: _SelectableCode(text: text, style: style),
+      );
+    }
 
     return Semantics(
       header: isHeader,
@@ -176,11 +199,14 @@ class AppText extends StatelessWidget {
       fontSize: _fontSize.sp,
       color: baseColor,
       fontWeight: baseWeight,
-      fontFamily: variant == AppTextVariant.mono
+      fontFamily: _isMonospace
           ? DefaultTextStyle.of(context).style.fontFamily
           : null,
     );
   }
+
+  bool get _isMonospace =>
+      variant == AppTextVariant.mono || variant == AppTextVariant.code;
 
   /// 依「修飾參數優先序」解析最終顏色：[tone] > [secondary] > 變體預設色。
   Color _resolveColor() {
@@ -203,6 +229,7 @@ class AppText extends StatelessWidget {
     AppTextVariant.body => AppFontSize.body,
     AppTextVariant.caption => AppFontSize.caption,
     AppTextVariant.mono => AppFontSize.body,
+    AppTextVariant.code => AppFontSize.body,
   };
 
   Color get _defaultColor => switch (variant) {
@@ -211,6 +238,7 @@ class AppText extends StatelessWidget {
     AppTextVariant.body => AppColors.textPrimary,
     AppTextVariant.caption => AppColors.textSecondary,
     AppTextVariant.mono => AppColors.textPrimary,
+    AppTextVariant.code => AppColors.textPrimary,
   };
 
   FontWeight get _defaultWeight => switch (variant) {
@@ -219,5 +247,35 @@ class AppText extends StatelessWidget {
     AppTextVariant.body => FontWeight.normal,
     AppTextVariant.caption => FontWeight.normal,
     AppTextVariant.mono => FontWeight.normal,
+    AppTextVariant.code => FontWeight.normal,
   };
+}
+
+/// `code` 變體的可選取文字。`SelectableText` 預設焦點節點略過 Tab 遍歷，
+/// 這裡自持 `skipTraversal: false` 的節點，使其進入 Tab 順序（§4.1 回饋契約）。
+class _SelectableCode extends StatefulWidget {
+  const _SelectableCode({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_SelectableCode> createState() => _SelectableCodeState();
+}
+
+class _SelectableCodeState extends State<_SelectableCode> {
+  final FocusNode _focusNode = FocusNode(
+    debugLabel: 'AppText.code',
+    skipTraversal: false,
+  );
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      SelectableText(widget.text, style: widget.style, focusNode: _focusNode);
 }
