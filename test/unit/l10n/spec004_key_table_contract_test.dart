@@ -30,7 +30,6 @@ const Set<String> pendingAdditionExemptions = <String>{
   'fieldSeeWriteLogHint',
   'fieldValueOutOfDomain',
   'fieldWriteInProgress',
-  'nodeDetailBodyUnavailableMessage',
   'nodeDetailEditReadFailedMessage',
   'radioNo',
   'radioYes',

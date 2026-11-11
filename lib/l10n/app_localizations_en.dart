@@ -1148,4 +1148,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editBannerReloadFailed =>
       'Could not reload this file. Try Discard and reload again';
+
+  @override
+  String get nodeDetailBodyUnavailableMessage =>
+      'Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan';
 }

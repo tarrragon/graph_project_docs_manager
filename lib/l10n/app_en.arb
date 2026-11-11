@@ -302,5 +302,6 @@
   "editDiscardAndReloadAction": "Discard and reload",
   "editBannerExternallyModifiedWarning": "This file was changed outside the app. Unsent values are kept; discard and reload to load the current file",
   "editBannerExternallyModifiedBlocked": "This file was changed outside the app, so this write was not performed. Discard and reload to continue editing",
-  "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again"
+  "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again",
+  "nodeDetailBodyUnavailableMessage": "Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan"
 }
