@@ -4,7 +4,7 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.3"
+spec_version: "1.4"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
 updated: "2026-11-11"
@@ -12,7 +12,7 @@ updated: "2026-11-11"
 
 # SPEC-009 Phase 2 紅燈測試規格
 
-本文件是 SPEC-009（編輯能力：寫入路徑、寫入前閘門與寫入結果）的紅燈測試規格，初稿對應 v1.1，0.2 版補上 v1.3 的 FR-01〈M 的更新〉與 FR-06 觸發來源；同版併入 v1.2 的逾時規定，對應 version-bootstrap Step 5 的 edit 部分，供 edit domain 的實作票以 TDD 開工。只描述測資、流程與斷言，不含測試程式碼。規則權威在 SPEC-009；本文件與其衝突時以 SPEC-009 為準，衝突本身記入承接票的 NeedsContext。
+本文件是 SPEC-009（編輯能力：寫入路徑、寫入前閘門與寫入結果）的紅燈測試規格，初稿對應 v1.1，0.2 版補上 v1.3 的 FR-01〈M 的更新〉與 FR-06 觸發來源；同版併入 v1.2 的逾時規定；0.3 版補上 v1.4 的 FR-03〈清空〉與 FR-09〈可否清空〉，對應 version-bootstrap Step 5 的 edit 部分，供 edit domain 的實作票以 TDD 開工。只描述測資、流程與斷言，不含測試程式碼。規則權威在 SPEC-009；本文件與其衝突時以 SPEC-009 為準，衝突本身記入承接票的 NeedsContext。
 
 編輯狀態的畫面形式（SPEC-001 狀態矩陣、SPEC-003 互動反應）由 `1.0.0-W3-553.3` 定義。本文件只斷言畫面狀態層取得的狀態值，不斷言 widget 錨點；錨點案例在 553.3 定稿後由畫面票補上（§6）。
 
@@ -110,7 +110,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 | 名稱 | 內容要點 | 用途 |
 |---|---|---|
-| `doc_plain` | PROP 型 frontmatter：`id`、`title`（雙引號）、`status`、`priority`、`created`、`updated`、一行註解 `# note`、欄位間有非標準空白；內文兩段；結尾無換行 | 基準 |
+| `doc_plain` | PROP 型 frontmatter：`id`、`title`（雙引號）、`status`、`priority`、`target_version: "1.0.0"`（0.3 新增）、`created`、`updated`、一行註解 `# note`、欄位間有非標準空白；內文兩段；結尾無換行 | 基準；R-13 |
 | `doc_no_updated` | 同上，但不含 `updated` | R-4 |
 | `doc_crlf` | `doc_plain` 的 CRLF 版本 | R-2、IT-E2-3 |
 | `doc_anchor` | `title: &t "x"`，另一欄 `subtitle: *t` | R-5 |
@@ -233,7 +233,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 ### R 局部改寫與原子寫入（FR-03）
 
-**測試檔**：`test/unit/edit/field_rewrite_test.dart`（R-1～R-8）、`test/unit/edit/atomic_write_test.dart`（R-9～R-12）
+**測試檔**：`test/unit/edit/field_rewrite_test.dart`（R-1～R-8、R-13、R-14）、`test/unit/edit/atomic_write_test.dart`（R-9～R-12）
 
 | # | Given | When | Then |
 |---|---|---|---|
@@ -249,7 +249,8 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | R-10（守衛） | rename 失敗 | 修正 | `ioFailed`；目標檔不變；同目錄無暫存檔（正向對照：R-9） |
 | R-11 | 暫存檔寫入失敗；另一案 fsync 失敗 | 修正 | 兩案都是 `ioFailed`、目標檔不變、無殘留暫存檔 |
 | R-12 | 原檔權限位元記錄為 `0640` | 修正 | 暫存檔在 rename 前已設為 `0640`（真實檔案系統上的驗證見 IT-E2-4） |
-
+| R-13 | `doc_plain` | 清空 `target_version` | 以 `classifyFrontmatter` 解析：`target_version` 鍵仍存在、值為 `null`；改寫後與改寫前相比，只有 `target_version` 值與 `updated` 值所在的位元組範圍不同（v1.4 FR-03〈清空〉、驗收 #7） |
+| R-14（守衛，隔離檢查函式） | 改寫前 `doc_plain`；改寫後刪去 `target_version` 整行 | 對兩份位元組呼叫隔離檢查，允許集合 {target_version, updated} | 解析層不通過（少一個鍵）。正向對照：R-13 的改寫後位元組通過。證明清空不能以移除鍵實作 |
 ### P 路徑界內型別（FR-04）
 
 **測試檔**：`test/unit/edit/workspace_relative_path_test.dart`（真實暫存目錄）；P-9 為 `test/edit_contract_test.dart`
@@ -364,6 +365,11 @@ FR-08 驗收第 1 條由 C-5 與 IT-E2-1、IT-E2-2 涵蓋；第 2 條由 C-2 與
 | F-2（守衛） | 值域來源 fake 對 SPEC `status` 回傳「無機器定義」 | 查對照 | 單行文字（正向對照：對 PROP `status` 回傳機器定義的列舉時為下拉） |
 | F-3（守衛） | 值域來源 fake 對所有欄位都回傳「無機器定義」 | 查全部 1.0 欄位 | 沒有任何欄位為下拉或單選鈕組。這證明 App 沒有內建值域表：若有，值域來源回傳「無」時仍會產生下拉 |
 | F-4 | 「自」為 1.1 以後或為 `—` 的欄位 | 查對照 | 回傳「不可編輯」 |
+| F-5 | 可清空欄位（PROP proposed_by、EVT payload）；草稿為 `""`、`"   "`；另一案草稿為 `"  x "` | 判定送出內容 | 前兩案寫入值為 `null`；第三案寫入值逐字為 `"  x "`（非空值不修剪）（v1.4 FR-09〈可否清空〉） |
+| F-6（守衛） | 必填欄位（PROP title、EVT name），草稿 trim 後為空 | 判定送出內容 | 不發出寫入；提示為 `fieldRequiredEmpty`；`FakeEditFilePort` 零寫入。正向對照：F-5 的可清空欄位同樣輸入時發出寫入 |
+| F-7（守衛） | 值域來源 fake 的 `completeness_fields` 對 PROP 只列 `id`、`status`（拿掉 `title`） | 以 PROP title、草稿 `""` 判定送出內容 | 寫入值為 `null`（title 改判可清空）。證明必填集合讀自 `tracking_schema.json`，App 沒有內建清單。正向對照：F-6 |
+
+F-5～F-7 的落點與 F-1～F-4 相同（`field_input_mapping_test.dart`）；判定在畫面狀態層，不經元件（SPEC-004 4.44 `onSubmitted` 對空白照常呼叫，元件不判斷必填）。
 
 ### N 寫入不阻擋操作（NFR-01）
 
@@ -418,6 +424,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-03 | #4 anchor、alias、block scalar → `rewriteNotIsolated` | R-5；G-12 | domain unit |
 | FR-03 | #5 解析結果多變一欄 → `rewriteNotIsolated` | R-6、R-8 | domain unit |
 | FR-03 | #6 權限位元不變 | IT-E2-4；R-12 | integration；domain unit |
+| FR-03 | #7 清空 target_version 後鍵仍在、值為 `null`、其餘位元組不變（v1.4） | R-13、R-14 | domain unit |
 | FR-04 | #1 穿越、`.`、空段、NUL、絕對、父目錄 symlink | P-3～P-6；IT-E4-2 | domain unit；integration |
 | FR-04 | #2 檔名 symlink | P-7；IT-E4-1 | domain unit；integration |
 | FR-04 | #3 `/work` 與 `/workspace` | P-6 | domain unit |
@@ -431,6 +438,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration |
 | FR-09 | #1 1.0 欄位都有元件與值域來源 | F-1 | 畫面狀態層 unit |
 | FR-09 | #2 無機器定義的列舉以單行呈現 | F-2、F-3 | 畫面狀態層 unit |
+| FR-09 | 約束：〈可否清空〉三類、trim 判定、非空不修剪、必填集合讀 `completeness_fields`（v1.4，非驗收條目） | F-5、F-6、F-7 | 畫面狀態層 unit |
 | NFR-01 | 驗證不阻擋下一次編輯 | N-1、N-2 | domain unit |
 
 ### 4.3 守衛類驗收的正向對照
@@ -454,6 +462,9 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | C-2 | 欄位值與例外訊息中的標記字串 | L-9、L-10、C-2 | L-9 的正向對照 |
 | 驗證：新增問題 | 寫入後多一次提及；結束碼由非 2 變為 2 | V-5、V-8 | V-4、V-7 |
 | 值域不內建 | 值域來源全部回傳「無」 | F-3 | F-2 的對照 |
+| 改寫隔離：清空不得移除鍵 | 改寫後少一個鍵 | R-14 | R-13 |
+| 必填空白擋下 | 必填欄位草稿 trim 後為空 | F-6 | F-5 |
+| 必填集合不內建 | `completeness_fields` 少一個鍵 | F-7 | F-6 |
 | 依賴方向 | `lib/corpus/` import `lib/edit/` | E-DEP-1 | E-DEP-1 的樣本 |
 | 換行轉換 fixture 有效 | 帶路徑的 `hash-object` 算出不同 SHA | IT-E2-3 的正向對照 | — |
 | 子目錄工作區 fixture 有效 | repo 根的同名對照檔 | IT-E3-1 | — |
@@ -484,12 +495,12 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 建議範圍 | 案例 | 前置 |
 |---|---|---|
 | 路徑型別 | P、IT-E4 | 無 |
-| 局部改寫與隔離檢查 | R-1～R-8 | Corpus 公開 `classifyFrontmatter`（已存在） |
+| 局部改寫與隔離檢查 | R-1～R-8、R-13、R-14 | Corpus 公開 `classifyFrontmatter`（已存在） |
 | 閘門、快照、原子寫入 | G、S、R-9～R-12、IT-E1、IT-E2、IT-E3、IT-E5、E-DEP-1 | 路徑型別；局部改寫；edit 的 git port（§6 第 2 項） |
 | 驗證器與 baseline | V、N、IT-E6 | 閘門 |
 | 日誌事件 | L | 閘門；SPEC-010 的 writer 與 `LogSink<E>`（`1.0.0-W3-553.2.2`、`.2.3`） |
 | 外部改動預警與 session 清單 | X、C | 閘門；驗證器；Corpus 一輪解析完成的通知可供 Edit 訂閱（EVT-CORPUS-001）；畫面狀態見 SPEC-001 v1.89 §6、§12 |
-| 欄位輸入元件對照 | F | 553.3；表單元件的元件契約（SPEC-004） |
+| 欄位輸入元件對照與可否清空 | F-1～F-7 | 553.3；表單元件的元件契約（SPEC-004）；`tracking_schema.json` 的 `completeness_fields` 讀取 |
 
 ## 6. 待決與交接
 
@@ -506,3 +517,4 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 |------|------|---------|
 | 0.1 | 2026-11-10 | 初稿（1.0.0-W3-553.4），對應 SPEC-009 v1.1：IT-E1-6 改為斷言 `LC_ALL=C`，新增 G-18 |
 | 0.2 | 2026-11-11 | `1.0.0-W3-684`，對應 SPEC-009 v1.3：G 組新增 G-19～G-21（FR-01〈M 的更新〉，驗收 #7）；X 組觸發來源由監看事件改為 EVT-CORPUS-001 並重讀比較，改寫 X-1、X-2、X-4、X-5，新增 X-8（重讀得 `notFound`）、X-9（判定不讀負載）、X-10（預警期間再收事件）；§1.2 Mock 策略與 §1.4 新增 `FakeCorpusParsedSource`，不再沿用 `fake_watch_source.dart`；§4.2 補 FR-01 #7、FR-06 改為三條；§4.3 補兩個守衛；§5 預警列前置更新。同票併入 v1.2 逾時規定（主控裁定）：G-22、G-23，S-6、S-7，V-15～V-18，L-11、L-12，L-5 改為三者恰一；§1.4 FakeEditGitPort、FakeValidatorPort 補永不完成與終止記錄，新增逾時計時器列；§4.2 補 FR-01 逾時約束、FR-02 #5 #6、FR-05 #7、FR-07 `timedOut`；§4.3 補快照逾時、驗證逾時兩個守衛 |
+| 0.3 | 2026-11-11 | `1.0.0-W3-553.7`，對應 SPEC-009 v1.4（`1.0.0-W3-686`）：<br>- §1.6 `doc_plain` 加 `target_version`。<br>- R 組新增 R-13（清空寫 `null`，FR-03 驗收 #7）、R-14（守衛：清空不得移除鍵）。<br>- F 組新增 F-5（可清空欄位空白寫 `null`、非空不修剪）、F-6（守衛：必填欄位空白擋下）、F-7（守衛：必填集合讀 `completeness_fields`，fake 少一鍵即改判）。<br>- §4.2 補 FR-03 #7 與 FR-09〈可否清空〉約束；§4.3 補三個守衛；§5 兩列同步。 |
