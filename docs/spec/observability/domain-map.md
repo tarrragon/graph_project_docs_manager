@@ -4,7 +4,7 @@ domain: "observability"
 source_specs: [SPEC-010]
 related_usecases: []
 depends_on_bundles: []
-path_patterns: []               # lib/observability/ 由 1.0.0-W3-553.2.2 建立後補上（validate 要求路徑存在）
+path_patterns: [lib/observability/]
 created: "2026-11-10"
 updated: "2026-11-10"
 ---
