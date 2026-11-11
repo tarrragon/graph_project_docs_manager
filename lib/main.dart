@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -10,6 +11,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'assembly/shell.dart';
 import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
+import 'observability/log_enums.dart';
+import 'observability/log_file_port.dart';
+import 'observability/log_values.dart';
+import 'observability/log_writer.dart';
 import 'tokens/tokens.dart';
 import 'workspace/workspace_repository.dart';
 
@@ -32,16 +37,45 @@ const Size kMinWindowSize = Size(960, 640);
 ///
 /// 三層（框架 [FlutterError.onError]／平台 [PlatformDispatcher.onError]／
 /// 非同步 [runZonedGuarded]）攔截到的例外皆匯流於此，而非各自處理——
-/// 這樣「顯示什麼」只需維護一處。載體是畫面而非檔案（見
-/// docs/tech-decisions.md 2026-08-27 補記段「執行期 log 的裁決」）：
-/// 未預期例外不寫入 log 檔，改由 [DocsManagerApp] 監聽並以
-/// [BlockedState.plain] 取代半渲染的畫面，避免使用者卡在一個不動的畫面
-/// 卻毫無徵兆。
+/// 這樣「顯示什麼」只需維護一處。錯誤的載體是畫面：[DocsManagerApp]
+/// 監聽並以 [BlockedState.plain] 取代半渲染的畫面，避免使用者卡在一個
+/// 不動的畫面卻毫無徵兆。另依 SPEC-010 FR-07 寫一筆 structured log
+/// （`error_source: internal`，只記例外 runtimeType 與攔截來源，不記訊息），
+/// 供事後排查；寫入失敗不影響畫面通知。
 ///
 /// 標記 [visibleForTesting]：正式流程只由三層攔截寫入，測試需要直接
 /// 觸發/重置以驗證單一出口的行為。
 @visibleForTesting
 final ValueNotifier<Object?> fatalErrorNotifier = ValueNotifier<Object?>(null);
+
+/// SPEC-010 FR-07 的事件名。
+enum FatalLogEvent { fatalUncaught }
+
+/// SPEC-010 FR-07 的攔截來源欄位值。
+enum FatalInterceptor { framework, platform, zone }
+
+const String _presentationDomain = 'presentation';
+const String _interceptorField = 'interceptor';
+
+LogWriter _createDefaultFatalLogWriter() {
+  final bundleId = resolveBundleIdFromExecutable(Platform.resolvedExecutable);
+  final home = Platform.environment['HOME'];
+  if (bundleId == null || home == null) return LogWriter(port: null);
+  final directory = logDirectoryPath(home: home, bundleId: bundleId);
+  return LogWriter(port: IoLogFilePort(directory));
+}
+
+/// 全域攔截出口寫 structured log 所用的 writer。
+///
+/// 標記 [visibleForTesting]：測試注入記憶體 port 的 writer 以斷言記錄內容。
+@visibleForTesting
+LogWriter fatalLogWriter = _createDefaultFatalLogWriter();
+
+FatalInterceptor _interceptorOf(String source) => switch (source) {
+  'FlutterError' => FatalInterceptor.framework,
+  'PlatformDispatcher' => FatalInterceptor.platform,
+  _ => FatalInterceptor.zone,
+};
 
 /// 記錄診斷日誌並通知 [fatalErrorNotifier]。
 ///
@@ -59,7 +93,27 @@ void reportFatalError(String source, Object error, StackTrace stack) {
     error: error,
     stackTrace: stack,
   );
+  _writeFatalRecord(source, error);
   fatalErrorNotifier.value = error;
+}
+
+/// 寫 FR-07 記錄；任何失敗只輸出 stderr，不得影響畫面通知。
+void _writeFatalRecord(String source, Object error) {
+  try {
+    fatalLogWriter.log(
+      _presentationDomain,
+      FatalLogEvent.fatalUncaught,
+      LogFields({
+        _interceptorField: LogValue.enumValue(_interceptorOf(source)),
+      }),
+      level: LogLevel.error,
+      source: ErrorSource.internal,
+      error: error,
+    );
+  } on Object catch (e) {
+    // i18n-exempt: 開發者 stderr 診斷，非使用者可見文字
+    stderr.writeln('structured log 寫入失敗：${e.runtimeType}');
+  }
 }
 
 /// 安裝框架層與平台層的錯誤攔截。
