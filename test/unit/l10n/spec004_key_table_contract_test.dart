@@ -9,16 +9,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/spec_first_marker.dart';
+
 /// 待加入豁免（表有、ARB 尚無，規格先行的 key）。
 /// 成員必須仍在表中且尚不在 ARB；ARB 一加入即紅，迫使移除豁免。
 /// 1.113 三個 nodeDetail key 已由 0.6.0-W1-155 補入 ARB，當時為空。
 /// 1.140～1.146 起 §4.0.6 新增規格先行 key（1.0 編輯功能票實作時補 ARB 並移出）。
 const Set<String> pendingAdditionExemptions = <String>{
   'dropdownA11yLabel',
-  'editBannerExternallyModifiedBlocked',
-  'editBannerExternallyModifiedWarning',
-  'editBannerReloadFailed',
-  'editDiscardAndReloadAction',
   'editDoneAction',
   'editFieldsAction',
   'fieldBlockedRewriteNotIsolated',
@@ -80,10 +78,13 @@ const Map<String, Set<String>> nonLiteralExemptions = <String, Set<String>>{
 const int minimumRowCount = 100;
 
 class SpecRow {
-  const SpecRow(this.key, this.zh, this.en);
+  const SpecRow(this.key, this.zh, this.en, [this.specFirstTicket]);
   final String key;
   final String zh;
   final String en;
+
+  /// 列上「規格先行」標記的落地票號；無標記為 null（1.1.0-W1-108）。
+  final String? specFirstTicket;
 }
 
 /// 以未跳脫的 `|` 分欄，`\|` 還原為文案內的 `|`。
@@ -115,6 +116,7 @@ List<SpecRow> extractRows(String spec) {
         .map((k) => k.replaceAll('`', ''))
         .toList();
     final cells = splitRow(line);
+    final ticket = specFirstTicketOf(line);
     final single = keys.length == 1;
     final zhs = single ? [cells[2]] : cells[2].split(' / ');
     final ens = single ? [cells[3]] : cells[3].split(' / ');
@@ -122,7 +124,7 @@ List<SpecRow> extractRows(String spec) {
       throw StateError('多 key 列的格數與 key 數不符：$line');
     }
     for (var i = 0; i < keys.length; i++) {
-      rows.add(SpecRow(keys[i], zhs[i], ens[i]));
+      rows.add(SpecRow(keys[i], zhs[i], ens[i], ticket));
     }
   }
   return rows;
@@ -153,6 +155,13 @@ List<String> compareTableToArb(
   }
   for (final row in rows) {
     if (pending.contains(row.key) || obsoleteRowKeys.contains(row.key)) {
+      continue;
+    }
+    final ticket = row.specFirstTicket;
+    if (ticket != null) {
+      if (arbAlreadyMatchesSpecRow(row.key, row.zh, row.en, zhArb, enArb)) {
+        violations.add(staleSpecFirstMessage(row.key, ticket));
+      }
       continue;
     }
     for (final (locale, arb, expected) in [
@@ -261,6 +270,40 @@ void main() {
     test('待加入豁免成員不在表中 -> 違規', () {
       final v = compareTableToArb(rows, zhArb, enArb, pending: {'notInTable'});
       expect(v.any((s) => s.contains('已不在表中')), isTrue);
+    });
+
+    test('規格先行標記：帶標記且 ARB 與表不同 -> 跳過比對（無違規）', () {
+      final synthetic = [
+        const SpecRow('syntheticSpecFirst', 'a', 'b', '1.1.0-W9-1'),
+      ];
+      expect(compareTableToArb(synthetic, zhArb, enArb, pending: {}), isEmpty);
+    });
+
+    test('規格先行標記：同一列去掉標記 -> 回到比對而判違規（對照）', () {
+      final synthetic = [const SpecRow('syntheticSpecFirst', 'a', 'b')];
+      final v = compareTableToArb(synthetic, zhArb, enArb, pending: {});
+      expect(v.where((s) => s.contains('syntheticSpecFirst')), hasLength(2));
+    });
+
+    test('規格先行標記：帶標記但 ARB 已一致 -> 判紅並提示移除標記（E2）', () {
+      final first = rows.firstWhere(
+        (r) => r.specFirstTicket == null && zhArb[r.key] == r.zh,
+      );
+      final marked = [SpecRow(first.key, first.zh, first.en, '1.1.0-W9-1')];
+      final v = compareTableToArb(marked, zhArb, enArb, pending: {});
+      expect(v, hasLength(1));
+      expect(v.single, contains('移除該標記'));
+      expect(v.single, contains(first.key));
+    });
+
+    test('規格先行標記：從規格列解析票號，含子票形式', () {
+      const spec =
+          '#### 4.0.6 x\n'
+          '| `a` | 甲 | A | 備註（規格先行：1.1.0-W2-3.1） |\n'
+          '| `b` | 乙 | B | 備註 |\n'
+          '#### 4.0.7 y\n';
+      final r = extractRows(spec);
+      expect(r.map((x) => x.specFirstTicket), ['1.1.0-W2-3.1', null]);
     });
 
     test('解析器自檢：跳脫豎線還原', () {
