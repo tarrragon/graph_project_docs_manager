@@ -4,15 +4,15 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.1"
+spec_version: "1.3"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
-updated: "2026-11-10"
+updated: "2026-11-11"
 ---
 
 # SPEC-009 Phase 2 紅燈測試規格
 
-本文件是 SPEC-009 v1.1（編輯能力：寫入路徑、寫入前閘門與寫入結果）的紅燈測試規格，對應 version-bootstrap Step 5 的 edit 部分，供 edit domain 的實作票以 TDD 開工。只描述測資、流程與斷言，不含測試程式碼。規則權威在 SPEC-009；本文件與其衝突時以 SPEC-009 為準，衝突本身記入承接票的 NeedsContext。
+本文件是 SPEC-009（編輯能力：寫入路徑、寫入前閘門與寫入結果）的紅燈測試規格，初稿對應 v1.1，0.2 版補上 v1.3 的 FR-01〈M 的更新〉與 FR-06 觸發來源；同版併入 v1.2 的逾時規定，對應 version-bootstrap Step 5 的 edit 部分，供 edit domain 的實作票以 TDD 開工。只描述測資、流程與斷言，不含測試程式碼。規則權威在 SPEC-009；本文件與其衝突時以 SPEC-009 為準，衝突本身記入承接票的 NeedsContext。
 
 編輯狀態的畫面形式（SPEC-001 狀態矩陣、SPEC-003 互動反應）由 `1.0.0-W3-553.3` 定義。本文件只斷言畫面狀態層取得的狀態值，不斷言 widget 錨點；錨點案例在 553.3 定稿後由畫面票補上（§6）。
 
@@ -37,14 +37,14 @@ updated: "2026-11-10"
 | 暫存檔與 `rename` 順序（FR-03） | domain unit | `EditFilePort` fake 記錄操作序列（寫入、fsync、rename、刪除、chmod） |
 | 路徑界內型別（FR-04） | domain unit，使用真實暫存目錄 | 不 mock 檔案系統：symlink 與父目錄解析需真實行為 |
 | 寫入結果、三個可觀測時刻、baseline 差集（FR-05） | domain unit | 驗證器以 fake validator port 注入：依 CLI 名稱與引數回傳結束碼與 stdout 文字，或回報「無法執行」；可設為永不完成，用來測不阻擋 |
-| 外部改動預警（FR-06） | domain unit（application 層，Riverpod `ProviderContainer`） | 監看事件沿用 `test/helpers/fake_watch_source.dart` |
+| 外部改動預警（FR-06） | domain unit（application 層，Riverpod `ProviderContainer`） | 觸發來源為 EVT-CORPUS-001（SPEC-009 v1.3）：以 `FakeCorpusParsedSource` 送出「一輪解析完成」，不經監看來源；重讀以 `FakeEditFilePort` 回應。不沿用 `fake_watch_source.dart`：Edit 不消費監看事件與 EVT-CORPUS-002 |
 | 日誌事件（FR-07） | domain unit | 注入記錄用 `LogSink<EditLogEvent>`（沿用 SPEC-010 的 sink 契約），斷言事件碼、等級、`error_source`、fields |
 | session 寫入清單（FR-08） | domain unit（application 層） | 同 FR-06 |
 | 欄位 → 輸入元件對照（FR-09） | 畫面狀態層 unit（對照函式）；widget 待 553.3 | 值域來源以 fake 注入 |
 | 寫入函式只收路徑型別（FR-04） | 契約（靜態守衛，放 `test/` 根目錄，比照 `entitlements_contract_test.dart`） | 不 mock：對 fixture 跑 `fvm dart analyze` |
 | IT-E1～IT-E6 | integration（`integration_test/`） | 不 mock git、檔案系統與 doc CLI：在暫存目錄依 §1.5 建 fixture repo |
 
-Mock 只替換外部世界（檔案系統、git、doc CLI、監看來源、時鐘、log sink）。Corpus 的解析函式與 Schema 一律使用真實物件。
+Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完成通知、時鐘、log sink）。Corpus 的解析函式與 Schema 一律使用真實物件。
 
 ### 1.3 依賴方向與測試隔離
 
@@ -62,12 +62,14 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、監看來源、時�
 | helper | 路徑 | 用途 | 使用群組 |
 |---|---|---|---|
 | `FakeEditFilePort` | `test/helpers/spec009/fake_edit_file_port.dart` | 記憶體檔案集合；記錄操作序列；可設定「第 n 次讀取回傳指定位元組」「指定操作失敗並帶 `osError.errorCode`」「在指定操作完成後改動目標檔」 | G、R、V、X、C、L |
-| `FakeEditGitPort` | `test/helpers/spec009/fake_edit_git_port.dart` | 依引數回應；以位元組回傳 stdout；記錄引數、標準輸入、環境變數；可設定拋出「無法啟動」 | G、S、L |
-| `FakeValidatorPort` | `test/helpers/spec009/fake_validator_port.dart` | 依 CLI 名稱與目標回傳 `(結束碼, stdout)`；可設定「無法執行」與「永不完成」；記錄呼叫 | V、X、C、N |
+| `FakeEditGitPort` | `test/helpers/spec009/fake_edit_git_port.dart` | 依引數回應；以位元組回傳 stdout；記錄引數、標準輸入、環境變數；可設定拋出「無法啟動」；可設定「永不完成」並記錄子行程被終止 | G、S、L |
+| `FakeCorpusParsedSource` | `test/helpers/spec009/fake_corpus_parsed_source.dart` | 送出 EVT-CORPUS-001 到達的通知，負載可為空的 `CorpusScanResult`，或刻意不含正在編輯的檔案；Edit 不讀負載，只以此為重讀時機（SPEC-009 FR-06） | X |
+| `FakeValidatorPort` | `test/helpers/spec009/fake_validator_port.dart` | 依 CLI 名稱與目標回傳 `(結束碼, stdout)`；可設定「無法執行」、「永不完成」與「於指定虛擬時間完成」；記錄呼叫與子行程被終止 | V、X、C、N |
 | `frontmatterFixture` | `test/helpers/spec009/frontmatter_fixtures.dart` | §1.6 的文件位元組樣本 | G、R、V、L |
 | `unregisteredUc`、`unregisteredUc2` | 同上 | 兩個不在 `docs/app-use-cases.md` 白名單中、彼此不同的 UC 編號，由承接票選定具體值。本文件以常數名指稱它們，不寫字面值，否則本文件自己會被 `doc uc verify` 判為違規（上游 tarrragon/claude#98：驗證器分不出提及與使用） | V、IT-E6 |
 | `secretMarker` | 沿用 SPEC-010-test-design §1.4 | 字串 `SECRET-CONTENT-7f3a`，作為 C-2 正向對照的標記 | L、C |
 | `RecordingEditLogSink` | `test/helpers/spec009/recording_edit_log_sink.dart` | 記錄每一筆事件，並提供序列化後的文字，供 C-2 斷言 | L、C |
+| 逾時計時器 | 由實作票決定注入方式（例：Edit 建構時注入的計時器工廠） | 以虛擬時間觸發 git 子行程 5 秒、驗證子行程 30 秒的逾時；測試不以真實時間等待。本文件只要求：逾時值由測試可推進的時間來源判定，而不是 `Future.timeout` 綁真實時鐘 | G、S、V、L |
 | `fixedEditDate` | 同 `frontmatter_fixtures.dart` | `DateTime.utc(2026, 11, 10)`，`updated` 的預期值為 `2026-11-10` | R |
 | fixture repo 建構器 | `integration_test/helpers/edit_fixture_repo.dart` | 依 §1.5 建立 repo 變體 | IT-E1～IT-E6 |
 
@@ -209,6 +211,11 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、監看來源、時�
 | G-16（守衛） | 工作區開啟時 git 探測回報「不是 git repo」；另一案回報「無法啟動」 | 開啟工作區後呼叫 `beginEditing` | 兩案都是唯讀降級；`beginEditing` 回傳唯讀結果；`FakeEditFilePort` 零寫入（正向對照：探測回報為 repo 時可寫） |
 | G-17 | 可寫工作區；編輯中 git 變為無法啟動；W = M ≠ H | 修正 | `blocked(snapshotFailed)`（寫入時不重判唯讀，也不放行） |
 | G-18 | W = M ≠ H；工作區開啟時也做一次 git 探測 | 開啟工作區並修正 | `FakeEditGitPort` 記錄的每一次呼叫（探測、`show`、`hash-object`），環境都含 `LC_ALL=C` |
+| G-19 | W = M = H；第一次修正 `title` 得 `written` | 第二次修正 `status`（同一次編輯） | 第二次不判 `externallyModified`：步驟 1 讀到的 W 等於第一次寫入落檔的位元組，即更新後的 M；結果 `written`（SPEC-009 FR-01〈M 的更新〉） |
+| G-20（對照） | 第一次修正得 `blocked(rewriteNotIsolated)`；另一案得 `ioFailed`（步驟 4 失敗）；另一案得 `blocked(snapshotFailed)` | 第二次修正另一欄位 | 三案的 M 都仍為 `beginEditing` 讀到的位元組；磁碟未動，第二次的步驟 1 判 W = M、結果 `written`。正向對照為 G-19：只有 `written` 會更新 M |
+| G-21（守衛） | 第一次修正得 `written`；Edit 實作若未更新 M（以「M 停在開始編輯時」的錯誤實作作正向對照輸入） | 第二次修正 | 測試對該錯誤實作判紅：第二次得 `blocked(externallyModified)` 時本案失敗，證明 G-19 能鑑別 M 是否更新 |
+| G-22 | W = M；`show` 設為永不完成 | 修正，虛擬時間推進 5 秒 | `show` 子行程被終止；視同 H 無法判定、走快照分支（接著呼叫 `hash-object`）；`written` 帶 SHA（SPEC-009 FR-01〈`git` 子行程逾時 5 秒〉、FR-02 驗收 #6） |
+| G-23 | W = M；`FakeEditFilePort` 的步驟 1 讀取於虛擬時間 60 秒後才完成 | 修正 | 不產生任何逾時結果，讀取完成後照常判定（本地檔案 IO 不設逾時，SPEC-009 FR-01） |
 
 ### S 快照（FR-02）
 
@@ -221,6 +228,8 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、監看來源、時�
 | S-3（守衛） | `FakeEditGitPort` 對 `hash-object` 拋出無法啟動 | 修正 | `blocked(snapshotFailed)`；目標檔不變（正向對照：S-2） |
 | S-4 | 有快照、無快照各一次寫入 | 取取回說明 | 有快照為 `git cat-file -p <sha> > <路徑>`；無快照為 `git checkout HEAD -- <路徑>`；兩者的路徑皆為工作區相對路徑 |
 | S-5 | 快照 | 快照 | git 呼叫中沒有 `add`、`stash`、`update-ref`、`commit`、`reset`、`checkout` |
+| S-6（守衛） | W = M ≠ H；`hash-object` 設為永不完成 | 修正，虛擬時間推進 5 秒 | `hash-object` 子行程被終止；`blocked(snapshotFailed)`；目標檔不變；沒有寫入暫存檔（SPEC-009 FR-02 驗收 #5；正向對照：S-7） |
+| S-7（對照） | W = M ≠ H；`hash-object` 於虛擬時間 4.9 秒時回傳 SHA | 修正 | 子行程未被終止；`written` 帶 SHA（逾時以 5 秒為界，不提前終止） |
 
 ### R 局部改寫與原子寫入（FR-03）
 
@@ -284,8 +293,12 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、監看來源、時�
 | V-12 | V-5 的情境 | 驗證判為 `failed` 之後 | `FakeEditFilePort` 在驗證開始後沒有任何寫入與 rename（不回滾） |
 | V-13 | 修正 SPEC-900 | 驗證 | 驗證器呼叫恰為 `doc validate SPEC-900` 與 `doc uc verify <該檔路徑>`；沒有不帶目標的全專案呼叫 |
 | V-14 | baseline 結束碼 1，`unregisteredUc` 一次 | 寫入後結束碼 0 | `passed` |
+| V-15（守衛） | baseline 已完成；寫入得 `written`；寫入後的 `doc validate` 設為永不完成 | 虛擬時間推進 30 秒 | 該子行程被終止；驗證為 `unavailable(timedOut)`；寫入結果仍為 `written`；`FakeEditFilePort` 在驗證開始後沒有寫入與 rename（SPEC-009 FR-05 驗收 #7；正向對照：V-17） |
+| V-16 | baseline 的 `doc uc verify` 設為永不完成 | 虛擬時間推進 30 秒後寫入兩次；之後 `discardAndReload` 並讓驗證器正常回應 | 兩次寫入的驗證都是 `unavailable`；`discardAndReload` 後重跑 baseline，下一次寫入的驗證可為 `passed` |
+| V-17（對照） | 寫入後的 `doc validate` 於虛擬時間 29.9 秒完成、結束碼 0 | 驗證 | 子行程未被終止；`passed` |
+| V-18 | 寫入後的 `doc validate` 於 20 秒完成、`doc uc verify` 於其後 20 秒完成，皆結束碼 0 | 驗證 | `passed`：逾時對每個子行程各自計時，合計 40 秒不構成逾時 |
 
-FR-05 驗收第 1 條由 V-1～V-3 涵蓋；第 2 條由 V-5、V-12 與 IT-E6-1 涵蓋；第 3 條由 V-4 與 IT-E6-2 涵蓋；第 4 條由 V-6 涵蓋；第 5 條由 V-7、V-8 涵蓋；第 6 條由 V-9、V-10 涵蓋。
+FR-05 驗收第 1 條由 V-1～V-3 涵蓋；第 2 條由 V-5、V-12 與 IT-E6-1 涵蓋；第 3 條由 V-4 與 IT-E6-2 涵蓋；第 4 條由 V-6 涵蓋；第 5 條由 V-7、V-8 涵蓋；第 6 條由 V-9、V-10、V-16 涵蓋；第 7 條（驗證子行程逾時，v1.2）由 V-15、V-17、V-18 涵蓋。
 
 ### X 外部改動的發現時點（FR-06）
 
@@ -293,13 +306,18 @@ FR-05 驗收第 1 條由 V-1～V-3 涵蓋；第 2 條由 V-5、V-12 與 IT-E6-1 
 
 | # | Given | When | Then |
 |---|---|---|---|
-| X-1 | 編輯 SPEC-900 中，有未寫入值 | 監看來源送出 SPEC-900 已改的事件 | 編輯狀態轉為外部已改預警；未寫入值仍保留 |
-| X-2（對照） | 同 X-1 | 監看來源送出其他檔案已改的事件 | 編輯狀態不變 |
+| X-1 | 編輯 SPEC-900 中，有未寫入值；`FakeEditFilePort` 的 SPEC-900 已改一個位元組 | `FakeCorpusParsedSource` 送出一輪 EVT-CORPUS-001 | Edit 重讀 SPEC-900（`FakeEditFilePort` 記錄一次讀取）；編輯狀態轉為外部已改預警；未寫入值仍保留 |
+| X-2（對照） | 編輯 SPEC-900 中；SPEC-900 磁碟內容與 M 相同（本輪是其他檔案被改） | 送出一輪 EVT-CORPUS-001 | Edit 重讀 SPEC-900；內容與 M 相同，編輯狀態不變（FR-06 驗收：內容與 M 相同時狀態不變） |
 | X-3 | X-1 之後；磁碟內容確實已變 | 修正 | `blocked(externallyModified)`（預警不阻擋嘗試，判定仍由閘門） |
-| X-4 | X-1 之後；事件為誤報，磁碟內容與 M 相同 | 修正 | `written` |
-| X-5 | 外部改動磁碟內容，但不送任何監看事件 | 修正 | `blocked(externallyModified)` |
+| X-4 | X-1 之後；磁碟內容又改回與 M 相同 | 修正 | `written`（預警不是阻擋，判定仍由閘門） |
+| X-5 | 外部改動磁碟內容，但不送 EVT-CORPUS-001 | 修正 | `blocked(externallyModified)` |
 | X-6 | X-1 之後 | `discardAndReload` | M 為新的磁碟內容；驗證器再次以該檔被呼叫（重跑 baseline）；之後修正可 `written` |
 | X-7 | X-1 | 預警期間 | 沒有對使用者呈現焦點通道發出請求（記錄用仲裁器零請求） |
+| X-8 | 編輯 SPEC-900 中；SPEC-900 已被外部刪除或改名（`FakeEditFilePort` 讀取回報不存在） | 送出一輪 EVT-CORPUS-001 | 編輯狀態轉為外部已改預警（檔案不存在視為 W ≠ M，SPEC-009 FR-01 約束、FR-06 發現點表） |
+| X-9（守衛） | 編輯 SPEC-900 中；SPEC-900 磁碟內容已變；EVT-CORPUS-001 的負載不含 SPEC-900 | 送出一輪 EVT-CORPUS-001 | 仍轉為外部已改預警：判定來自重讀，不讀負載（正向對照：X-2 磁碟未變時不轉） |
+| X-10 | 已處於外部已改預警 | 再送一輪 EVT-CORPUS-001 | 狀態維持預警，不重複發出任何請求 |
+
+FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）由 X-1、X-8、X-9 涵蓋；第 2 條（內容與 M 相同時狀態不變）由 X-2 涵蓋；第 3 條（EVT-CORPUS-001 未到達仍判 `externallyModified`）由 X-5 涵蓋。
 
 ### L 日誌事件與只記識別（FR-07）
 
@@ -311,14 +329,16 @@ FR-05 驗收第 1 條由 V-1～V-3 涵蓋；第 2 條由 V-5、V-12 與 IT-E6-1 
 | L-2 | W = M = H | 修正 | 依序記 `writeIssued`、`writeAccepted`，皆 info、無 `error_source`，fields 為路徑與欄位名 |
 | L-3 | W ≠ H | 修正 | 另記 `snapshotTaken`（info），`blob_sha` 為 40 字元小寫十六進位 |
 | L-4 | 外部已改；改寫不隔離 | 修正 | 各記一筆 `writeBlocked`，warning、`gate_blocked`，fields 帶原因 |
-| L-5 | `hash-object` 回傳 128；另一案無法啟動 | 修正 | 各記一筆 `writeBlocked`，error、`external_process`；前者帶結束碼 128、不帶 `executableMissing`，後者相反（恰二擇一）；沒有另外的失敗事件（一次失敗一筆） |
+| L-5 | `hash-object` 回傳 128；另一案無法啟動 | 修正 | 各記一筆 `writeBlocked`，error、`external_process`；前者帶結束碼 128、不帶 `executableMissing`，後者相反（結束碼、`executableMissing`、`timedOut` 三者恰一，`timedOut` 見 L-11）；沒有另外的失敗事件（一次失敗一筆） |
 | L-6 | 讀取失敗、寫入失敗各一，`osError.errorCode` 13 | 修正 | `readIoFailed` 或 `writeIoFailed`，error、`platform_io`，帶 errorCode 13 |
 | L-7 | 寫入失敗且 `osError` 為 null | 修正 | `writeIoFailed` 不含 errorCode 欄位 |
 | L-8 | 驗證為 `passed`、`failed`（新增 1）、`unavailable`（結束碼 3） | 驗證完成 | `validationCompleted`：`passed` 為 info；`failed` 為 warning、無 `error_source`、帶新增問題數；`unavailable` 為 warning、`external_process`、帶結束碼 |
 | L-9（守衛，C-2） | 欄位新值含 `secretMarker`；依序讓寫入以 `externallyModified`、`rewriteNotIsolated`、`snapshotFailed`、`ioFailed` 失敗 | 每案修正 | `RecordingEditLogSink` 的序列化文字、`WriteResult` 的 `toString()`、`blocked` 原因與 IO 失敗分類的 `toString()`，都不含 `secretMarker`。**正向對照**：同一新值寫入成功時，`FakeEditFilePort` 中目標檔內容含 `secretMarker`，證明標記確實送進了寫入層 |
 | L-10（守衛，C-2） | 讀取失敗的例外訊息含 `secretMarker` | 修正 | 日誌序列化文字與 `ioFailed` 的 `toString()` 不含標記 |
+| L-11 | `hash-object` 逾時（同 S-6） | 修正 | 一筆 `writeBlocked`，error、`external_process`，fields 帶 `timedOut`，不帶結束碼與 `executableMissing`；`show` 逾時（同 G-22）不記失敗事件，因為它走快照分支而非失敗 |
+| L-12 | 驗證逾時（同 V-15） | 驗證完成 | `validationCompleted`：warning、`external_process`，帶原因 enum `timedOut`，不帶 CLI 結束碼（二擇一） |
 
-FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。
+FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。
 
 ### C session 寫入清單與事後追溯（FR-08）
 
@@ -383,11 +403,15 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-01 | #4 步驟 4 後、6 前改動 → `externallyModified`、暫存檔已刪 | G-8 | domain unit |
 | FR-01 | #5 子目錄工作區 H 正確 | IT-E3；G-13 | integration；domain unit |
 | FR-01 | #6 非 git、`git` 無法執行時無寫入路徑可達 | IT-E5；G-16 | integration；domain unit |
+| FR-01 | #7 同一次編輯連續兩次寫入不因 W ≠ M 被擋；`blocked`、`ioFailed` 後 M 不變（v1.3） | G-19、G-20、G-21 | domain unit |
 | FR-01 | 約束：git 呼叫設 `LC_ALL=C`（v1.1，非驗收條目） | IT-E1-6；G-18 | integration；domain unit |
+| FR-01 | 約束：`git` 子行程逾時 5 秒、本地檔案 IO 不設逾時（v1.2，非驗收條目） | G-22、G-23、S-6、S-7 | domain unit |
 | FR-02 | #1 status、stash、reflog 不變 | IT-E2-1、IT-E2-2；S-5 | integration；domain unit |
 | FR-02 | #2 寫入結果帶 SHA，取回逐位元組等於 W | IT-E1-2；S-1、S-2 | integration；domain unit |
 | FR-02 | #3 `.gitattributes` 換行轉換下取回仍等於 W | IT-E2-3 | integration |
 | FR-02 | #4 `git` 無法執行 → `snapshotFailed` | S-3 | domain unit |
+| FR-02 | #5 `hash-object` 逾時 → 終止、`snapshotFailed`、目標檔不變且無暫存檔（v1.2） | S-6、S-7 | domain unit |
+| FR-02 | #6 `git show` 逾時 → 終止、走快照分支（v1.2） | G-22 | domain unit |
 | FR-03 | #1 中途中斷後目標檔不變、無暫存檔 | R-10、R-11 | domain unit |
 | FR-03 | #2 只有該值與 `updated` 不同 | R-1、R-2、R-3 | domain unit |
 | FR-03 | #3 `updated` 缺席時改寫後仍無 | R-4 | domain unit |
@@ -399,10 +423,11 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-04 | #3 `/work` 與 `/workspace` | P-6 | domain unit |
 | FR-04 | #4 目標不存在、父目錄存在可建構 | P-2 | domain unit |
 | FR-04 | #5 寫入函式不收 `String` | P-9 | 契約（靜態） |
-| FR-05 | #1～#6 | 見 V 群組末段 | domain unit；integration |
-| FR-06 | #1 監看事件 → 外部已改預警 | X-1、X-2 | domain unit（application 層） |
-| FR-06 | #2 無監看事件仍判 `externallyModified` | X-5 | domain unit |
-| FR-07 | #1、#2 | 見 L 群組末段 | domain unit |
+| FR-05 | #1～#7（#7 為 v1.2 驗證逾時） | 見 V 群組末段 | domain unit；integration |
+| FR-06 | #1 EVT-CORPUS-001 到達、重讀內容與 M 不同 → 外部已改預警（含重讀得 `notFound`，v1.3） | X-1、X-8、X-9 | domain unit（application 層） |
+| FR-06 | #2 EVT-CORPUS-001 到達、內容與 M 相同時狀態不變（v1.3） | X-2 | domain unit（application 層） |
+| FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
+| FR-07 | #1、#2；`timedOut` 欄位（v1.2） | 見 L 群組末段；L-11、L-12 | domain unit |
 | FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration |
 | FR-09 | #1 1.0 欄位都有元件與值域來源 | F-1 | 畫面狀態層 unit |
 | FR-09 | #2 無機器定義的列舉以單行呈現 | F-2、F-3 | 畫面狀態層 unit |
@@ -415,6 +440,10 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 閘門：外部已改 | 步驟 1 的 W 與 M 差一個位元組 | G-1、IT-E1-1 | G-3 |
 | 閘門：外部已改（rename 前重比） | fsync 後才改動目標檔 | G-8 | G-3 |
 | 閘門：需快照而快照失敗 | `hash-object` 回傳 128 或無法啟動 | G-7、S-3 | G-2 |
+| 閘門：M 的更新 | M 停在開始編輯時的錯誤實作 | G-21 | G-19 |
+| 預警：判定來自重讀而非負載 | 負載不含該檔但磁碟已變 | X-9 | X-2 |
+| 快照逾時 | `hash-object` 永不完成 | S-6 | S-7 |
+| 驗證逾時 | 驗證子行程永不完成 | V-15 | V-17、V-18 |
 | 閘門：唯讀降級 | 非 git、`git` 無法啟動 | G-16、IT-E5-1、IT-E5-2 | IT-E5-3 |
 | 改寫隔離：解析層 | 改寫後多一個鍵 | R-6 | R-6 的對照、R-1 |
 | 改寫隔離：位元組層 | 只改註解、解析結果相同 | R-7 | R-1 |
@@ -459,7 +488,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 閘門、快照、原子寫入 | G、S、R-9～R-12、IT-E1、IT-E2、IT-E3、IT-E5、E-DEP-1 | 路徑型別；局部改寫；edit 的 git port（§6 第 2 項） |
 | 驗證器與 baseline | V、N、IT-E6 | 閘門 |
 | 日誌事件 | L | 閘門；SPEC-010 的 writer 與 `LogSink<E>`（`1.0.0-W3-553.2.2`、`.2.3`） |
-| 外部改動預警與 session 清單 | X、C | 閘門；驗證器；553.3 的編輯狀態定義 |
+| 外部改動預警與 session 清單 | X、C | 閘門；驗證器；Corpus 一輪解析完成的通知可供 Edit 訂閱（EVT-CORPUS-001）；畫面狀態見 SPEC-001 v1.89 §6、§12 |
 | 欄位輸入元件對照 | F | 553.3；表單元件的元件契約（SPEC-004） |
 
 ## 6. 待決與交接
@@ -476,3 +505,4 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
 | 0.1 | 2026-11-10 | 初稿（1.0.0-W3-553.4），對應 SPEC-009 v1.1：IT-E1-6 改為斷言 `LC_ALL=C`，新增 G-18 |
+| 0.2 | 2026-11-11 | `1.0.0-W3-684`，對應 SPEC-009 v1.3：G 組新增 G-19～G-21（FR-01〈M 的更新〉，驗收 #7）；X 組觸發來源由監看事件改為 EVT-CORPUS-001 並重讀比較，改寫 X-1、X-2、X-4、X-5，新增 X-8（重讀得 `notFound`）、X-9（判定不讀負載）、X-10（預警期間再收事件）；§1.2 Mock 策略與 §1.4 新增 `FakeCorpusParsedSource`，不再沿用 `fake_watch_source.dart`；§4.2 補 FR-01 #7、FR-06 改為三條；§4.3 補兩個守衛；§5 預警列前置更新。同票併入 v1.2 逾時規定（主控裁定）：G-22、G-23，S-6、S-7，V-15～V-18，L-11、L-12，L-5 改為三者恰一；§1.4 FakeEditGitPort、FakeValidatorPort 補永不完成與終止記錄，新增逾時計時器列；§4.2 補 FR-01 逾時約束、FR-02 #5 #6、FR-05 #7、FR-07 `timedOut`；§4.3 補快照逾時、驗證逾時兩個守衛 |
