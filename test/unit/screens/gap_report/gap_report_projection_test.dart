@@ -27,6 +27,8 @@ import 'package:graph_project_docs_manager/screens/gap_report/gap_report_descrip
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_projection.dart';
 
+import '../../../helpers/spec_first_marker.dart';
+
 const _key = 'non_domain_path_patterns';
 
 const _nodes = [
@@ -1243,14 +1245,23 @@ void main() {
 
     final rowStart = RegExp(r'^\| `(gap[A-Za-z]+)` \|');
     final rows = <String, (String, String)>{};
+    // 帶「規格先行」標記的列（1.1.0-W1-108）：key -> (zh, en, 落地票號)。
+    final specFirstRows = <String, (String, String, String)>{};
     final duplicateKeys = <String>[];
     for (final line in spec.split('\n')) {
       final m = rowStart.firstMatch(line);
       if (m == null) continue;
       final cells = splitRow(line);
       final key = m.group(1)!;
-      if (rows.containsKey(key)) duplicateKeys.add(key);
-      rows[key] = (cells[2], cells[3]);
+      if (rows.containsKey(key) || specFirstRows.containsKey(key)) {
+        duplicateKeys.add(key);
+      }
+      final ticket = specFirstTicketOf(line);
+      if (ticket != null) {
+        specFirstRows[key] = (cells[2], cells[3], ticket);
+      } else {
+        rows[key] = (cells[2], cells[3]);
+      }
     }
     final keys = rows.keys.toList();
 
@@ -1276,10 +1287,40 @@ void main() {
       for (final arb in [zh, en]) {
         final extra = arb.keys
             .where((k) => RegExp(r'^gap[A-Za-z]+$').hasMatch(k))
-            .where((k) => !exempt.contains(k) && !rows.containsKey(k))
+            .where(
+              (k) =>
+                  !exempt.contains(k) &&
+                  !rows.containsKey(k) &&
+                  !specFirstRows.containsKey(k),
+            )
             .toList();
         expect(extra, isEmpty, reason: 'ARB 有、規格表無：$extra');
       }
+    });
+
+    test('帶規格先行標記的列：跳過比對，且 ARB 不得已與該列一致', () {
+      final stale = [
+        for (final e in specFirstRows.entries)
+          if (arbAlreadyMatchesSpecRow(e.key, e.value.$1, e.value.$2, zh, en))
+            staleSpecFirstMessage(e.key, e.value.$3),
+      ];
+      expect(stale, isEmpty);
+    });
+
+    test('E2 對照：帶標記但 ARB 已一致的列被抓到，且提示移除標記', () {
+      final k = rows.keys.firstWhere(
+        (k) => zh[k] == rows[k]!.$1 && en[k] == rows[k]!.$2,
+      );
+      expect(
+        arbAlreadyMatchesSpecRow(k, rows[k]!.$1, rows[k]!.$2, zh, en),
+        isTrue,
+      );
+      expect(staleSpecFirstMessage(k, '1.1.0-W9-1'), contains('移除該標記'));
+      // 值不同的標記列不判紅（跳過比對的對照）。
+      expect(
+        arbAlreadyMatchesSpecRow(k, '${rows[k]!.$1}變', rows[k]!.$2, zh, en),
+        isFalse,
+      );
     });
 
     test('E2 對照：規格有、ARB 無的 key 會被抓到', () {
