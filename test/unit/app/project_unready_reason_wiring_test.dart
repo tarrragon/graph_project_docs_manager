@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
-import 'package:graph_project_docs_manager/screens/gap_report/gap_report_screen.dart';
+import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
 import '../../helpers/helpers.dart';
@@ -21,6 +21,13 @@ const _expected = <DomainViewState, ProjectUnreadyReason?>{
       ProjectUnreadyReason.incompatible,
   DomainLoadFailed(): ProjectUnreadyReason.loadFailed,
   DomainEmpty(): null,
+};
+
+const _messages = {
+  ProjectUnreadyReason.notSelected: '尚未選擇專案',
+  ProjectUnreadyReason.loading: '圖譜載入中',
+  ProjectUnreadyReason.incompatible: '此專案不適用本 App',
+  ProjectUnreadyReason.loadFailed: '圖譜載入失敗',
 };
 
 void main() {
@@ -53,18 +60,21 @@ void main() {
 
   group('讀取者進入未就緒（不 override 原因）', () {
     for (final entry in _expected.entries.where((e) => e.value != null)) {
-      testWidgets('gap_report：${entry.key.runtimeType}', (tester) async {
+      // uc_flow 只靠該 provider 進入未就緒（無畫面層退路）；並斷言具體原因文案，
+      // 使舊的恆 null 行為翻紅。
+      testWidgets('uc_flow：${entry.key.runtimeType}', (tester) async {
         await pumpHarness(
           tester,
-          child: const GapReportScreen(),
+          child: const UcFlowScreen(),
           overrides: [
             domainViewStateProvider.overrideWithInitial((_) => entry.key),
           ],
         );
         expect(
-          AnchorFinder.state(Screen.gaps, 'project-unready'),
+          AnchorFinder.state(Screen.ucFlow, 'project-unready'),
           findsOneWidget,
         );
+        expect(find.text(_messages[entry.value]!), findsOneWidget);
       });
     }
   });
