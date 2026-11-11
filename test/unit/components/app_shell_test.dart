@@ -1,7 +1,7 @@
 /// SPEC-004 §4.27 / §5.1 `AppShell` 測試點。
 library;
 
-import 'package:flutter/material.dart' hide Divider;
+import 'package:flutter/material.dart' hide Badge, Divider;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
@@ -44,14 +44,20 @@ List<PageColumn> _buildPages({String? longestLabel}) {
   ];
 }
 
-List<NavItem> _buildBottomItems({List<String>? tapLog}) {
+List<NavItem> _buildBottomItems({List<String>? tapLog, int failureCount = 0}) {
   return [
-    for (final kind in const ['preferences', 'shortcuts'])
+    for (final kind in const ['preferences', 'shortcuts', 'writeLog'])
       NavItem.action(
         icon: const AppIcon(icon: Icons.circle),
         label: kind,
         onTap: () => tapLog?.add(kind),
         testKey: Key('nav-action-$kind'),
+        badge: kind == 'writeLog' && failureCount > 0
+            ? Badge.count(
+                key: const Key('badge-writeLog-failure-count'),
+                count: failureCount,
+              )
+            : null,
       ),
   ];
 }
@@ -569,13 +575,17 @@ void main() {
       final shortcuts = tester.getRect(
         find.byKey(const Key('nav-action-shortcuts')),
       );
+      final writeLog = tester.getRect(
+        find.byKey(const Key('nav-action-writeLog')),
+      );
       final lastNav = tester.getRect(
         find.byKey(Key('nav-item-${AppDestination.values.last.name}')),
       );
       expect(lastNav.bottom, lessThan(prefs.top));
       expect(prefs.bottom, lessThanOrEqualTo(shortcuts.top));
+      expect(shortcuts.bottom, lessThanOrEqualTo(writeLog.top));
       final shell = tester.getRect(find.byKey(AppShell.shellKey));
-      expect(shortcuts.bottom, shell.bottom - Space.md);
+      expect(writeLog.bottom, shell.bottom - Space.md);
     });
 
     testWidgetsAtEachSize('底部區上方有一條 Divider，與兩項間隔 Space.sm', (
@@ -613,7 +623,8 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('nav-action-preferences')));
       await tester.tap(find.byKey(const Key('nav-action-shortcuts')));
-      expect(log, ['preferences', 'shortcuts']);
+      await tester.tap(find.byKey(const Key('nav-action-writeLog')));
+      expect(log, ['preferences', 'shortcuts', 'writeLog']);
       final stack = tester.widget<IndexedStack>(find.byType(IndexedStack));
       expect(stack.index, 0);
     });
@@ -633,6 +644,7 @@ void main() {
         for (final d in AppDestination.values) Key('nav-item-${d.name}'),
         const Key('nav-action-preferences'),
         const Key('nav-action-shortcuts'),
+        const Key('nav-action-writeLog'),
       ];
       for (final key in order) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -649,16 +661,119 @@ void main() {
       }
     });
 
-    test('bottomItems 只接受 0 或恰 2 項', () {
+    testWidgetsAtEachSize('失敗計數 0 無 badge、1 有 badge', (tester, size) async {
+      for (final count in [0, 1]) {
+        await pumpHarness(
+          tester,
+          size: size,
+          child: AppShell(
+            switcherEntry: _buildSwitcherEntry(),
+            navItems: _buildNavItems(),
+            bottomItems: _buildBottomItems(failureCount: count),
+            pages: _buildPages(),
+          ),
+        );
+        expect(
+          find.byKey(const Key('badge-writeLog-failure-count')),
+          count == 0 ? findsNothing : findsOneWidget,
+        );
+        expectNoOverflow(tester);
+      }
+    });
+
+    test('bottomItems 只接受 0 或恰 3 項', () {
       expect(
         () => AppShell(
           switcherEntry: _buildSwitcherEntry(),
           navItems: _buildNavItems(),
-          bottomItems: _buildBottomItems().take(1).toList(),
+          bottomItems: _buildBottomItems().take(2).toList(),
           pages: _buildPages(),
         ),
         throwsAssertionError,
       );
+    });
+  });
+
+  group('AppShell 唯讀降級徽章（SPEC-004 4.27）', () {
+    AppShell build({
+      ReadonlyWorkspaceReason? reason,
+      bool isDegraded = false,
+      String? inferred,
+      AppDestination dest = AppDestination.domain,
+    }) => AppShell(
+      switcherEntry: _buildSwitcherEntry(),
+      navItems: _buildNavItems(selected: dest),
+      pages: _buildPages(),
+      selectedIndex: dest.index,
+      screenName: dest.name,
+      readonlyWorkspaceReason: reason,
+      isDegraded: isDegraded,
+      degradedBuiltinVersion: '1.0.0',
+      degradedProjectVersion: '0.9.0',
+      inferredVersion: inferred,
+    );
+
+    testWidgetsAtEachSize('七畫面皆渲染兩種原因對應文字', (tester, size) async {
+      for (final dest in AppDestination.values) {
+        for (final (reason, text) in [
+          (ReadonlyWorkspaceReason.notGit, '此資料夾不是 git repo，無法在 App 內編輯'),
+          (ReadonlyWorkspaceReason.gitMissing, '找不到 git，無法在 App 內編輯'),
+        ]) {
+          await pumpHarness(
+            tester,
+            size: size,
+            child: build(reason: reason, dest: dest),
+          );
+          final key = Key('badge-${dest.name}-readonly-workspace');
+          expect(find.byKey(key), findsOneWidget);
+          expect(
+            find.descendant(of: find.byKey(key), matching: find.text(text)),
+            findsOneWidget,
+          );
+          expectNoOverflow(tester);
+        }
+      }
+    });
+
+    testWidgetsAtEachSize('旗標為假時不存在', (tester, size) async {
+      await pumpHarness(tester, size: size, child: build());
+      expect(
+        find.byKey(const Key('badge-domain-readonly-workspace')),
+        findsNothing,
+      );
+    });
+
+    testWidgetsAtEachSize('可與降級、推定版本徽章同列', (tester, size) async {
+      await pumpHarness(
+        tester,
+        size: size,
+        child: build(reason: ReadonlyWorkspaceReason.notGit, isDegraded: true),
+      );
+      expect(
+        find.byKey(const Key('badge-domain-readonly-workspace')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('badge-domain-degraded-schema')),
+        findsOneWidget,
+      );
+      await pumpHarness(
+        tester,
+        size: size,
+        child: build(
+          reason: ReadonlyWorkspaceReason.gitMissing,
+          inferred: '1.2.3',
+        ),
+      );
+      expect(
+        find.byKey(const Key('badge-domain-readonly-workspace')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('badge-domain-inferred-version')),
+        findsOneWidget,
+      );
+      expectNoOverflow(tester);
     });
   });
 }

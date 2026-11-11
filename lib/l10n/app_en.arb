@@ -302,5 +302,8 @@
   "editDiscardAndReloadAction": "Discard and reload",
   "editBannerExternallyModifiedWarning": "This file was changed outside the app. Unsent values are kept; discard and reload to load the current file",
   "editBannerExternallyModifiedBlocked": "This file was changed outside the app, so this write was not performed. Discard and reload to continue editing",
-  "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again"
+  "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again",
+  "readonlyWorkspaceNotGitBadge": "This folder is not a git repository, so it cannot be edited in the app",
+  "readonlyWorkspaceGitMissingBadge": "git was not found, so files cannot be edited in the app",
+  "writeLogTitle": "Write Log"
 }

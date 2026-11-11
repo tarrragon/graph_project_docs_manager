@@ -1148,4 +1148,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editBannerReloadFailed =>
       'Could not reload this file. Try Discard and reload again';
+
+  @override
+  String get readonlyWorkspaceNotGitBadge =>
+      'This folder is not a git repository, so it cannot be edited in the app';
+
+  @override
+  String get readonlyWorkspaceGitMissingBadge =>
+      'git was not found, so files cannot be edited in the app';
+
+  @override
+  String get writeLogTitle => 'Write Log';
 }

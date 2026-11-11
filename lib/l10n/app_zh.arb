@@ -1940,5 +1940,17 @@
   "editBannerReloadFailed": "無法重新讀取這個檔案，請再按一次放棄並重讀",
   "@editBannerReloadFailed": {
     "description": "SPEC-004 4.49 negative（重讀讀取失敗）"
+  },
+  "readonlyWorkspaceNotGitBadge": "此資料夾不是 git repo，無法在 App 內編輯",
+  "@readonlyWorkspaceNotGitBadge": {
+    "description": "SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag）；editFieldsAction 的 disabledReason"
+  },
+  "readonlyWorkspaceGitMissingBadge": "找不到 git，無法在 App 內編輯",
+  "@readonlyWorkspaceGitMissingBadge": {
+    "description": "SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag，git 不可用）"
+  },
+  "writeLogTitle": "寫入清單",
+  "@writeLogTitle": {
+    "description": "SPEC-001 §12 面板標題；SPEC-004 4.7 NavItem.action 標籤（nav-action-writeLog）"
   }
 }
