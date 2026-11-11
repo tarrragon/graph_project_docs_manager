@@ -151,7 +151,7 @@ class _ReadyView extends ConsumerWidget {
     final node = ref.watch(nodeDetailNodesProvider)[nodeId];
     if (node == null) return const _UnsetView();
     // 部分損壞分支（state-nodeDetail-partial）在 0.x 不可達而退場，
-    // 恢復條件見 1.0.0-W3-656。
+    // 恢復條件見 1.1.0-W3-656。
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
       children: [
