@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
-import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
