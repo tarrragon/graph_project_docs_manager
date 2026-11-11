@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-11"
-version: "1.1"
+version: "1.2"
 
 primary_actor: "框架使用者（專案維護者）"
 secondary_actors: []
@@ -17,7 +17,7 @@ runtime_surface: "yes"
 
 related_specs: [SPEC-001, SPEC-003, SPEC-004, SPEC-009]
 related_usecases: [UC-06]
-ticket_refs: []
+ticket_refs: [1.0.0-W3-553.8, 1.0.0-W3-553.9, 1.0.0-W3-553.10, 1.0.0-W3-553.11, 1.0.0-W3-553.12, 1.0.0-W3-553.13, 1.0.0-W3-553.14, 1.0.0-W3-553.15, 1.0.0-W3-553.16, 1.0.0-W3-553.17]
 ---
 
 # UC-08: 在 App 內修正文件欄位
@@ -208,3 +208,4 @@ flow:
 |------|------|------|
 | 1.0 | 2026-11-10 | 初版（`1.0.0-W3-553.5`，version-bootstrap Step 4，PROP-007、SPEC-009） |
 | 1.1 | 2026-11-11 | `1.0.0-W3-553.3`（用戶裁定 2026-11-11）：〈從破洞報告開始編輯〉與對應驗收標明 1.0 適用集合為空、入口不渲染，1.1 啟用；適用表見 SPEC-001 §5 |
+| 1.2 | 2026-11-11 | `1.0.0-W3-553.7`：回填 `ticket_refs`，填入 edit 實作票 553.8–553.14 與畫面票 553.15–553.17，消除 uc_ticket_refs 缺口（同 UC-07 v1.2） |
