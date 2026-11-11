@@ -845,6 +845,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed';
 
   @override
+  String writeLogNavA11yLabel(String label, int count) {
+    return '$label，$count 筆失敗';
+  }
+
+  @override
   String get navHistory => '變更記錄';
 
   @override

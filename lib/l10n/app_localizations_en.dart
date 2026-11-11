@@ -895,6 +895,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed';
 
   @override
+  String writeLogNavA11yLabel(String label, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count failed',
+      one: '1 failed',
+    );
+    return '$label, $_temp0';
+  }
+
+  @override
   String get navHistory => 'Change history';
 
   @override
