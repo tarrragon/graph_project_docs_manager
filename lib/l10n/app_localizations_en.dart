@@ -266,6 +266,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fieldEmptyValue => 'Not set';
 
   @override
+  String dropdownA11yLabel(String label, String value) {
+    return '$label, current: $value';
+  }
+
+  @override
   String get searchClearAction => 'Clear search';
 
   @override
