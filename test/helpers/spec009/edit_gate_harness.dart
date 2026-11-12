@@ -9,6 +9,7 @@ import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 
 import 'fake_edit_file_port.dart';
 import 'fake_edit_git_port.dart';
+import 'fake_validator_port.dart';
 import 'frontmatter_fixtures.dart';
 import 'manual_edit_timer.dart';
 
@@ -24,7 +25,7 @@ class EditHarness {
   final WorkspaceRelativePath path;
   final FakeEditFilePort files;
   final FakeEditGitPort git;
-  final ManualEditTimer timer = ManualEditTimer();
+  late final ManualEditTimer timer;
 
   /// 工作區開啟時（探測）發出的 git 呼叫。
   late final List<EditGitInvocation> probeCalls;
@@ -38,6 +39,8 @@ class EditHarness {
     Uint8List? bytes,
     FakeEditGitPort? git,
     FieldRewriter? rewriter,
+    FakeValidatorPort? validator,
+    ManualEditTimer? timer,
   }) async {
     final dir = Directory.systemTemp.createTempSync('edit_gate_');
     final root = dir.resolveSymbolicLinksSync();
@@ -55,6 +58,7 @@ class EditHarness {
             head: bytes ?? fixtureBytes(content ?? docPlainText),
           ),
     );
+    harness.timer = timer ?? ManualEditTimer();
     harness.workspace = await EditWorkspace.open(
       root: root,
       git: harness.git,
@@ -62,6 +66,7 @@ class EditHarness {
       timer: harness.timer.call,
       now: () => DateTime(2026, 11, 10),
       rewriter: rewriter,
+      validator: validator,
     );
     harness.probeCalls = List.of(harness.git.calls);
     addTearDown(() => dir.deleteSync(recursive: true));

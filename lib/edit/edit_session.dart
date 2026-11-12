@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io' show pid;
 import 'dart:math';
@@ -5,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
+import 'package:graph_project_docs_manager/edit/edit_validation.dart';
+import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/field_rewrite.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
@@ -29,12 +32,16 @@ class EditGateContext {
     required this.git,
     required this.now,
     required this.rewriter,
+    this.validator,
   });
 
   final EditFilePort files;
   final EditGitRunner git;
   final DateTime Function() now;
   final FieldRewriter rewriter;
+
+  /// 寫入後驗證（SPEC-009 FR-05）；null 表示不驗證。
+  final EditValidatorRunner? validator;
 }
 
 class _Step<T> {
@@ -50,20 +57,81 @@ class _Step<T> {
 /// 重讀、rename）。M 只在開始編輯與 `written` 時設定。
 class EditSession {
   EditSession(this._context, this._path, Uint8List baseline)
-    : _baseline = baseline;
+    : _baseline = baseline {
+    final runner = _context.validator;
+    if (runner != null) {
+      _validation = ValidationCoordinator(
+        runner: runner,
+        relativePath: _path.relative,
+        onStatus: _onValidationStatus,
+      )..startBaseline();
+    }
+  }
 
   final EditGateContext _context;
   final WorkspaceRelativePath _path;
   Uint8List _baseline;
+  ValidationCoordinator? _validation;
+  ValidationStatus? _lastValidation;
+
+  /// 最近一次 rename 前，baseline 量測是否尚未完成（SPEC-009 FR-05 v1.7）。
+  bool _baselinePendingAtRename = false;
+  final StreamController<WriteObservation> _observations =
+      StreamController<WriteObservation>.broadcast(sync: true);
 
   /// 目前的 M。
   Uint8List get baseline => _baseline;
 
+  /// 寫入的三個可觀測時刻（SPEC-009 FR-05）：進行中、受理、驗證結果。
+  Stream<WriteObservation> get observations => _observations.stream;
+
+  /// 最近一次寫入後驗證的狀態；尚無寫入為 null。
+  ValidationStatus? get lastValidationStatus => _lastValidation;
+
+  /// 已排入的寫入後驗證全部完成（不含 baseline 量測）。
+  Future<void> get validationIdle => _validation?.idle ?? Future.value();
+
+  /// 開始編輯（或放棄並重讀）時的 baseline 量測完成或被丟棄。
+  Future<void> get baselineIdle => _validation?.baselineIdle ?? Future.value();
+
+  /// 放棄並重讀（SPEC-009 FR-06 的 M 與 baseline 部分）：以磁碟內容重新開始
+  /// 編輯，M 改為新讀入的內容並重跑驗證 baseline。讀取失敗時回傳失敗分類，
+  /// M 與 baseline 不變。
+  Future<IoFailure?> discardAndReload() async {
+    final disk = await _readDisk(IoOperation.readTarget);
+    final stop = disk.stop;
+    if (stop != null) {
+      return stop is IoFailed ? stop.failure : null;
+    }
+    _baseline = disk.value!;
+    _validation?.startBaseline();
+    return null;
+  }
+
   /// 寫入 [field]；[newValue] 為 null 表示清空（寫成 YAML null）。
+  ///
+  /// 需求：[SPEC-009 FR-05] 受理為 `written` 後才啟動寫入後驗證；驗證非同步、
+  /// 不阻擋本呼叫，結果由 [observations] 送出。
   Future<WriteResult> writeField({
     required String field,
     required String? newValue,
   }) async {
+    final result = await _gatedWrite(field, newValue);
+    _observations.add(WriteAccepted(result));
+    if (result is Written) {
+      _validation?.validateAfterWrite(
+        baselineWasPending: _baselinePendingAtRename,
+      );
+    }
+    return result;
+  }
+
+  void _onValidationStatus(ValidationStatus status) {
+    _lastValidation = status;
+    _observations.add(ValidationObserved(status));
+  }
+
+  Future<WriteResult> _gatedWrite(String field, String? newValue) async {
     final disk = await _readDisk(IoOperation.readTarget);
     if (disk.stop != null) return disk.stop!;
     final current = disk.value!;
@@ -81,6 +149,7 @@ class EditSession {
     }
     final snapshot = await _snapshotUnlessInHead(current);
     if (snapshot.stop != null) return snapshot.stop!;
+    _observations.add(const WriteInProgress());
     return _commit(current, rewritten.bytes, snapshot.value);
   }
 
@@ -164,6 +233,7 @@ class EditSession {
     if (!_sameBytes(disk.value!, current)) {
       return const Blocked(BlockedReason.externallyModified);
     }
+    _baselinePendingAtRename = _validation?.baselinePending ?? false;
     return _attempt(
       IoOperation.rename,
       () => _context.files.rename(temp, _path.absolute),
