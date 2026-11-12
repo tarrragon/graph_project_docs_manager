@@ -57,7 +57,6 @@ List<String> editableFieldKeysFor(String nodeType) => [
 class NodeDetailEditNotifier extends Notifier<NodeDetailEditState?> {
   StreamSubscription<WriteObservation>? _observations;
   String? _lastWrittenField;
-  AppDestination? _lastReturnTo;
 
   @override
   NodeDetailEditState? build() {
@@ -69,10 +68,7 @@ class NodeDetailEditNotifier extends Notifier<NodeDetailEditState?> {
       _onNodeChanged,
     );
     ref.listen<ScanRoundResult?>(lastCompletedRoundProvider, _onRoundChanged);
-    ref.listen<AppDestination?>(returnToProvider, (previous, next) {
-      if (previous != null && next == null) _lastReturnTo = previous;
-    });
-    ref.listen<AppDestination>(selectedDestinationProvider, _onDestination);
+    ref.listen<ReturnEvent?>(returnEventProvider, _onReturn);
     ref.listen<WorkspaceState>(currentWorkspaceStateProvider, (_, _) {
       _exit();
     });
@@ -86,12 +82,10 @@ class NodeDetailEditNotifier extends Notifier<NodeDetailEditState?> {
     if (next is! NodeDetailReady || next.nodeId != editing.nodeId) _exit();
   }
 
-  /// 返回（`consumeReturnTo`）離開節點詳情時退出模式；rail 切換保留模式。
-  /// 兩者最後都先把 returnTo 清空，故以「目的地等於被清空的 returnTo」判返回。
-  void _onDestination(AppDestination? previous, AppDestination next) {
-    if (state == null || previous != AppDestination.nodeDetail) return;
-    if (next != AppDestination.nodeDetail && next == _lastReturnTo) _exit();
-    _lastReturnTo = null;
+  /// 返回（`consumeReturnTo`）自節點詳情觸發時退出模式；rail 切換與其他
+  /// 畫面的返回保留模式（以 [returnEventProvider] 判斷，不看 returnTo 值）。
+  void _onReturn(ReturnEvent? _, ReturnEvent? event) {
+    if (state != null && event?.from == AppDestination.nodeDetail) _exit();
   }
 
   /// 輪次完成即 EVT-CORPUS-001 的送達點：編輯中時重讀比較 M（SPEC-009

@@ -785,24 +785,19 @@ void main() {
     // 已重現為紅燈。返回與 rail 兩者都先清 returnTo 再切目的地，僅憑 provider
     // 值無法區分；修法需動 lib/app/router.dart（導覽模型，禁改檔），見票面
     // NeedsContext。
-    testWidgets(
-      // 跳過原因：NeedsContext，需導覽模型區分返回與 rail（router.dart 禁改）。
-      skip: true,
-      'rail 切到的目的地等於 returnTo：模式保留，不當作返回',
-      (tester) async {
-        final env = _Env.create();
-        final container = await _pump(tester, env);
-        await _enterEditing(tester);
-        navigateTo(container.read, AppDestination.domain, NavIntent.jump);
-        navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
-        // returnTo = domain；rail 直接切到 domain（與返回同終態）。
-        navigateTo(container.read, AppDestination.domain, NavIntent.rail);
-        await _flush(tester);
+    testWidgets('rail 切到的目的地等於 returnTo：模式保留，不當作返回', (tester) async {
+      final env = _Env.create();
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      navigateTo(container.read, AppDestination.domain, NavIntent.jump);
+      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+      // returnTo = domain；rail 直接切到 domain（與返回同終態）。
+      navigateTo(container.read, AppDestination.domain, NavIntent.rail);
+      await _flush(tester);
 
-        expect(container.read(nodeDetailEditProvider), isNotNull);
-        await _drainTimers(tester);
-      },
-    );
+      expect(container.read(nodeDetailEditProvider), isNotNull);
+      await _drainTimers(tester);
+    });
 
     testWidgets('返回：退出編輯模式；rail 切換：模式保留', (tester) async {
       final env = _Env.create();

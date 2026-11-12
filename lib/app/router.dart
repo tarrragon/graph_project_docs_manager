@@ -87,6 +87,32 @@ enum NavIntent {
 /// 4. 觸發返回時 → 切至 `returnTo`，隨即設為 `null`
 final returnToProvider = stateHolderProvider<AppDestination?>((ref) => null);
 
+/// 一次「返回」（[consumeReturnTo]）的可觀測事件。
+///
+/// 返回與 rail 切換都會先清空 [returnToProvider] 再切目的地，單看 provider
+/// 值無法區分；需要「只在返回時」反應的畫面（例如節點詳情退出編輯模式）
+/// 監聽本事件。[sequence] 逐次遞增，使連續兩次相同來源與去向的返回也是
+/// 不同的值。[navigateTo]（含 rail）不產生此事件。
+class ReturnEvent {
+  const ReturnEvent({
+    required this.from,
+    required this.to,
+    required this.sequence,
+  });
+
+  /// 觸發返回時所在的畫面。
+  final AppDestination from;
+
+  /// 返回的去向。
+  final AppDestination to;
+
+  /// 遞增序號。
+  final int sequence;
+}
+
+/// 最近一次返回事件；從未返回為 `null`。
+final returnEventProvider = stateHolderProvider<ReturnEvent?>((ref) => null);
+
 /// [navigateTo] / [consumeReturnTo] 共用的讀取簽章。[WidgetRef.read] 與
 /// [ProviderContainer.read] 皆符合此簽章，讓兩函式在 widget 與純
 /// provider（測試用 [ProviderContainer]）情境下皆可直接呼叫同一份實作，
@@ -113,6 +139,13 @@ void navigateTo(ProviderReader read, AppDestination target, NavIntent intent) {
 void consumeReturnTo(ProviderReader read) {
   final target = read(returnToProvider);
   if (target == null) return;
+  final from = read(selectedDestinationProvider);
+  final sequence = (read(returnEventProvider)?.sequence ?? 0) + 1;
+  read(returnEventProvider.notifier).state = ReturnEvent(
+    from: from,
+    to: target,
+    sequence: sequence,
+  );
   read(returnToProvider.notifier).state = null;
   read(selectedDestinationProvider.notifier).state = target;
 }
