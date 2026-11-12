@@ -304,6 +304,96 @@ void main() {
     });
   });
 
+  group('覆蓋層動畫（Motion.overlay）', () {
+    FadeTransition fade(WidgetTester tester) => tester.widget<FadeTransition>(
+      find
+          .ancestor(
+            of: find.byKey(_menuKey),
+            matching: find.byType(FadeTransition),
+          )
+          .first,
+    );
+
+    testWidgets('展開與收合時長等於 Motion.overlay，時長內完成', (tester) async {
+      await _pumpHost(tester, _picker(selected: '0.1.0'));
+      final expected = Motion.overlay(tester.element(find.byKey(_testKey)));
+      await tester.tap(find.byKey(_testKey));
+      await tester.pump();
+      final ctrl = fade(tester).opacity as AnimationController;
+      expect(ctrl.duration, expected);
+      expect(ctrl.value, lessThan(1));
+      await tester.pump(expected);
+      expect(ctrl.value, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.byKey(_menuKey), findsOneWidget);
+      await tester.pump(expected);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_menuKey), findsNothing);
+    });
+
+    testWidgets('disableAnimations 時時長為零、立即收合', (tester) async {
+      await pumpHarness(
+        tester,
+        disableAnimations: true,
+        child: SizedBox(width: 240, child: _picker(selected: '0.1.0')),
+      );
+      await _open(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.byKey(_menuKey), findsNothing);
+    });
+  });
+
+  group('press-ack（Motion.feedback）', () {
+    /// 走訪 Material 當下全部繪製呼叫並計數（ink 回饋屬其中的繪製）。
+    int paintCalls(WidgetTester tester, Finder target) {
+      var n = 0;
+      final material = tester.renderObject(
+        find.ancestor(of: target, matching: find.byType(Material)).first,
+      );
+      try {
+        expect(
+          material,
+          paints..something((_, _) {
+            n++;
+            return false;
+          }),
+        );
+      } on TestFailure {
+        // 預期必失敗：只借 matcher 走訪全部繪製呼叫以計數。
+      }
+      return n;
+    }
+
+    Future<void> pressAndCheckInk(WidgetTester tester, Finder target) async {
+      final before = paintCalls(tester, target);
+      final gesture = await tester.startGesture(tester.getCenter(target));
+      await tester.pump(Motion.feedback);
+      expect(paintCalls(tester, target), greaterThan(before));
+      await gesture.cancel();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('觸發器按下有 pressed 回饋；時限引用 Motion.feedback', (tester) async {
+      await _pumpHost(tester, _picker(selected: '0.1.0'));
+      await pressAndCheckInk(tester, find.byKey(_testKey));
+      expect(Motion.feedback, isA<Duration>());
+    });
+
+    testWidgets('選項按下有 pressed 回饋，選取時 onChanged 恰一次', (tester) async {
+      final calls = <String?>[];
+      await _pumpHost(tester, _picker(selected: '0.1.0', onChanged: calls.add));
+      await _open(tester);
+      await pressAndCheckInk(tester, find.byKey(_optionKey('1.0.0')));
+      expect(calls, isEmpty);
+      await tester.tap(find.byKey(_optionKey('1.0.0')));
+      await tester.pumpAndSettle();
+      expect(calls, ['1.0.0']);
+    });
+  });
+
   group('token', () {
     testWidgets('觸發器高為 hitTargetMin', (tester) async {
       await _pumpHost(tester, _picker());
