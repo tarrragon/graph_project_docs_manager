@@ -1474,6 +1474,12 @@ abstract class AppLocalizations {
   /// **'本機未找到支援定位至行號的編輯器。支援的編輯器：VS Code、VS Code Insiders、Cursor、Zed'**
   String get preferencesNoEditorsExplanation;
 
+  /// 側欄寫入清單項有失敗計數徽章時的朗讀（SPEC-004 4.7 badge slot）
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}，{count} 筆失敗'**
+  String writeLogNavA11yLabel(String label, int count);
+
   /// SPEC-004 §4.0.6 1.131：側欄 nav-item-history 與 §10 頁首標題
   ///
   /// In zh, this message translates to:
@@ -1854,6 +1860,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'無法重新讀取這個檔案，請再按一次放棄並重讀'**
   String get editBannerReloadFailed;
+
+  /// SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明
+  ///
+  /// In zh, this message translates to:
+  /// **'無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新'**
+  String get nodeDetailBodyUnavailableMessage;
 
   /// SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）
   ///

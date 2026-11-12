@@ -3,7 +3,7 @@ library;
 
 import 'dart:ui' show Tristate;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -376,6 +376,67 @@ void main() {
         ),
       );
       expectNoOverflow(tester);
+    });
+  });
+
+  group('action 變體 badge slot（§4.7）', () {
+    const badgeKey = ValueKey('badge-writeLog-failure-count');
+
+    Widget item({int? count, String label = 'label'}) => NavItem.action(
+      icon: icon(),
+      label: label,
+      onTap: () {},
+      testKey: testKey,
+      badge: count == null
+          ? null
+          : Badge.count(key: badgeKey, count: count, inline: true),
+    );
+
+    testWidgets('badge 為 null：無徽章節點', (tester) async {
+      await pumpHarness(tester, child: item());
+      expect(find.byType(Badge), findsNothing);
+    });
+
+    testWidgets('非 null：徽章在 label 之後，間距 Space.sm', (tester) async {
+      await pumpHarness(tester, child: item(count: 3));
+      final labelRect = tester.getRect(find.byType(AppText));
+      final badgeRect = tester.getRect(find.byType(Badge));
+      expect(badgeRect.left - labelRect.right, closeTo(Space.sm, 0.5));
+    });
+
+    testWidgetsAtEachSize('longToken + 三位數徽章：label 截斷、徽章完整、不溢位、列高不變', (
+      tester,
+      size,
+    ) async {
+      await pumpHarness(tester, size: size, child: item());
+      final baseHeight = tester.getSize(find.byKey(testKey)).height;
+      await pumpHarness(
+        tester,
+        size: size,
+        child: SizedBox(
+          width: 200,
+          child: item(count: 100, label: TestCopy.longToken),
+        ),
+      );
+      expectNoOverflow(tester);
+      expect(tester.getSize(find.byKey(testKey)).height, baseHeight);
+      expect(find.text('100'), findsOneWidget);
+    });
+
+    testWidgets('朗讀為 writeLogNavA11yLabel，徽章不另成節點', (tester) async {
+      await pumpHarness(tester, child: item(count: 3));
+      final data = tester.getSemantics(find.byKey(testKey));
+      expect(data.label, 'label，3 筆失敗');
+      expect(find.semantics.byLabel('3'), findsNothing);
+    });
+
+    testWidgets('en 語系朗讀單複數', (tester) async {
+      await pumpHarness(
+        tester,
+        locale: const Locale('en'),
+        child: item(count: 1),
+      );
+      expect(tester.getSemantics(find.byKey(testKey)).label, 'label, 1 failed');
     });
   });
 

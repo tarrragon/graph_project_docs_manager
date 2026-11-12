@@ -254,6 +254,8 @@ void main() {
     });
   });
 
+  // flutter_test 的 group 無 timeout 參數，逾時改掛在組內兩案。
+  const corpusTimeout = Timeout(Duration(minutes: 5));
   group('語料零筆（SPEC-007 FR-09 驗收）', () {
     Future<GraphBuiltEvent> buildRoot(String root) async {
       final schemaJson = jsonDecode(
@@ -279,14 +281,19 @@ void main() {
       expect(e.nodeCount, greaterThan(100));
       expect(_isolated(e), isEmpty);
       expect(_missing(e), isEmpty);
-    });
+    }, timeout: corpusTimeout);
 
     final balance = '${Platform.environment['HOME']}/project/flutter_balance';
-    test('flutter_balance 語料：孤島 0 筆、缺必要邊 0 筆', () async {
-      final e = await buildRoot(balance);
-      expect(e.nodeCount, greaterThan(0));
-      expect(_isolated(e), isEmpty);
-      expect(_missing(e), isEmpty);
-    }, skip: Directory(balance).existsSync() ? false : '本機無 flutter_balance');
+    test(
+      'flutter_balance 語料：孤島 0 筆、缺必要邊 0 筆',
+      () async {
+        final e = await buildRoot(balance);
+        expect(e.nodeCount, greaterThan(0));
+        expect(_isolated(e), isEmpty);
+        expect(_missing(e), isEmpty);
+      },
+      timeout: corpusTimeout,
+      skip: Directory(balance).existsSync() ? false : '本機無 flutter_balance',
+    );
   });
 }

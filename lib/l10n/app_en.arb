@@ -229,6 +229,18 @@
   "preferencesTitle": "Preferences",
   "preferencesEditorSystemOption": "System default (no line positioning)",
   "preferencesNoEditorsExplanation": "No editor that can jump to a line was found on this machine. Supported editors: VS Code, VS Code Insiders, Cursor, Zed",
+  "writeLogNavA11yLabel": "{label}, {count, plural, =1{1 failed} other{{count} failed}}",
+  "@writeLogNavA11yLabel": {
+    "description": "Spoken label of the sidebar write-log item when the failure-count badge is shown (SPEC-004 4.7 badge slot)",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "navHistory": "Change history",
   "historyLoading": "Reading git history",
   "historyLoadingProcessedCount": "{count, plural, =1{1 commit processed} other{{count} commits processed}}",
@@ -291,6 +303,7 @@
   "editBannerExternallyModifiedWarning": "This file was changed outside the app. Unsent values are kept; discard and reload to load the current file",
   "editBannerExternallyModifiedBlocked": "This file was changed outside the app, so this write was not performed. Discard and reload to continue editing",
   "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again",
+  "nodeDetailBodyUnavailableMessage": "Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan",
   "fieldValueOutOfDomain": "Current value \"{value}\" is not an allowed value",
   "radioYes": "Yes",
   "radioNo": "No"

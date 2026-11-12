@@ -4,6 +4,8 @@ import 'package:graph_project_docs_manager/history/git/git_history_port.dart';
 import 'package:graph_project_docs_manager/history/git/git_history_types.dart';
 import 'package:graph_project_docs_manager/history/git/git_process_runner.dart';
 import 'package:graph_project_docs_manager/history/git/history_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import '../../../helpers/history/fake_process_runner.dart';
 
@@ -11,16 +13,17 @@ const String _root = '/work/proj';
 const int _mib = 1024 * 1024;
 
 class _Recorder {
-  final List<(HistoryLogEvent, Map<String, Object?>, int?)> entries = [];
+  final List<(HistoryLogEvent, Map<String, Object?>, LogLevel)> entries = [];
 
   void sink(
-    String message, {
-    required HistoryLogEvent event,
-    required Map<String, Object?> payload,
-    int? level,
-  }) => entries.add((event, payload, level));
+    HistoryLogEvent event,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
+    Object? error,
+  }) => entries.add((event, fields.toJson(), level));
 
-  List<(HistoryLogEvent, Map<String, Object?>, int?)> of(
+  List<(HistoryLogEvent, Map<String, Object?>, LogLevel)> of(
     HistoryLogEvent event,
   ) => [
     for (final e in entries)
@@ -48,7 +51,8 @@ void main() {
       ).preflight(_root);
       expect(log.of(HistoryLogEvent.preflightEntered), hasLength(1));
       final result = log.of(HistoryLogEvent.preflightResult).single;
-      expect(result.$2[HistoryLogKeys.gitVersion], '2.43.0');
+      // gitVersion 為自由文字，不在 FR-03 白名單內，不記錄。
+      expect(result.$2.containsKey('gitVersion'), isFalse);
       expect(result.$2[HistoryLogKeys.category], 'ready');
     });
 
@@ -61,7 +65,8 @@ void main() {
       );
       await _scan(runner, log);
       final start = log.of(HistoryLogEvent.scanStarted).single.$2;
-      expect(start[HistoryLogKeys.root], _root);
+      // 工作區根為絕對路徑，不在白名單內，不記錄。
+      expect(start.containsKey('root'), isFalse);
       expect(start[HistoryLogKeys.head], 'a' * 40);
       final end = log.of(HistoryLogEvent.scanFinished).single.$2;
       expect(end[HistoryLogKeys.commitCount], 2);
@@ -90,7 +95,8 @@ void main() {
       final entry = log.of(HistoryLogEvent.scanParseReported).single.$2;
       expect(entry[HistoryLogKeys.parseDurationMs], 5);
       expect(entry[HistoryLogKeys.eventCount], 7);
-      expect(entry[HistoryLogKeys.counters], {'undecodableLines': 1});
+      // 計數器攤平為整數欄位。
+      expect(entry['undecodableLines'], 1);
     });
 
     test('L-3 取消日誌', () async {
@@ -119,7 +125,8 @@ void main() {
       );
       final scanFail = log.of(HistoryLogEvent.degraded).single.$2;
       expect(scanFail[HistoryLogKeys.exitCode], 1);
-      expect(scanFail[HistoryLogKeys.stderrSummary], 'boom');
+      // stderr 為自由文字，不在 FR-03 白名單內，不記錄。
+      expect(scanFail.containsKey('stderrSummary'), isFalse);
 
       final notTreeLog = _Recorder();
       await GitHistoryPort(
@@ -147,7 +154,7 @@ void main() {
         log,
       );
       final trip = log.of(HistoryLogEvent.tripwire).single;
-      expect(trip.$3, HistoryLogLevel.warning);
+      expect(trip.$3, LogLevel.warning);
       expect(trip.$2[HistoryLogKeys.outputBytes], isA<int>());
       expect(trip.$2.containsKey(HistoryLogKeys.commitCount), isTrue);
     });

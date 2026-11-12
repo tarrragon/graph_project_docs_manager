@@ -231,7 +231,7 @@ void main() {
     );
   });
 
-  // 部分損壞測試群組在 0.x 不可達而退場，恢復條件見 1.0.0-W3-656。
+  // 部分損壞測試群組在 0.x 不可達而退場，恢復條件見 1.1.0-W3-656。
 
   group('原始檔已消失（state-nodeDetail-missing）', () {
     late Directory tempDir;

@@ -112,17 +112,19 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
         if (!gate.isCompleted) gate.complete();
       });
 
+      // 首輪掃描正常完成（Domain 視圖已建立圖，否則落「專案未就緒」，
+      // 1.0.0-W3-661）；只卡住按重新掃描後的第二輪。
+      var calls = 0;
       await open(
         tester,
         workspace,
-        settle: false,
         overrides: [
           scanCorpusFnProvider.overrideWithValue(({
             required fileSystem,
             required table,
             required builtinTable,
           }) async {
-            await gate.future;
+            if (++calls > 1) await gate.future;
             return scanCorpus(
               fileSystem: fileSystem,
               table: table,
@@ -131,8 +133,8 @@ void registerGapReportDeclarationLineTests(OpenWorkspace open) {
           }),
         ],
       );
-      await _pumpFrames(tester);
-      await tester.tap(find.byKey(const Key('nav-item-gaps')));
+      await _openGapReport(tester);
+      await tester.tap(find.byKey(const Key('action-gaps-rescan')));
       await _pumpFrames(tester);
 
       expect(find.byKey(const Key('state-gaps-scanning')), findsOneWidget);
