@@ -25,8 +25,7 @@ void main() {
     final source = File('$dir/negative.dart.txt').readAsLinesSync();
     File('${tmp.path}/negative.dart').writeAsStringSync(source.join('\n'));
     final out = await _analyze('${tmp.path}/negative.dart');
-    final callLine =
-        source.indexWhere((l) => l.contains("writeDocument('")) + 1;
+    final callLine = source.indexWhere((l) => l.contains("beginEditing('")) + 1;
     expect(out, contains('error'));
     expect(out, contains('negative.dart:$callLine:'));
   }, timeout: slow);
