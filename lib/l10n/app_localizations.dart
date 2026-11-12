@@ -2010,6 +2010,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'否'**
   String get radioNo;
+
+  /// SPEC-004 4.50 doneButton（action-nodeDetail-edit-done）
+  ///
+  /// In zh, this message translates to:
+  /// **'完成'**
+  String get editDoneAction;
 }
 
 class _AppLocalizationsDelegate

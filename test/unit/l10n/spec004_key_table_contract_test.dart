@@ -17,7 +17,6 @@ import '../../helpers/spec_first_marker.dart';
 /// 1.140～1.146 起 §4.0.6 新增規格先行 key（1.0 編輯功能票實作時補 ARB 並移出）。
 const Set<String> pendingAdditionExemptions = <String>{
   'dropdownA11yLabel',
-  'editDoneAction',
   'editFieldsAction',
   'nodeDetailEditReadFailedMessage',
   'referencePickerNoMatch',

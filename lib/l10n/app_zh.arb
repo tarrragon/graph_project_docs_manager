@@ -2050,5 +2050,9 @@
   "radioNo": "否",
   "@radioNo": {
     "description": "SPEC-004 4.47 布林欄位選項"
+  },
+  "editDoneAction": "完成",
+  "@editDoneAction": {
+    "description": "SPEC-004 4.50 doneButton（action-nodeDetail-edit-done）"
   }
 }

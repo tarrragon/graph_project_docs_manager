@@ -327,5 +327,6 @@
   "validationUnavailableUnparsableOutput": "The validator's output could not be parsed",
   "validationUnavailableTimedOut": "Validation took longer than 30 seconds and was stopped",
   "radioYes": "Yes",
-  "radioNo": "No"
+  "radioNo": "No",
+  "editDoneAction": "Done"
 }
