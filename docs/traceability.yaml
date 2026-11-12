@@ -242,6 +242,8 @@ mappings:
       - externally-modified
       - write-not-completed
       - read-only-workspace
+      - revise-relation  # 1.1（1.1.0-W1-111）；測試於 Step 5 補
+      - partially-written  # 1.1（1.1.0-W1-111）；測試於 Step 5 補
     tests:  # 規格 docs/test-design/SPEC-009-test-design.md（1.0.0-W3-553.4），檔案待 edit 實作票建立
       - test/unit/edit/write_gate_test.dart
       - test/unit/edit/snapshot_test.dart
