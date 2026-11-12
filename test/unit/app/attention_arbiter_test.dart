@@ -1,5 +1,7 @@
 import 'package:graph_project_docs_manager/app/attention_arbiter.dart';
 import 'package:graph_project_docs_manager/components/attention_level.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/tokens/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,19 +13,27 @@ class _FakeClock {
 
 typedef _Record = ({
   AttentionArbiterLogEvent event,
-  Map<String, Object?> fields,
-  int? level,
+  Map<String, Object> fields,
+  int level,
 });
 
 class _Recorder {
   final List<_Record> records = [];
 
+  // 記錄序列化後的負載（enum 為值名稱、時間為毫秒整數）；level 為
+  // developer.log 數值（info=800、warning=900）。
   void sink(
     AttentionArbiterLogEvent event,
-    Map<String, Object?> fields, {
-    int? level,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
+    Object? error,
   }) {
-    records.add((event: event, fields: Map.of(fields), level: level));
+    records.add((
+      event: event,
+      fields: fields.toJson(),
+      level: level.devLogLevel,
+    ));
   }
 
   List<_Record> of(AttentionArbiterLogEvent event) =>
@@ -36,6 +46,13 @@ class _Recorder {
   }
 }
 
+/// 攤平後的 occupancy 欄位還原為三項分列（缺席的 oldestAgeMs 為 null）。
+Map<String, Object?> _occupancyOf(_Record record) => {
+  'inFlight': record.fields[AttentionLogKeys.occupancyInFlight],
+  'queueDepth': record.fields[AttentionLogKeys.occupancyQueueDepth],
+  'oldestAgeMs': record.fields[AttentionLogKeys.occupancyOldestAgeMs],
+};
+
 void _expectSevenFields(_Record record) {
   final fields = record.fields;
   expect(fields.containsKey('requestId'), isTrue);
@@ -46,12 +63,15 @@ void _expectSevenFields(_Record record) {
     fields.containsKey('decision') || fields.containsKey('reason'),
     isTrue,
   );
-  expect(fields.containsKey('occupancy'), isTrue);
-  expect(fields.containsKey('deadlineRemaining'), isTrue);
-  final occupancy = fields['occupancy'] as Map;
-  expect(occupancy.keys.toSet(), {'inFlight', 'queueDepth', 'oldestAge'});
+  expect(fields.containsKey(AttentionLogKeys.occupancyInFlight), isTrue);
+  expect(fields.containsKey(AttentionLogKeys.occupancyQueueDepth), isTrue);
+  expect(
+    fields.containsKey(AttentionLogKeys.deadlineRemainingMs) ||
+        fields[AttentionLogKeys.deadlineAssigned] == true,
+    isTrue,
+  );
   expect(fields['channel'], 'userFocus');
-  expect(occupancy['queueDepth'], 0);
+  expect(fields[AttentionLogKeys.occupancyQueueDepth], 0);
 }
 
 void main() {
@@ -145,16 +165,19 @@ void main() {
 
       final record = recorder.singleOf(AttentionArbiterLogEvent.accepted);
       expect(record.fields['requestId'], 'r1');
-      expect(record.fields['arrival'], AttentionArrival.waiting);
-      expect(record.fields['level'], AttentionLevel.discardable);
+      expect(record.fields['arrival'], AttentionArrival.waiting.name);
+      expect(record.fields['level'], AttentionLevel.discardable.name);
       expect(record.fields['channel'], 'userFocus');
       expect(record.fields['decision'], 'accepted');
-      expect(record.fields['occupancy'], {
+      expect(_occupancyOf(record), {
         'inFlight': 0,
         'queueDepth': 0,
-        'oldestAge': null,
+        'oldestAgeMs': null,
       });
-      expect(record.fields['deadlineRemaining'], Motion.snackBar);
+      expect(
+        record.fields['deadlineRemainingMs'],
+        Motion.snackBar.inMilliseconds,
+      );
       expect(
         record.fields['deadlineAssigned'] == null ||
             record.fields['deadlineAssigned'] == false,
@@ -175,7 +198,7 @@ void main() {
       expect((decision as AttentionAccepted).preempted, isNull);
       expect(arbiter.holder!.handle.requestId, 'r1');
       final record = recorder.singleOf(AttentionArbiterLogEvent.accepted);
-      expect(record.fields['arrival'], AttentionArrival.spontaneous);
+      expect(record.fields['arrival'], AttentionArrival.spontaneous.name);
       expect(record.level != 900, isTrue);
     });
 
@@ -218,7 +241,7 @@ void main() {
       );
       arbiter.release(handle, AttentionReleaseReason.responded);
       final released = recorder.singleOf(AttentionArbiterLogEvent.released);
-      expect(released.level == null || released.level == 800, isTrue);
+      expect(released.level, LogLevel.info.devLogLevel);
     });
 
     test('T-4 序列重借合法', () {
@@ -318,7 +341,10 @@ void main() {
         final presentedRecord = recorder.singleOf(
           AttentionArbiterLogEvent.presented,
         );
-        expect(presentedRecord.fields['naturalLifespanRaw'], value);
+        expect(
+          presentedRecord.fields['naturalLifespanRawMs'],
+          value.inMilliseconds,
+        );
         expect(recorder.of(AttentionArbiterLogEvent.expired), isEmpty);
         expect(decision, isA<AttentionAccepted>());
         expect((decision as AttentionAccepted).preempted!.requestId, 'r1');
@@ -329,14 +355,16 @@ void main() {
     test('T-8 deadline 的兩種形態', () {
       arbiter.request(req('r1', deadline: null));
       final record1 = recorder.singleOf(AttentionArbiterLogEvent.accepted);
-      expect(record1.fields.containsKey('deadlineRemaining'), isTrue);
-      expect(record1.fields['deadlineRemaining'], isNull);
+      expect(record1.fields.containsKey('deadlineRemainingMs'), isFalse);
       expect(record1.fields['deadlineAssigned'], isTrue);
 
       setUp2();
       arbiter.request(req('r1', deadline: Motion.snackBarWithAction));
       final record2 = recorder.singleOf(AttentionArbiterLogEvent.accepted);
-      expect(record2.fields['deadlineRemaining'], Motion.snackBarWithAction);
+      expect(
+        record2.fields['deadlineRemainingMs'],
+        Motion.snackBarWithAction.inMilliseconds,
+      );
       expect(
         record2.fields['deadlineAssigned'] == null ||
             record2.fields['deadlineAssigned'] == false,
@@ -448,7 +476,10 @@ void main() {
         AttentionArbiterLogEvent.preempted,
       );
       expect(preemptedRecord.fields['requestId'], 'low');
-      expect(preemptedRecord.fields['deadlineRemaining'], Motion.snackBar);
+      expect(
+        preemptedRecord.fields['deadlineRemainingMs'],
+        Motion.snackBar.inMilliseconds,
+      );
       expect(
         preemptedRecord.fields['deadlineAssigned'] == null ||
             preemptedRecord.fields['deadlineAssigned'] == false,
@@ -530,10 +561,10 @@ void main() {
         final skipped = recorder.singleOf(AttentionArbiterLogEvent.skipped);
         expect(skipped.fields['requestId'], 'bg');
         expect(skipped.level, 900);
-        expect(skipped.fields['occupancy'], {
+        expect(_occupancyOf(skipped), {
           'inFlight': 1,
           'queueDepth': 0,
-          'oldestAge': Duration.zero,
+          'oldestAgeMs': 0,
         });
         expect(consumedLog, isEmpty);
       }
@@ -663,10 +694,7 @@ void main() {
         );
         expect(rejectedRecord.fields['requestId'], 'user');
         expect(rejectedRecord.fields['decision'], 'rejected');
-        expect(
-          rejectedRecord.level == null || rejectedRecord.level == 800,
-          isTrue,
-        );
+        expect(rejectedRecord.level, LogLevel.info.devLogLevel);
       }
     });
 
@@ -740,8 +768,8 @@ void main() {
       );
       final clamp1 = recorder.singleOf(AttentionArbiterLogEvent.levelClamped);
       expect(clamp1.level, 900);
-      expect(clamp1.fields['requestedLevel'], AttentionLevel.undroppable);
-      expect(clamp1.fields['parentLevel'], AttentionLevel.discardable);
+      expect(clamp1.fields['requestedLevel'], AttentionLevel.undroppable.name);
+      expect(clamp1.fields['parentLevel'], AttentionLevel.discardable.name);
 
       // 列 2：D/D -> Accepted，D，無 clamp
       setUp2();
@@ -905,11 +933,12 @@ void main() {
       expect(heldAndRequestedRecord.fields.containsKey('decision'), isFalse);
 
       // 兩者欄位集一致（皆為 requestId/arrival/level/channel/reason/outcome/
-      // occupancy/deadlineRemaining 或 deadlineAssigned），不再互斥。
-      expect(
-        emptyIdRecord.fields.keys.toSet(),
-        heldAndRequestedRecord.fields.keys.toSet(),
-      );
+      // occupancy 三欄/deadlineRemainingMs 或 deadlineAssigned），不再互斥。
+      // 空通道無持有者年齡，occupancyOldestAgeMs 欄位缺席，故排除後比較。
+      Set<String> commonKeys(_Record r) => r.fields.keys
+          .where((k) => k != AttentionLogKeys.occupancyOldestAgeMs)
+          .toSet();
+      expect(commonKeys(emptyIdRecord), commonKeys(heldAndRequestedRecord));
     });
 
     test('3a.8 空 id 驗證先於逾期懶檢查（順序覆蓋）', () {
@@ -1043,8 +1072,10 @@ void main() {
       expect((decision as AttentionAccepted).preempted!.requestId, 'r1');
       expect(decision.sameLevelReplace, isTrue);
       final record = recorder.records.last;
-      final occupancy = record.fields['occupancy'] as Map;
-      expect(occupancy['oldestAge'], Motion.snackBarWithAction);
+      expect(
+        _occupancyOf(record)['oldestAgeMs'],
+        Motion.snackBarWithAction.inMilliseconds,
+      );
     });
 
     test('T-21 holder 讀取不觸發懶檢查', () {
@@ -1273,7 +1304,7 @@ void main() {
       final rejectedLevel = recorder
           .singleOf(AttentionArbiterLogEvent.rejected)
           .level;
-      expect(rejectedLevel == null || rejectedLevel == 800, isTrue);
+      expect(rejectedLevel, LogLevel.info.devLogLevel);
 
       // 列 4：expired，逾期持有者為 spontaneous -> 900
       setUp2();
@@ -1304,7 +1335,7 @@ void main() {
       final expiredLevel = recorder
           .singleOf(AttentionArbiterLogEvent.expired)
           .level;
-      expect(expiredLevel == null || expiredLevel == 800, isTrue);
+      expect(expiredLevel, LogLevel.info.devLogLevel);
 
       // 列 6：invalidRequest（協定違規），持有者為 waiting -> 恆 900
       setUp2();
@@ -1364,10 +1395,8 @@ void main() {
       // 列 1：空通道接受
       arbiter.request(req('r1'));
       expect(
-        recorder
-            .singleOf(AttentionArbiterLogEvent.accepted)
-            .fields['occupancy'],
-        {'inFlight': 0, 'queueDepth': 0, 'oldestAge': null},
+        _occupancyOf(recorder.singleOf(AttentionArbiterLogEvent.accepted)),
+        {'inFlight': 0, 'queueDepth': 0, 'oldestAgeMs': null},
       );
 
       // 列 2：持有者存在、同一 tick 被跳過
@@ -1387,8 +1416,8 @@ void main() {
         ),
       );
       expect(
-        recorder.singleOf(AttentionArbiterLogEvent.skipped).fields['occupancy'],
-        {'inFlight': 1, 'queueDepth': 0, 'oldestAge': Duration.zero},
+        _occupancyOf(recorder.singleOf(AttentionArbiterLogEvent.skipped)),
+        {'inFlight': 1, 'queueDepth': 0, 'oldestAgeMs': 0},
       );
 
       // 列 3：推進 Δ 後被拒絕（無存活期）
@@ -1409,13 +1438,11 @@ void main() {
         ),
       );
       expect(
-        recorder
-            .singleOf(AttentionArbiterLogEvent.rejected)
-            .fields['occupancy'],
+        _occupancyOf(recorder.singleOf(AttentionArbiterLogEvent.rejected)),
         {
           'inFlight': 1,
           'queueDepth': 0,
-          'oldestAge': Motion.snackBarWithAction,
+          'oldestAgeMs': Motion.snackBarWithAction.inMilliseconds,
         },
       );
     });

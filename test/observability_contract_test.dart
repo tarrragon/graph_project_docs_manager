@@ -34,6 +34,17 @@ typedef WorkspaceLogSink = void Function(String message);
 ''';
       expect(countLogSinkTypedefs(sample), 2);
     });
+
+    test('lib/ 實掃：LogSink typedef 恰一處，且位於 log_sink.dart', () {
+      final hits = <String>[
+        for (final entity in Directory('lib').listSync(recursive: true))
+          if (entity is File &&
+              entity.path.endsWith('.dart') &&
+              countLogSinkTypedefs(entity.readAsStringSync()) > 0)
+            entity.path,
+      ];
+      expect(hits, ['lib/observability/log_sink.dart']);
+    });
   });
 
   group('O4-3 既有事件 enum 值名稱凍結（test-design §7）', () {
