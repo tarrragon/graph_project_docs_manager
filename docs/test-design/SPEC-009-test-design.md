@@ -4,10 +4,10 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.4"
+spec_version: "1.5"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
-updated: "2026-11-11"
+updated: "2026-11-12"
 ---
 
 # SPEC-009 Phase 2 紅燈測試規格
@@ -116,7 +116,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | `doc_anchor` | `title: &t "x"`，另一欄 `subtitle: *t` | R-5 |
 | `doc_block_scalar` | `title: |` 與 `title: >` 兩個變體 | R-5 |
 | `doc_uc_mention` | 內文含 `unregisteredUc` 兩次 | V-4、V-5 |
-| `doc_nonutf8` | 內文含一個不是合法 UTF-8 的位元組 | G-6 |
+| `doc_nonutf8` | 內文含一個不是合法 UTF-8 的位元組 | G-6、G-24 |
 
 ## 2. 5a 外圈
 
@@ -141,7 +141,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 | # | fixture | When | Then | 對應驗收 |
 |---|---|---|---|---|
-| IT-E2-1 | R0 | 寫入前後各取一次 `git status --porcelain`、`git stash list`、`git reflog`、`git log --format=%H` | 四者逐字相同 | FR-02 #1；FR-08 #1 |
+| IT-E2-1 | R0 | 寫入前後各取一次 `git status --porcelain`、`git stash list`、`git reflog`、`git log --format=%H` | `git stash list`、`git reflog`、`git log --format=%H` 三者逐字相同；`git status --porcelain` 寫入後只有目標檔一列，且該列只有工作區欄標示已修改、index 欄為空（無 staged 項目）。R0 寫入前乾淨，寫入後必然出現目標檔的修改列，所以 status 不比逐字（v0.4） | FR-02 #1；FR-08 #1 |
 | IT-E2-2 | R8 | 同 IT-E2-1；另取 `git diff --cached --name-only` | 五者逐字相同（`docs/other.md` 仍在 index，stash 仍有一筆）。正向對照：寫入後 `git status --porcelain` 的工作區欄對目標檔仍為已修改，證明寫入確實發生 | FR-02 #1；FR-08 #1 |
 | IT-E2-3 | R4、R4b 各跑一次 | 修正 `title`，取回快照 | `git cat-file -p <sha>` 逐位元組等於 W（含 CRLF）。**正向對照**：同一份 W 以 `git hash-object <路徑>`（帶路徑、會套用過濾的形式）計算的 SHA 與 `<sha>` 不同。這證明 fixture 確實觸發了換行轉換，綠燈不是因為轉換沒發生 | FR-02 #3 |
 | IT-E2-4 | R10 | 修正 `title` | 寫入後目標檔權限仍為 `0640` | FR-03 #6 |
@@ -216,6 +216,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | G-21（守衛） | 第一次修正得 `written`；Edit 實作若未更新 M（以「M 停在開始編輯時」的錯誤實作作正向對照輸入） | 第二次修正 | 測試對該錯誤實作判紅：第二次得 `blocked(externallyModified)` 時本案失敗，證明 G-19 能鑑別 M 是否更新 |
 | G-22 | W = M；`show` 設為永不完成 | 修正，虛擬時間推進 5 秒 | `show` 子行程被終止；視同 H 無法判定、走快照分支（接著呼叫 `hash-object`）；`written` 帶 SHA（SPEC-009 FR-01〈`git` 子行程逾時 5 秒〉、FR-02 驗收 #6） |
 | G-23 | W = M；`FakeEditFilePort` 的步驟 1 讀取於虛擬時間 60 秒後才完成 | 修正 | 不產生任何逾時結果，讀取完成後照常判定（本地檔案 IO 不設逾時，SPEC-009 FR-01） |
+| G-24 | W = M = `doc_nonutf8`；使用真實局部改寫與隔離檢查（不注入替身改寫器） | 修正 `title` | 第 2 步回傳 `blocked(rewriteNotIsolated)`；`FakeEditFilePort` 操作序列中沒有暫存檔寫入與 rename；目標檔不變（SPEC-009 v1.5 FR-03〈非 UTF-8 內容〉、驗收 #8）。與 G-6 的分工：G-6 以替身改寫器驗第 1 步逐位元組比較，本案驗真實流程在第 2 步擋下 |
 
 ### S 快照（FR-02）
 
@@ -425,6 +426,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-03 | #5 解析結果多變一欄 → `rewriteNotIsolated` | R-6、R-8 | domain unit |
 | FR-03 | #6 權限位元不變 | IT-E2-4；R-12 | integration；domain unit |
 | FR-03 | #7 清空 target_version 後鍵仍在、值為 `null`、其餘位元組不變（v1.4） | R-13、R-14 | domain unit |
+| FR-03 | #8 非 UTF-8 內容 → `rewriteNotIsolated`、目標檔不變（v1.5） | G-24 | domain unit |
 | FR-04 | #1 穿越、`.`、空段、NUL、絕對、父目錄 symlink | P-3～P-6；IT-E4-2 | domain unit；integration |
 | FR-04 | #2 檔名 symlink | P-7；IT-E4-1 | domain unit；integration |
 | FR-04 | #3 `/work` 與 `/workspace` | P-6 | domain unit |
@@ -518,3 +520,4 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 0.1 | 2026-11-10 | 初稿（1.0.0-W3-553.4），對應 SPEC-009 v1.1：IT-E1-6 改為斷言 `LC_ALL=C`，新增 G-18 |
 | 0.2 | 2026-11-11 | `1.0.0-W3-684`，對應 SPEC-009 v1.3：G 組新增 G-19～G-21（FR-01〈M 的更新〉，驗收 #7）；X 組觸發來源由監看事件改為 EVT-CORPUS-001 並重讀比較，改寫 X-1、X-2、X-4、X-5，新增 X-8（重讀得 `notFound`）、X-9（判定不讀負載）、X-10（預警期間再收事件）；§1.2 Mock 策略與 §1.4 新增 `FakeCorpusParsedSource`，不再沿用 `fake_watch_source.dart`；§4.2 補 FR-01 #7、FR-06 改為三條；§4.3 補兩個守衛；§5 預警列前置更新。同票併入 v1.2 逾時規定（主控裁定）：G-22、G-23，S-6、S-7，V-15～V-18，L-11、L-12，L-5 改為三者恰一；§1.4 FakeEditGitPort、FakeValidatorPort 補永不完成與終止記錄，新增逾時計時器列；§4.2 補 FR-01 逾時約束、FR-02 #5 #6、FR-05 #7、FR-07 `timedOut`；§4.3 補快照逾時、驗證逾時兩個守衛 |
 | 0.3 | 2026-11-11 | `1.0.0-W3-553.7`，對應 SPEC-009 v1.4（`1.0.0-W3-686`）：<br>- §1.6 `doc_plain` 加 `target_version`。<br>- R 組新增 R-13（清空寫 `null`，FR-03 驗收 #7）、R-14（守衛：清空不得移除鍵）。<br>- F 組新增 F-5（可清空欄位空白寫 `null`、非空不修剪）、F-6（守衛：必填欄位空白擋下）、F-7（守衛：必填集合讀 `completeness_fields`，fake 少一鍵即改判）。<br>- §4.2 補 FR-03 #7 與 FR-09〈可否清空〉約束；§4.3 補三個守衛；§5 兩列同步。 |
+| 0.4 | 2026-11-12 | `1.0.0-W3-553.10`，對應 SPEC-009 v1.5（執行期澄清，用戶裁定 2026-11-12）：<br>- G 組新增 G-24：真實流程下非 UTF-8 檔案在第 2 步回傳 `rewriteNotIsolated`、目標檔不變（FR-03 驗收 #8）。G-6 維持以替身改寫器驗第 1 步逐位元組比較。<br>- IT-E2-1 修訂：stash、reflog、log 逐字相同；status 只斷言目標檔一列、只有工作區欄已修改、無 staged 項目。原「四者逐字相同」在 R0（寫入前乾淨）下不可能成立。<br>- §1.6 `doc_nonutf8` 用途補 G-24；§4.2 補 FR-03 #8。 |

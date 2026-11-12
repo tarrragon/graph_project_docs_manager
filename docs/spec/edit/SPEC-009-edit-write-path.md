@@ -4,8 +4,8 @@ title: "編輯能力：寫入路徑、寫入前閘門與寫入結果"
 status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
-updated: "2026-11-11"
-version: "1.4"
+updated: "2026-11-12"
+version: "1.5"
 owner: L54-main
 has_functional_requirements: true
 
@@ -148,6 +148,9 @@ depends_on_domains: [workspace, schema, corpus, observability]
 **約束條件**：
 
 - **欄位定位**：目標欄位與 `updated` 的值所在位元組範圍，由本 domain 以 `yaml` 套件的 `loadYamlNode` 取得節點 span。值為 anchor、alias 或 block scalar（`|`、`>`）時不嘗試改寫，直接回傳 `blocked(rewriteNotIsolated)`。
+- **非 UTF-8 內容**（執行期澄清，用戶裁定 2026-11-12，`1.0.0-W3-553.10`）：檔案內容不是合法 UTF-8 時，一律回傳 `blocked(rewriteNotIsolated)`，不寫入。
+  - 理由：解析層使用的 Corpus 公開解析函式以嚴格 UTF-8 解碼整個檔案。內容含非法位元組時，改寫前就沒有可用的解析結果，隔離無從證明。
+  - 這個判定發生在閘門第 2 步（FR-01 表），目標檔不變。第 1 步的 W 與 M 比較仍逐位元組進行，不經字元解碼。
 - **改寫隔離檢查**有兩道，都通過才寫入：
   1. 解析層：以 Corpus 的公開解析函式（位元組 → 解析結果，見 `docs/spec/corpus/domain-map.md` §3）分別解析改寫前與改寫後的位元組。改寫後須為可用結果，且與改寫前相比只有允許變更集合內的鍵的值改變。
   2. 位元組層：改寫前後，允許變更集合的值所在範圍以外的位元組逐位元組相同。
@@ -171,6 +174,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 以 fixture 構造改寫後解析結果多變一個欄位的情境，回傳 `rewriteNotIsolated` 且目標檔不變
 - [ ] 寫入後目標檔的權限位元與寫入前相同
 - [ ] 清空 PROP target_version 後，該鍵仍存在且值為 `null`；檔案除該值與 `updated` 外逐位元組相同
+- [ ] 內文含非法 UTF-8 位元組的檔案，修正任一欄位時回傳 `rewriteNotIsolated` 且目標檔不變（v1.5）
 
 ---
 
@@ -522,3 +526,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.2 | 2026-11-11 | `1.0.0-W3-676`（用戶裁定 2026-11-11）：FR-01 新增 `git` 子行程逾時 5 秒（`git show` 逾時視同 H 無法判定、`hash-object` 逾時歸 `snapshotFailed`，不新增 `WriteResult` 型別）與本地檔案 IO 不設逾時；FR-02 快照失敗原因補逾時；FR-05 `unavailable` 原因列舉化並新增 `timedOut`，驗證子行程逾時 30 秒；FR-07 日誌欄位、〈錯誤處理〉表與 FR-02、FR-05 驗收同步。出處為 `1.0.0-W3-553.6` 待裁 6：FieldBlock 的逾時段無法填寫 |
 | 1.3 | 2026-11-11 | `1.0.0-W3-553.3`（主控裁定）：FR-06 預警觸發來源由監看事件改為 EVT-CORPUS-001，收到後重讀正在編輯的檔案與 M 比較；明寫 EVT-CORPUS-002 不跨界、Edit 不消費；驗收補「內容相同時狀態不變」；對應用例補 UC-08（UC-08 已照此寫）。`1.0.0-W3-683`（主控裁定，規格自相矛盾當期修）：FR-01 約束新增〈M 的更新〉——`written` 之後 M 改為寫入落檔的位元組，`blocked`、`ioFailed` 時 M 不變，M 只在開始編輯、`written` 受理、放棄並重讀三個時點設定；驗收補連續兩次寫入一條 |
 | 1.4 | 2026-11-11 | `1.0.0-W3-686`。依用戶裁定 2026-11-11；Q1–Q3 由主控依該裁定推導。<br>**FR-03**<br>- 新增〈清空〉：清空就是把值的位元組範圍改寫為 `null`，不寫空字串，也不移除鍵。<br>- 寫明兩道隔離檢查對 `null` 的判定，以及移除鍵為何回傳 `rewriteNotIsolated`。<br>- 寫明驗證器不區分三種寫法（fixture 實測）。<br>- 驗收補一條：清空 target_version。<br>**FR-09**<br>- 新增〈可否清空〉，把 1.0 可編輯欄位分成三類：可清空（寫 `null`）、必填空白擋下（提示 `fieldRequiredEmpty`）、元件無清空途徑。<br>- 草稿 trim 後為空即視為空白；非空的值不修剪。<br>- SPEC domain 不可清空。 |
+| 1.5 | 2026-11-12 | `1.0.0-W3-553.10`。執行期澄清，用戶裁定（2026-11-12，經主控 AUQ）。<br>**FR-03**<br>- 新增〈非 UTF-8 內容〉：檔案內容不是合法 UTF-8 時，一律回傳 `blocked(rewriteNotIsolated)`，不寫入。理由是解析層以嚴格 UTF-8 解碼整檔，改寫前就沒有可用的解析結果。<br>- 驗收補第 8 條：內文含非法 UTF-8 位元組的檔案，修正欄位時回傳 `rewriteNotIsolated` 且目標檔不變。<br>- 實作行為不變（553.10 已是此行為），本版只把它寫進規格。 |
