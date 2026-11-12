@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-12"
-version: "1.7"
+version: "1.8"
 owner: L54-main
 has_functional_requirements: true
 
@@ -176,7 +176,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - SPEC 本身（正向檔）。
 - 每一個 `outputs.spec_refs` 成員資格因這次改寫而變動的 PROP（反向檔）：移出時從清單刪除該 SPEC id，加入時把該 SPEC id 附加到清單末尾。
 
-例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致（已含或已不含該 SPEC id），該檔不列入寫入集合。反向檔的 id 在圖上查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致（已含或已不含該 SPEC id），該檔不列入寫入集合。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
 
 **反向檔的允許變更集合**：`outputs.spec_refs` 與 `updated` 兩個鍵（`updated` 規則同上方〈允許變更集合〉）。
 
@@ -603,3 +603,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.5 | 2026-11-12 | `1.0.0-W3-553.10`。執行期澄清，用戶裁定（2026-11-12，經主控 AUQ）。<br>**FR-03**<br>- 新增〈非 UTF-8 內容〉：檔案內容不是合法 UTF-8 時，一律回傳 `blocked(rewriteNotIsolated)`，不寫入。理由是解析層以嚴格 UTF-8 解碼整檔，改寫前就沒有可用的解析結果。<br>- 驗收補第 8 條：內文含非法 UTF-8 位元組的檔案，修正欄位時回傳 `rewriteNotIsolated` 且目標檔不變。<br>- 實作行為不變（553.10 已是此行為），本版只把它寫進規格。 |
 | 1.6 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波）。用戶裁定 2026-11-12（經主控 AUQ）：1.1 改寫 `source_proposal` 時，同批改寫 PROP `outputs.spec_refs`（選項 A）。<br>**FR-03**<br>- 新增〈多檔寫入（1.1）〉，內容包括：適用範圍（文件節點只有 provenance）、寫入集合、反向檔的允許變更集合與 M、閘門整批判定、`rename` 順序、中途失敗的回復、寫入後驗證只套正向檔。<br>- 驗收補 8 條。<br>**FR-05**<br>- `WriteResult` 新增 `partiallyWritten`，並寫明多檔寫入時各結果攜帶的內容。<br>**FR-07**<br>- 新增 `writeRolledBack`、`writePartiallyWritten`，並寫明兩種結局的記錄方式。<br>**FR-09**<br>- `source_proposal` 列註明多檔寫入；PROP `outputs` 列註明 `spec_refs` 值改寫提前到 1.1，只作為反向檔。 |
 | 1.7 | 2026-11-12 | 執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`）。<br>**FR-05**<br>- 新增〈baseline 與寫入的先後〉，內容包括：寫入 rename 前 baseline 尚未完成時丟棄該 baseline；新原因值 `baselineNotReady`；該次寫入後的問題集合接替成為 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline。<br>- `ValidationStatus` 的 `unavailable` 原因與〈`unavailable` 的情況〉補 `baselineNotReady`。<br>- 驗收補 2 條。 |
+| 1.8 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 2.5）：FR-03〈多檔寫入（1.1）〉〈寫入集合〉用詞修正，「在圖上查不到」改為「在 Corpus 的原始節點中查不到」。理由：Graph 與 Edit 同在 L3，讀 Graph 會新增同層依賴；Corpus 已在 Edit 的依賴內（`docs/spec/edit/domain-map.md` §3） |
