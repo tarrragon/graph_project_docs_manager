@@ -4,6 +4,7 @@ import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
+import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/field_rewrite.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
@@ -57,12 +58,10 @@ class EditWorkspace {
     EditTimer? timer,
     DateTime Function()? now,
     FieldRewriter? rewriter,
+    EditValidatorPort? validator,
   }) async {
-    final runner = EditGitRunner(
-      port: git,
-      timer: timer ?? (duration) => Future<void>.delayed(duration),
-      root: root,
-    );
+    final editTimer = timer ?? (duration) => Future<void>.delayed(duration);
+    final runner = EditGitRunner(port: git, timer: editTimer, root: root);
     final mode = await _probeMode(runner);
     developer.log('edit mode: ${mode.name}', name: _tag); // i18n-exempt
     return EditWorkspace._(
@@ -72,6 +71,9 @@ class EditWorkspace {
         git: runner,
         now: now ?? DateTime.now,
         rewriter: rewriter ?? rewriteFrontmatterField,
+        validator: validator == null
+            ? null
+            : EditValidatorRunner(port: validator, timer: editTimer),
       ),
     );
   }

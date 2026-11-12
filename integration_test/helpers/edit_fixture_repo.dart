@@ -228,4 +228,37 @@ class EditFixtureRepo {
     await Process.run('chmod', ['640', repo.targetPath]);
     return repo;
   }
+
+  /// IT-E6 用的 R0：基準文件為 UC 型（`docs/usecases/UC-900-t.md`），repo 內
+  /// 以符號連結接上真實的 doc skill，並備有 UC 白名單。[bodyMentions] 為真時
+  /// 內文含兩次未登記的 UC 提及。
+  static Future<EditFixtureRepo> r0Uc({required bool bodyMentions}) async {
+    final repo = await _create();
+    Directory('${repo.repoRoot}/.claude/skills').createSync(recursive: true);
+    Link('${repo.repoRoot}/.claude/skills/doc')
+        .createSync('${Directory.current.path}/.claude/skills/doc');
+    repo.write('docs/app-use-cases.md', fixtureBytes(_ucWhitelist));
+    repo.write(ucTargetRelative, fixtureBytes(_ucDocument(bodyMentions)));
+    await repo.commitAll('base');
+    return repo;
+  }
 }
+
+const String ucTargetRelative = 'docs/usecases/UC-900-t.md';
+
+const String _ucWhitelist = '# 總表\n\n## UC-900: 測試用例\n\n### 主要成功場景\n\n1. 步驟\n';
+
+String _ucDocument(bool bodyMentions) =>
+    '---\n'
+    'id: UC-900\n'
+    'title: "測試"\n'
+    'status: draft\n'
+    'primary_actor: "使用者"\n'
+    'secondary_actors: []\n'
+    'platform: "app"\n'
+    'related_specs: []\n'
+    'related_usecases: []\n'
+    'ticket_refs: []\n'
+    '---\n\n'
+    '# UC-900\n\n'
+    '${bodyMentions ? '提及 $unregisteredUc 與 $unregisteredUc\n' : '內文\n'}';

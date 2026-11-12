@@ -62,3 +62,76 @@ final class IoFailed extends WriteResult {
   @override
   String toString() => 'IoFailed($failure)';
 }
+
+/// `unavailable` 的原因（SPEC-009 FR-05）。
+enum UnavailableReason {
+  executableMissing,
+  unexpectedExitCode,
+  unparsableOutput,
+  timedOut,
+}
+
+/// 寫入後驗證的結果（SPEC-009 FR-05 `ValidationStatus`）。
+sealed class ValidationStatus {
+  const ValidationStatus();
+}
+
+/// 驗證進行中。
+final class ValidationRunning extends ValidationStatus {
+  const ValidationRunning();
+
+  @override
+  String toString() => 'ValidationRunning';
+}
+
+/// 寫入後的問題集合減去 baseline 為空。
+final class ValidationPassed extends ValidationStatus {
+  const ValidationPassed();
+
+  @override
+  String toString() => 'ValidationPassed';
+}
+
+/// 差集非空；[newIssueCount] 為差集大小。檔案不回滾。
+final class ValidationFailed extends ValidationStatus {
+  const ValidationFailed(this.newIssueCount);
+
+  final int newIssueCount;
+
+  @override
+  String toString() => 'ValidationFailed($newIssueCount)';
+}
+
+/// 無法判定；不得視為 [ValidationPassed]。
+final class ValidationUnavailable extends ValidationStatus {
+  const ValidationUnavailable(this.reason);
+
+  final UnavailableReason reason;
+
+  @override
+  String toString() => 'ValidationUnavailable(${reason.name})';
+}
+
+/// 一次寫入的三個可觀測時刻（SPEC-009 FR-05）：發出、受理、結果。
+sealed class WriteObservation {
+  const WriteObservation();
+}
+
+/// 發出：閘門通過、寫入呼叫發出（寫入進行中）。
+final class WriteInProgress extends WriteObservation {
+  const WriteInProgress();
+}
+
+/// 受理：寫入呼叫回傳。
+final class WriteAccepted extends WriteObservation {
+  const WriteAccepted(this.result);
+
+  final WriteResult result;
+}
+
+/// 結果：寫入後驗證的狀態變化（先 `running`，再終態）。
+final class ValidationObserved extends WriteObservation {
+  const ValidationObserved(this.status);
+
+  final ValidationStatus status;
+}

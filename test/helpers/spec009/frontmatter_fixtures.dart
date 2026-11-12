@@ -58,4 +58,31 @@ const String docBlockFoldedText =
     '---\n'
     '內文';
 
+/// 兩個不在 `docs/app-use-cases.md` 白名單、彼此不同的 UC 編號
+/// （test-design §1.4）。
+/// 字面值以串接寫出，避免被 UC 引用掃描判為使用。
+const String unregisteredUc =
+    'U'
+    'C-901';
+const String unregisteredUc2 =
+    'U'
+    'C-902';
+
+/// `doc uc verify` 的違規輸出樣本：首行為總數，其後逐行
+/// `<路徑>:<行號>:<UC 編號>`（2026-11-10 以真實 CLI 實測形式）。
+String ucViolationOutput(String uc, int count, {int firstLine = 4}) {
+  final lines = [
+    for (var i = 0; i < count; i++)
+      'docs/spec/x/SPEC-900.md:${firstLine + i}:$uc',
+  ];
+  return '發現 $count 處違規 UC 編號:\n${lines.join('\n')}\n';
+}
+
+/// `doc validate` 的失敗輸出樣本（2026-11-12 以真實 CLI 對缺欄位的 EVT 取得）：
+/// 首行為標題，其後逐行 `  - <問題>`。
+const String docValidateFailureBase =
+    '驗證失敗: EVT-X-001 缺少以下項目\n'
+    '  - 缺少必填欄位: category\n'
+    '  - 必填欄位值不可為空: canonical_name\n';
+
 Uint8List fixtureBytes(String text) => Uint8List.fromList(utf8.encode(text));
