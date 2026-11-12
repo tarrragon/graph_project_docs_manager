@@ -3,15 +3,15 @@
 /// 監看觸發、`action-gaps-rescan`、再次可見自動掃描共用本排程。
 library;
 
-import 'dart:developer' as developer;
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// 掃描觸發來源。
 enum ScanTrigger { watch, manual, visibility }
 
 class ScanScheduler {
   ScanScheduler({required this.runRound, this.clearPendingWatchEvents});
-
-  static const String _tag = 'ScanScheduler';
 
   /// 執行一輪掃描的回呼。
   final Future<void> Function(ScanTrigger trigger) runRound;
@@ -58,8 +58,13 @@ class ScanScheduler {
     try {
       await runRound(trigger);
     } catch (e) {
-      // i18n-exempt: 開發者日誌，非使用者可見字串
-      developer.log('掃描輪次失敗：$e', name: _tag, level: 900);
+      appLogSink(
+        AppLogEvent.schedulerRoundFailed,
+        LogFields.empty,
+        level: LogLevel.error,
+        source: ErrorSource.internal,
+        error: e,
+      );
     }
   }
 
