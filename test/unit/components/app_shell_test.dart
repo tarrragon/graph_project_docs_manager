@@ -556,7 +556,7 @@ void main() {
   });
 
   group('AppShell 側欄底部 slot（SPEC-004 4.27）', () {
-    testWidgetsAtEachSize('兩項依序渲染於導覽項之下、貼齊側欄底部，不溢位', (tester, size) async {
+    testWidgetsAtEachSize('三項依序渲染於導覽項之下、貼齊側欄底部，不溢位', (tester, size) async {
       await pumpHarness(
         tester,
         size: size,
@@ -588,7 +588,7 @@ void main() {
       expect(writeLog.bottom, shell.bottom - Space.md);
     });
 
-    testWidgetsAtEachSize('底部區上方有一條 Divider，與兩項間隔 Space.sm', (
+    testWidgetsAtEachSize('底部區上方有一條 Divider，與三項間隔 Space.sm', (
       tester,
       size,
     ) async {
@@ -609,7 +609,7 @@ void main() {
       expect(divider.bottom + Space.sm, prefs.top);
     });
 
-    testWidgetsAtEachSize('點兩項呼叫各自 onTap，且不改變導覽選取', (tester, size) async {
+    testWidgetsAtEachSize('點三項呼叫各自 onTap，且不改變導覽選取', (tester, size) async {
       final log = <String>[];
       await pumpHarness(
         tester,
@@ -629,7 +629,7 @@ void main() {
       expect(stack.index, 0);
     });
 
-    testWidgets('Tab 順序：七導覽項之後依序進入底部兩項', (tester) async {
+    testWidgets('Tab 順序：七導覽項之後依序進入底部三項', (tester) async {
       await pumpHarness(
         tester,
         child: AppShell(
@@ -681,12 +681,25 @@ void main() {
       }
     });
 
-    test('bottomItems 只接受 0 或恰 3 項', () {
+    // 暫時性：組裝層尚傳 2 項，此案由 1.0.0-W3-553.17 刪除。
+    test('暫時：傳 2 項不觸發 assert', () {
       expect(
         () => AppShell(
           switcherEntry: _buildSwitcherEntry(),
           navItems: _buildNavItems(),
           bottomItems: _buildBottomItems().take(2).toList(),
+          pages: _buildPages(),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('bottomItems 不接受 1 項', () {
+      expect(
+        () => AppShell(
+          switcherEntry: _buildSwitcherEntry(),
+          navItems: _buildNavItems(),
+          bottomItems: _buildBottomItems().take(1).toList(),
           pages: _buildPages(),
         ),
         throwsAssertionError,
