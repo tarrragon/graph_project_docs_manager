@@ -236,6 +236,53 @@ void main() {
     });
   });
 
+  group('路徑開頭截斷（4.51 內容政策）', () {
+    const deepPath =
+        'docs/spec/some-very-deep-directory/another-dir/SPEC-004.md';
+
+    String pathText(WidgetTester tester) {
+      final texts = tester.widgetList<Text>(
+        find.descendant(
+          of: find.byKey(const ValueKey('card-writeLog-row-0')),
+          matching: find.byType(Text),
+        ),
+      );
+      return texts
+          .map((t) => t.data ?? '')
+          .firstWhere((s) => s.contains('…') || s.contains('/'));
+    }
+
+    testWidgets('窄寬：TestCopy.filePath 以省略號開頭、以檔名尾段結尾', (tester) async {
+      await pumpRow(tester, [row(path: TestCopy.filePath)], width: panelWidth);
+      final shown = pathText(tester);
+      expect(shown.startsWith('…'), isTrue);
+      expect(shown.endsWith('contract.md'), isTrue);
+      expectNoOverflow(tester);
+    });
+
+    testWidgets('窄寬：目錄深、檔名短時檔名完整保留', (tester) async {
+      await pumpRow(tester, [row(path: deepPath)], width: panelWidth);
+      final shown = pathText(tester);
+      expect(shown.startsWith('…'), isTrue);
+      expect(shown.endsWith('SPEC-004.md'), isTrue);
+    });
+
+    testWidgets('寬度足夠時不截斷', (tester) async {
+      await pumpRow(tester, [row(path: 'docs/a.md')], width: panelWidth);
+      expect(find.text('docs/a.md'), findsOneWidget);
+    });
+
+    testWidgets('朗讀 label 含完整路徑', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpRow(tester, [row(path: TestCopy.filePath)], width: panelWidth);
+      expect(
+        find.bySemanticsLabel(RegExp(RegExp.escape(TestCopy.filePath))),
+        findsWidgets,
+      );
+      handle.dispose();
+    });
+  });
+
   group('路徑點擊', () {
     testWidgets('onPathTap 為 null：無 action-writeLog-goto-node-<index>', (
       tester,

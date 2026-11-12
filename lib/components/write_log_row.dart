@@ -139,7 +139,7 @@ class WriteLogRow extends StatelessWidget {
   Widget _pathCell() {
     final onTap = onPathTap;
     if (onTap == null) {
-      return AppText.singleLine(path, variant: AppTextVariant.mono);
+      return _StartEllipsisPath(path: path);
     }
     return AppButton(
       label: path,
@@ -262,6 +262,73 @@ class WriteLogRow extends StatelessWidget {
     return hasValidation
         ? label
         : label.replaceFirst(RegExp(r'\s*[，,]\s*$'), '');
+  }
+}
+
+/// 單行路徑，寬度不足時截斷於開頭（前段以省略號取代、保留檔名；4.51 內容
+/// 政策）。`AppText` 無開頭截斷能力，故以 `TextPainter` 量測後自行截斷；
+/// 字級、色調、字型取 `AppText.mono` 的 token。完整路徑由朗讀承載。
+class _StartEllipsisPath extends StatelessWidget {
+  const _StartEllipsisPath({required this.path});
+
+  final String path;
+
+  static const String _ellipsis = '…';
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontSize: AppFontSize.body.sp,
+      color: AppColors.textPrimary,
+      fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+    );
+    final direction = Directionality.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shown = _fit(path, style, direction, constraints.maxWidth);
+        return Semantics(
+          label: path,
+          excludeSemantics: true,
+          child: Text(shown, style: style, maxLines: 1, softWrap: false),
+        );
+      },
+    );
+  }
+
+  double _width(String text, TextStyle style, TextDirection direction) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: direction,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
+  /// 保留最長的尾段使「省略號 + 尾段」放得進 [maxWidth]；連一字元都放不下
+  /// 時退回只留省略號。
+  String _fit(
+    String text,
+    TextStyle style,
+    TextDirection direction,
+    double maxWidth,
+  ) {
+    if (!maxWidth.isFinite || _width(text, style, direction) <= maxWidth) {
+      return text;
+    }
+    var low = 0;
+    var high = text.length;
+    while (low < high) {
+      final mid = (low + high + 1) ~/ 2;
+      final candidate = '$_ellipsis${text.substring(text.length - mid)}';
+      if (_width(candidate, style, direction) <= maxWidth) {
+        low = mid;
+      } else {
+        high = mid - 1;
+      }
+    }
+    return '$_ellipsis${text.substring(text.length - low)}';
   }
 }
 
