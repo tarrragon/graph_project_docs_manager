@@ -4,8 +4,8 @@ title: "元件庫規格：元件目錄、逐元件契約與容器排列不變式
 status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
-updated: "2026-11-11"
-version: "1.146"
+updated: "2026-11-13"
+version: "1.148"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.147（1.147 依 `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉；1.146 依 `1.0.0-W3-553.6`：4.46 重驗通過，§4.0.9 寫回，4.48 補「必填空白」的測試點與狀態邊；1.145 依 `1.0.0-W3-686`：4.46 `allowEmpty` 定案、4.44 空白送出、4.48 新增「必填空白」狀態，見變更歷史；1.144 依 `1.0.0-W3-553.6`：編輯相關條目重驗〈契約齊全的定義〉，§4.0.9 寫回結果，4.48–4.51 補齊重驗缺口，見變更歷史；1.143 依 `1.0.0-W3-553.3.1`：新增 4.49 `NoticeBanner`、4.50 `FieldList`、4.51 `WriteLogRow`，4.44–4.48 回填編輯狀態，側欄底部改為三項，見變更歷史；1.142 依 `1.0.0-W3-676`：4.48 `FieldBlock` 回饋契約〈等待與結果〉的逾時段與時間門檻回填（SPEC-009 v1.2），§4.0.9 封鎖項移除逾時段；1.141 依 `1.0.0-W3-673.1`：4.20 `DocumentBody` 的 `markdown` 來源改為 frontmatter 之後的本文並補〈本文來源的界線〉，§3.6 §6 正常列同步，§4.0.6 登記 `nodeDetailBodyUnavailableMessage`；1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.148（1.148 依 `1.1.0-W1-111`：新增 4.52 `ReferenceChips`（5.20）、4.53 `AppCheckboxGroup`（5.21），4.43 `AppCheckbox` 增 `locked`／`enabled`，4.48 值格清單與提示優先序、§6 兩列、§4.0.6 五個 key、§4.0.9 寫回；1.147 依 `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉；1.146 依 `1.0.0-W3-553.6`：4.46 重驗通過，§4.0.9 寫回，4.48 補「必填空白」的測試點與狀態邊；1.145 依 `1.0.0-W3-686`：4.46 `allowEmpty` 定案、4.44 空白送出、4.48 新增「必填空白」狀態，見變更歷史；1.144 依 `1.0.0-W3-553.6`：編輯相關條目重驗〈契約齊全的定義〉，§4.0.9 寫回結果，4.48–4.51 補齊重驗缺口，見變更歷史；1.143 依 `1.0.0-W3-553.3.1`：新增 4.49 `NoticeBanner`、4.50 `FieldList`、4.51 `WriteLogRow`，4.44–4.48 回填編輯狀態，側欄底部改為三項，見變更歷史；1.142 依 `1.0.0-W3-676`：4.48 `FieldBlock` 回饋契約〈等待與結果〉的逾時段與時間門檻回填（SPEC-009 v1.2），§4.0.9 封鎖項移除逾時段；1.141 依 `1.0.0-W3-673.1`：4.20 `DocumentBody` 的 `markdown` 來源改為 frontmatter 之後的本文並補〈本文來源的界線〉，§3.6 §6 正常列同步，§4.0.6 登記 `nodeDetailBodyUnavailableMessage`；1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -155,6 +155,8 @@ depends_on_domains: [layout]
 | `AppTextInput`（文字輸入） | 元件 | L2 | 表單欄位的自由文字值輸入，與過渡期無值域的列舉欄位（SPEC-009 FR-09；1.140 新增，不沿用 `SearchField` 的理由見 4.44） | §6 編輯模式 | `singleLine` / `multiLine`；狀態含 locked（寫入中唯讀鎖定，1.143） |
 | `AppDropdown`（下拉） | 元件 | L2 | 表單欄位的列舉值選擇（等級、文件節點生命週期；1.140 新增，不沿用 `FilterDropdown` 的理由見 4.45） | §6 編輯模式 | `default`；狀態 empty / set / outOfDomain / open / locked |
 | `ReferencePicker`（可搜尋下拉） | 元件 | L2 | 表單欄位的單一引用選擇（PROP target_version、SPEC domain；1.140 新增） | §6 編輯模式 | `default`；`allowEmpty` 為參數 |
+| `ReferenceChips`（chips 加搜尋） | 容器 | L2 | 表單欄位的多值引用（節點 ID）：已選值 chip（含移除鈕）× N + 加入觸發器，排不下換列；加入時展開與 4.46 同形的覆蓋層（1.148 新增，4.52） | §6 編輯模式 | `default`；chip 的找不到外觀為值對映參數 |
+| `AppCheckboxGroup`（核取清單） | 容器 | L2 | 表單欄位的多值選擇，值為已宣告 domain：`AppCheckbox` × N 垂直（1.148 新增，4.53） | §6 編輯模式 | `default` |
 | `AppRadioGroup`（單選鈕組） | 元件 | L2 | 表單欄位的分類值選擇（SPEC has_functional_requirements、EVT category；1.140 新增，不沿用 `SegmentedControl` 的理由見 4.47） | §6 編輯模式 | `default`；選項 2 以上、不設上限（用戶裁定 2026-11-11，`1.0.0-W3-553.6`）、恆垂直（用戶裁定，`1.0.0-W3-675`） |
 | `NoticeBanner`（區塊橫幅） | 元件 | L2 | 區塊頂端的常駐說明：訊息 + 0..1 個動作，不取代下方內容；1.0 用於編輯區頂端橫幅（外部已改預警／阻擋／重讀讀取失敗，`panel-nodeDetail-edit-banner`；1.143 新增，不沿用 `BlockedState`／`AppSnackBar` 的理由見 4.49） | §6 編輯模式 | `warning` / `negative` |
 | `AppSnackBar`（即時訊息） | 元件 | L2 | 「已在外部開啟」「找不到檔案」類的暫時訊息，Material 預設動畫不覆寫 | §1、§2、§4、§5、§6、§7（`denied` fallback 於任一畫面） | `plain`（停留 `Motion.snackBar`）/ `withAction`（帶一個動作，停留 `Motion.snackBarWithAction`）；封裝為元件（§3.7 第 8 項） |
@@ -178,7 +180,7 @@ depends_on_domains: [layout]
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3、§6（來源鏈） | `default` / `sourceChain`（節點詳情主欄內嵌來源鏈：全部展開、無展開器、不持有展開集合，4.39） |
 | `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
-| `FieldBlock`（表單欄位） | 容器 | L2 | label（`AppText`）+ 值格（`AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup`，或唯讀 `AppText`）+ 提示格（`AppText.caption`，0..1）垂直；寫入結果與驗證狀態在此呈現（1.140 新增） | §6 編輯模式 | `editable` / `readOnly` |
+| `FieldBlock`（表單欄位） | 容器 | L2 | label（`AppText`）+ 值格（`AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` / `ReferenceChips` / `AppCheckboxGroup`（後兩者 1.148），或唯讀 `AppText`）+ 提示格（`AppText.caption`，0..1）垂直；寫入結果與驗證狀態在此呈現（1.140 新增） | §6 編輯模式 | `editable` / `readOnly` |
 | `FieldList`（欄位清單） | 容器 | L3 | `NoticeBanner`（0..1）+ `FieldBlock` × N（SPEC-009 FR-09 表列序）+ 「完成」`AppButton.primary` 垂直；承載寫入期間的跨欄鎖定（1.143 新增，4.50） | §6 編輯模式（`panel-nodeDetail-field-list`） | 單一形態 |
 | `WriteLogRow`（寫入清單列） | 容器 | L3 | 路徑（可點時 `AppButton.text`）+ 欄位名 + 所屬專案 + 寫入結果與驗證狀態徽章（含說明）+ 取回說明 `AppText.code` + 快照期限說明，垂直分行（1.143 新增，4.51） | §12（`card-writeLog-row-<index>`） | 單一形態；子件依列資料渲染 |
 | `SwitcherOverlay`（專案切換浮層） | 容器 | L3 | 覆蓋層：`AppText.caption` 標題 + `RecentProjectItem` × N（垂直捲動 `scroll-switcher-recent`）+ `Divider` + `AppButton.text`（選擇其他資料夾）；自入口向下展開，Esc／點外部收合，焦點限制於浮層內 | §7（展開、無最近專案） | `default`；`RecentProjectItem` 數量無上限 → 空間不足策略為捲動 |
@@ -1017,6 +1019,16 @@ EVT-CORPUS-004 項目說明：
 |-----|----|----|--------------|--------|
 | `fieldRequiredEmpty` | 此欄位必填，空白未送出 | This field is required, so the blank value was not sent | — | 4.48 提示格「必填空白」 |
 
+**1.148 新增（`1.1.0-W1-111`，對應 SPEC-009 FR-09 的 1.1 列；zh／en 為提案文案，ARB 由落地票建立）**：多值引用與核取清單。
+
+| key | zh | en | placeholders | 使用處 |
+|-----|----|----|--------------|--------|
+| `referenceChipsAdd` | 加入 | Add | — | 4.52 加入觸發器（規格先行：1.1.0-W2-001） |
+| `referenceChipsRemoveA11y` | 移除 {value} | Remove {value} | value（String，chip 的值） | 4.52 移除鈕朗讀（規格先行：1.1.0-W2-001） |
+| `referenceChipsA11yLabel` | {label}，{count} 項 | {label}, {count, plural, =1{1 item} other{{count} items}} | label（String，欄位 label）、count（int） | 4.52 chip 列朗讀（規格先行：1.1.0-W2-001） |
+| `fieldReferenceNotFound` | 「{value}」在專案中找不到，可移除 | "{value}" was not found in the project; you can remove it | value（String） | 4.48 提示格，4.52 有找不到的 chip 時；chip 朗讀（規格先行：1.1.0-W2-001） |
+| `checkboxGroupNoOptions` | 專案尚未宣告任何 domain | The project has not declared any domains | — | 4.48 提示格，4.53 選項為空（規格先行：1.1.0-W2-002） |
+
 #### 4.0.7 操作機制通用列（單一形態：桌機，§1）
 
 | 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
@@ -1054,6 +1066,14 @@ EVT-CORPUS-004 項目說明：
 | 4.50 `FieldList`（5.18） | 六條通過（操作機制改為「不適用」加理由，1.144） | 可 |
 | 4.51 `WriteLogRow`（5.19） | 六條通過（內容政策補寫入結果說明、驗證不可用原因、取回說明小標三列，1.144） | 可 |
 | 4.1 `code`、4.7 `badge`、4.27 側欄底部三項與唯讀降級徽章 | 1.143 的修改六條通過 | 可 |
+
+**1.148 新增**（`1.1.0-W1-111` Step 4.5，〈契約齊全的定義〉六條逐條紀錄在該票）：
+
+| 條目 | 結果 | 可否被畫面票引用 |
+|------|------|----------------|
+| 4.52 `ReferenceChips`（5.20） | 第 2–6 條通過；第 1 條餘兩格待決：(1) 正向檔多值欄位的加入與移除寫法（序列內附加與刪除、純量轉清單、移除到剩一筆或零筆、重複值），待 SPEC-009 v1.10；(2) 回饋契約〈等待與結果〉的 `partiallyWritten` 呈現（`1.1.0-W1-111` Step 4.5 第 2 項，落於 4.48，排在 v1.10 之後）。兩格共用同一個重驗閘 | 否，v1.10 與第 2 項皆落地後重驗第 1 條 |
+| 4.53 `AppCheckboxGroup`（5.21） | 六條通過（`AppCheckboxGroup` 的欄位皆為單檔寫入，FR-09 無多檔） | 可 |
+| 4.43 `AppCheckbox` 的 `locked`／`enabled`（1.148 修改） | 六條通過 | 可 |
 
 #### 4.0.10 定位提示（locate）的容器執行約定（提案）
 
@@ -6477,8 +6497,10 @@ EVT-CORPUS-004 項目說明：
 | hover（僅指標形態） | 依 §4.0.1（命中區為核取框 + label 整體） | 點選 | 指標進入 | 指標離開 | 互動瞬態 | 本地即時 |
 | pressed | 依 §4.0.1 | 點選 | 按下 | 放開 | 互動瞬態 | 本地即時 |
 | focused | 依 §4.0.1 | 點選（Space） | 取得焦點 | 焦點移走 | 互動瞬態 | 本地即時 |
+| locked（1.148，僅 `AppCheckboxGroup` 內） | 外觀同 disabled；核取值維持送出前；已持有焦點者保留焦點 | 無 | `locked` 為 `true`（由 4.53 下發，4.44〈值格鎖定〉） | `locked` 改為 `false` → 依 `value` 回 unchecked／checked | 資料態：Edit domain 的寫入進行中旗標 | 等確認才顯示 |
+| disabled（1.148，僅 `AppCheckboxGroup` 內） | 依 §4.0.1 disabled；不進 Tab 順序 | 無 | `enabled` 為 `false`（由 4.53 下發） | 由 4.53 承載 | 資料態：Edit domain 的編輯狀態 | 等確認才顯示 |
 
-無 disabled：篩選列只在正常與期間內無事件兩態渲染，兩態皆可切換；其餘狀態不渲染本元件（SPEC-001 §10）。
+`Toolbar.history` 內無 locked 與 disabled：篩選列只在正常與期間內無事件兩態渲染，兩態皆可切換；其餘狀態不渲染本元件（SPEC-001 §10）。兩列只在 `AppCheckboxGroup`（4.53）內出現；該處的套用時點、回饋契約與同步策略（等確認才顯示，不樂觀切換）以 4.53 為準，本條目下方的套用時點與回饋契約只描述 `Toolbar.history` 用法。
 
 #### 套用時點
 
@@ -6534,7 +6556,9 @@ EVT-CORPUS-004 項目說明：
 | `label` | `String` | 是 | 呼叫端（i18n key 取值：`historyIncludeTicketCreatedLabel`） |
 | `value` | `bool` | 是 | 不適用 |
 | `onChanged` | `ValueChanged<bool>` | 是 | 不適用 |
-| `testKey` | `Key` | 是（`action-history-include-ticket-created`） | 不適用 |
+| `locked` | `bool` | 否（預設 `false`；1.148，由 4.53 下發） | 不適用 |
+| `enabled` | `bool` | 否（預設 `true`；1.148，由 4.53 下發） | 不適用 |
+| `testKey` | `Key` | 是（`action-history-include-ticket-created`；`AppCheckboxGroup` 內由 4.53 推導 `option-nodeDetail-field-<fieldKey>-<value>`） | 不適用 |
 
 #### 使用 design token
 
@@ -6557,7 +6581,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 可放入的容器 | `Toolbar.history`（`toggle` 格） |
+| 可放入的容器 | `Toolbar.history`（`toggle` 格）；`AppCheckboxGroup`（4.53，1.148） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 垂直置中於所在列 |
 | 作為表格或列表的一欄時 | 不適用 |
@@ -6580,6 +6604,7 @@ EVT-CORPUS-004 項目說明：
 - [ ] zh / en `historyIncludeTicketCreatedLabel` 皆不溢位
 - [ ] 點核取框與點 label 各呼叫 `onChanged` 恰一次，值為 `!value`（對照：`value` 為 `false` 與 `true` 各測一次，兩次傳出值不同）
 - [ ] `Semantics` 的 `checked` 與 `value` 一致
+- [ ] `locked: true` 時點擊不呼叫 `onChanged`、焦點保留；`enabled: false` 時不進 Tab 順序（1.148；對照：兩者皆預設時照常呼叫）
 - [ ] 顏色、間距、圓角引用 token 非硬編碼
 
 #### 反例
@@ -6916,7 +6941,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 **用途**：表單欄位的單一引用選擇（SPEC-009 FR-09「單一引用：可搜尋下拉」）。1.0 使用處：PROP target_version（選項為 todolist 的版本）、SPEC domain（選項為已宣告的 domain，以 `DomainBundle` 的 `domain` 原值呈現，CLAUDE.md §6 domain 名稱權威寫法）。
 **新增元件而非併入 `AppDropdown` 的理由**：內容角色不同——引用值指名另一個對象（版本、DomainBundle），讀者據以辨認「是哪一個」，屬標題類；`AppDropdown` 的值是列舉，屬標籤類。行為不同——選項來自專案資料、數量隨專案增減，需捲動與文字過濾；列舉選項固定且至多 10 項（4.45〈尺寸契約〉推導值）、全數展開不捲動。選單內的過濾框屬本元件自帶子件，不放 4.12 `SearchField`（其組合規則只允許 `Toolbar` 首格，且語意為清單過濾而非選取）。
 **內容角色**：標題（被引用對象的識別值）。
-**何時不用**：列舉值（`AppDropdown`）；多值引用（1.1 chips 加搜尋，不在本版）；清單篩選（`FilterDropdown`、`SearchField`）。
+**何時不用**：列舉值（`AppDropdown`）；多值引用（節點 ID 用 `ReferenceChips`，4.52；domain 用 `AppCheckboxGroup`，4.53）；清單篩選（`FilterDropdown`、`SearchField`）。
 **出現畫面**：節點詳情的編輯模式（SPEC-001 §6 三個編輯狀態），經 `FieldList`（4.50）與 `FieldBlock`（4.48）。
 **層級**：L2
 
@@ -7221,8 +7246,8 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `editable` | 值格放 `AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` 之一 | 呈現寫入結果與驗證狀態 | FR-09「自」為 1.0 的欄位 |
-| `readOnly` | 值格放 `AppText`（`body`；ID、路徑、日期用 `mono`） | 無寫入 | FR-09 標唯讀或「自」不是 1.0 的欄位 |
+| `editable` | 值格放 `AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` / `ReferenceChips` / `AppCheckboxGroup` 之一（後兩者 1.148） | 呈現寫入結果與驗證狀態 | FR-09「自」不晚於目前版本的欄位（1.0 起；1.1 加入 FR-09「自」為 1.1 的欄位） |
+| `readOnly` | 值格放 `AppText`（`body`；ID、路徑、日期用 `mono`） | 無寫入 | FR-09 標唯讀或「自」晚於目前版本的欄位 |
 
 #### 狀態矩陣
 
@@ -7237,9 +7262,9 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | written · 驗證不可用 | 提示格 `validationUnavailable` 加原因（四種原因 key 之一），一般色；有快照時另接 `fieldSeeWriteLogHint` | 依值格 | `ValidationStatus.unavailable` | 下一次提交 → writing | 資料態：同 idle | 等確認才顯示 |
 | 寫入失敗 | 提示格錯誤色（`isError`），依結果 `fieldBlockedSnapshotFailed`、`fieldBlockedRewriteNotIsolated`（含改用外部編輯器）、`fieldIoFailed`；值格 `hasError`，值不變（檔案未改），草稿保留 | 依值格（重送、調整值、Esc） | `WriteResult.blocked(snapshotFailed)`、`blocked(rewriteNotIsolated)`、`ioFailed`（SPEC-003 §2.14 列 24） | 下一次提交 → writing | 資料態：同 idle | 等確認才顯示 |
 | 必填空白 | 提示格 `fieldRequiredEmpty`，錯誤色（`isError`）；值格不進 error（沒有發出寫入），值不變，草稿保留 | 依值格（調整值、Esc） | 必填欄位送出的草稿 trim 後為空，呼叫端不發出寫入（SPEC-009 FR-09〈可否清空〉，`1.0.0-W3-686`） | 草稿改為非空並送出 → writing；Esc 或草稿改回與值相同 → 回原狀態 | 互動瞬態（呼叫端判定，不經 Edit domain） | 本地即時 |
-| readOnly | label + `AppText` 值；提示格 `fieldNotEditableHint` | 無 | `readOnly` 變體（SPEC-009 FR-09 標唯讀或「自」不是 1.0 的欄位） | 不適用（變體由欄位決定，不轉換） | — | 本地即時 |
+| readOnly | label + `AppText` 值；提示格 `fieldNotEditableHint` | 無 | `readOnly` 變體（SPEC-009 FR-09 標唯讀或「自」晚於目前版本的欄位） | 不適用（變體由欄位決定，不轉換） | — | 本地即時 |
 
-提示格同一時間只顯示一則訊息，多個條件同時成立時依此優先序取第一個：writing > 寫入失敗 > 必填空白 > 未送出 > written 各態 > outOfDomain。理由：越前面的越需要使用者當下處理；被蓋掉的寫入與驗證結果仍在寫入清單（SPEC-001 §12）。
+提示格同一時間只顯示一則訊息，多個條件同時成立時依此優先序取第一個：writing > 寫入失敗 > 必填空白 > 未送出 > written 各態 > outOfDomain。值格為 `ReferenceChips` 時的 `fieldReferenceNotFound`、為 `AppCheckboxGroup` 時的 `checkboxGroupNoOptions` 與 outOfDomain 同級（同一值格不會同時出現兩者）（1.148）。理由：越前面的越需要使用者當下處理；被蓋掉的寫入與驗證結果仍在寫入清單（SPEC-001 §12）。
 
 容器自身無互動瞬態，hover／pressed／focused 由值格元件承載。外部已改阻擋時各欄值格 disabled（4.50 下發），提示格維持阻擋前的內容。
 
@@ -7755,6 +7780,305 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | 顯示寫入的欄位值 | 不顯示：清單只記識別，不記欄位值（SPEC-009 FR-07） |
 | 提供「還原」按鈕 | 不提供：App 內不執行還原（SPEC-009 FR-02），只給可複製的指令 |
 
+### 4.52 ReferenceChips（容器）
+
+**實作類別**：`ReferenceChips`（已選值的 chip 列 + 末端「加入」觸發器 + 覆蓋層；chip 與加入觸發器為元件自帶子件，不另匯出；頁面層禁直用 `Chip`／`InputChip`／`Wrap` 自組，§6）。
+
+**用途**：表單欄位的多值引用編輯（SPEC-009 FR-09「多值引用（節點 ID）：chips 加搜尋加入」）。1.1 使用處：PROP related_proposals；SPEC related_usecases、related_specs、implements_requirements、source_proposal（provenance 邊的 `forward_cardinality` 為 many，`tracking_schema`；多檔寫入，SPEC-009 FR-03〈多檔寫入（1.1）〉）；UC related_specs、related_usecases、ticket_refs；DomainBundle source_specs、related_usecases、depends_on_bundles。
+**新增元件而非併入 `ReferencePicker` 的理由**：值的形狀不同——本元件的值是有序清單，操作是「加入一項」與「移除一項」兩種，各為一次寫入；`ReferencePicker` 的值是單一引用，操作是「取代」。把兩者併成一個元件需要以參數切換值型別與 `onChanged` 簽名，兩種呼叫端互不相容。加入時的覆蓋層（過濾框 + 可捲動選項清單）與 4.46 同形，共用基底的抽取見 `1.1.0-W1-115`。
+**內容角色**：標題（每個 chip 為被引用節點的識別值）+ 動作（加入、移除）。
+**何時不用**：單一引用（`ReferencePicker`）；值為已宣告 domain 的多值欄位（`AppCheckboxGroup`，4.53）；字串清單（1.4）；跳轉到被引用的節點（`RelationItem`）。
+**出現畫面**：節點詳情的編輯模式（SPEC-001 §6），經 `FieldList`（4.50）與 `FieldBlock`（4.48）。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體。chip 的已解析／找不到兩種外觀為值對映參數（見 slot 契約 `resolvedValues`），不另立變體 | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| empty | `fieldEmptyValue`（`textSecondary`，`AppText.body`）+ 加入觸發器（「＋」圖示 + `referenceChipsAdd`），同列 | 加入 → open | `selected` 為空清單 | 加入一項 → 呼叫 `onAdded`，呼叫端傳 `locked: true` → locked；`written` 後呼叫端改傳 `selected` → set | —（`selected`、`options`、`resolvedValues` 由呼叫端傳入，元件不 watch，§2） | 等確認才顯示 |
+| set | chip 依 `selected` 原序排列，末端接加入觸發器 | 加入 → open；移除任一 chip | `selected` 非空 | 加入或移除 → 呼叫 `onAdded`／`onRemoved` → locked | — | 等確認才顯示 |
+| open | 覆蓋層展開，形狀與鍵盤同 4.46 open：首列過濾框（`searchPlaceholder`，焦點自動移入），其下為 `options` 扣除已在 `selected` 內的值；無可加入項時清單區顯示 `referencePickerNoMatch` | 輸入過濾、走選項、選取、Esc、點外部 | 點選加入觸發器或聚焦時 Enter／Space／↓ | 選取 → 收合並呼叫 `onAdded(value)`；Esc、點外部 → 收合，不呼叫；過濾字串於收合時清空 | 互動瞬態 | 本地即時 |
+| locked | chip 與觸發器外觀同 disabled；顯示送出前的清單（不樂觀加入或移除）；已持有焦點者保留焦點 | 無（不可展開、不可移除） | `locked` 為 `true`（寫入進行中，4.44〈值格鎖定〉） | `locked` 改為 `false` → 依 `selected` 回 empty／set | 資料態：Edit domain 的寫入進行中旗標，經 `FieldList` 下發 | 等確認才顯示 |
+| disabled | 依 §4.0.1 disabled；chip 移除鈕與觸發器不進 Tab 順序 | 無 | `enabled` 為 `false`（外部已改阻擋，4.44〈值格鎖定〉） | 放棄並重讀成功 → 以新 key 重建；完成 → FieldList 移除 | 資料態：Edit domain 的編輯狀態，經 `FieldList` 下發 | 等確認才顯示 |
+| hover／pressed／focused | 依 §4.0.1，分別作用於加入觸發器與各 chip 的移除鈕；chip 本體不可點，無互動瞬態 | 點選 | 依 §4.0.1 | 依 §4.0.1 | 互動瞬態 | 本地即時 |
+
+移除後焦點落點：被移除的 chip 卸載，焦點移到其後一個 chip 的移除鈕；它是最後一個時移到加入觸發器。焦點在受理後隨 chip 卸載移動，locked 期間保留在原移除鈕上。
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——加入或移除改變欄位值；不導覽至被引用節點 |
+| 2 | 套用時點 | 一次加入或一次移除為一次提交：(a) 單一欄位；(b) 寫入受理延遲依 SPEC-009 NFR-01；(c) 不需預覽；(d) 可再加回，且寫入前已建快照（SPEC-009 FR-02）；(e) `FieldList` 沒有整批儲存（4.50，用戶裁定 `1.0.0-W3-675` 的立即提交）→ 立即提交。`source_proposal` 一次提交可能寫多個檔（SPEC-009 FR-03〈多檔寫入（1.1）〉），仍是一次提交 |
+| 3 | 容器何時關閉 | 是——覆蓋層一次只加入一項，選取即收合。移除不經覆蓋層：無可關閉的容器，移除鈕常駐於 chip 上 |
+| 4 | 生效是否當下可見 | 有——受理為 `written` 後 chip 出現或消失；受理前維持原清單 |
+
+#### 回饋契約
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 加入觸發器與移除鈕的 hover 態（§4.0.1）；過濾框指標 `SystemMouseCursors.text` | 無（Material 內建） | 無 | §1 子表「可互動提示」列 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 觸發器與移除鈕焦點環；覆蓋層內同 4.46；移除後的焦點落點見狀態矩陣下方 | 無 | 無 | §1 子表「焦點」列 | 原狀態 → open → 原狀態 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 觸發器或移除鈕 pressed + ripple；選取選項時 `onAdded(value)` 恰一次並收合；移除鈕 `onRemoved(value)` 恰一次。掛載點為本元件第一層 | Material 內建 ripple；覆蓋層 `Motion.overlay` | pressed 於 `Motion.feedback` 內；覆蓋層於 `Motion.overlay` 內 | §1 子表「按下確認」列 | set → open →（選取）→ locked；set →（移除）→ locked | 規格撰寫者 |
+| 定位提示 locate | 系統 | 展開時清單從首列開始（無「目前值」可捲動對齊）；寫入結果回來時不移動焦點，移除造成的焦點移動除外（用戶裁定 2026-11-11，`1.0.0-W3-553.3.1` 題 2 的例外：焦點所在節點卸載時必須有落點） | 無 | 無 | §1 子表「定位提示」列 | open | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（`written` 後改傳 `selected`） | chip 離散出現或消失，不做動畫；chip 列的朗讀（`referenceChipsA11yLabel`）隨筆數重建 | 無 | 無 | §1 子表「狀態變更提示」列 | locked →（`written`）→ set／empty；locked →（被拒、讀寫失敗）→ 原狀態 | 規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層為本元件；過濾為本地即時，`options` 由呼叫端自掃描結果傳入；寫入的第二層為 `FieldBlock` writing（本元件 locked），第三層為 `FieldBlock` 的寫入結果與驗證狀態，四段結局見 4.48；多檔寫入只成功一部分（SPEC-009 `partiallyWritten`）時的呈現：待決（`1.1.0-W1-111` Step 4.5 第 2 項，落於 4.48） | — | 見 4.48 | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 加入：依 §4.0.7 點選加入觸發器，展開後鍵盤操作同 4.46；移除：依 §4.0.7 點選 chip 的移除鈕（Tab 走到後 Space／Enter） | 字元級（過濾）；命中一列（選取）；命中一個移除鈕 | 足夠 | 無 | 視覺 |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位；高隨 chip 列數（chip 與觸發器依序橫排，排不下換列，5.20） |
+| 最小尺寸 | 寬：chip 最小寬（`Space.sm` + 一字元 + 省略號 + `Space.xs` + `LayoutSize.hitTargetMin`）與觸發器最小寬（`Space.sm` + `LayoutSize.iconMd` + `Space.xs` + 一字元 + 省略號 + `Space.sm`）取大，算式見 5.20；高：`LayoutSize.hitTargetMin` |
+| 最小命中區 | `LayoutSize.hitTargetMin`（加入觸發器、每個移除鈕、過濾框、每個選項） |
+| 最大尺寸 | 寬：父格位寬；高：不設上限（列數隨 `selected` 筆數，溢出由 `FieldList` 的垂直捲動承接） |
+| 覆蓋層尺寸 | 同 4.46 覆蓋層算式，寬改為本元件寬（觸發器寬太窄，不作為選項列寬） |
+| `kMinWindowSize` 下的行為 | 維持。覆蓋層高的上限與展開方向同 4.46（≤ 264 ≤ 288，觸發器高同為 `LayoutSize.hitTargetMin`，算式不依觸發器所在列） |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| chip 文字（`selected` 的值，`AppText.mono`） | 否 | 1 | 截斷 | `TestCopy.nodeId`；`TestCopy.longToken` |
+| 空值文字（empty） | 否 | 1 | 截斷 | `fieldEmptyValue`（en「Not set」） |
+| 加入觸發器文字 | 否 | 1 | 截斷 | `referenceChipsAdd`（en「Add」） |
+| 選項 `label`（「ID 標題」） | 否 | 1 | 截斷 | `TestCopy.nodeId` + `TestCopy.nodeTitle` |
+| 過濾輸入（可編輯） | 否 | 1 | 不截斷：隨游標水平捲動 | `TestCopy.longToken` |
+| 無可加入項文字 | 否 | 1 | 截斷 | `referencePickerNoMatch`（en「No matching items」） |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `selected` | `List<String>`，0..N（無上限），依 frontmatter 原序 | 是 | 不適用（識別值原文，資料值不進 i18n） |
+| `options` | `List<ReferenceOption{value, label}>`，0..N（無上限）；呼叫端已排除節點自身 | 是 | 呼叫端：Graph domain 的節點清單依欄位的目標型別過濾（例 related_specs 取 SPEC 節點），`value` 為節點 ID、`label` 為「ID 標題」 |
+| `resolvedValues` | `Set<String>`：`selected` 中在目前專案找得到節點的值 | 是 | 不適用。值對映（分類形式）：在集合內 → 一般 chip；不在 → 找不到外觀（`AppColors.error` 外框 + 警示圖示 `AppIcon`，文字不變色），並由 `FieldBlock` 提示格顯示 `fieldReferenceNotFound`。用好壞色的依據：找不到即 `danglingRef` 破洞（SPEC-001 §5），規格寫明其為缺陷；非顏色線索為圖示與朗讀 |
+| `onAdded` | `ValueChanged<String>` | 是 | 不適用 |
+| `onRemoved` | `void Function(int index, String value)` | 是。必填欄位移除最後一項時，呼叫端不發出寫入，`FieldBlock` 顯示「必填空白」（4.48） | 不適用 |
+| `locked` | `bool` | 否（預設 `false`；4.44〈值格鎖定〉） | 不適用 |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `semanticLabel` | `String` | 是 | 呼叫端（欄位 label） |
+| `testKey` | `Key` | 是（加入觸發器 `action-nodeDetail-field-<fieldKey>`；過濾框 `action-nodeDetail-field-<fieldKey>-filter`、選單 `menu-nodeDetail-field-<fieldKey>`、選項 `option-nodeDetail-field-<fieldKey>-<value>`、chip `badge-nodeDetail-field-<fieldKey>-chip-<index>`、移除鈕 `action-nodeDetail-field-<fieldKey>-remove-<index>` 由元件推導，`<index>` 見下方重複值規則；類別皆為 SPEC-003 §2.9 既有類別） | 不適用 |
+
+過濾規則同 4.46。`selected` 內的重複值依原樣顯示（不合併，每一筆一個 chip）；chip 與移除鈕的 widget key 與 testKey 以 `<index>`（該值在 `selected` 中的位置，0 起算）推導，同值的兩筆因此不撞 key。移除時傳出 `(index, value)`；正向檔重複值在寫入層的處理（移除一筆或全部）：待決（SPEC-009 v1.10，`1.1.0-W1-111`）。
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | `AppColors.surfaceBase`、`border`（chip 外框）、`error`（找不到的 chip 外框與圖示）、`accent`（過濾框焦點框）、`surfaceIconTint`、`textPrimary`、`textSecondary`（觸發器文字與圖示） |
+| 間距 | chip 內距起始側 `Space.sm`、文字與移除鈕間 `Space.xs`；chip 間與列間 `Space.xs`（5.20）；覆蓋層同 4.46 |
+| 字體 | `AppFontSize.body`（chip 文字以 `AppText.mono`） |
+| 圓角 | `Radius.md`（chip、觸發器） |
+| 動畫 | `Motion.feedback`；`Motion.overlay` |
+| 尺寸 | `LayoutSize.hitTargetMin`、`iconMd`、`iconSm`（移除鈕圖示） |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| 加入觸發器 | `referenceChipsAdd` |
+| 移除鈕朗讀 | `referenceChipsRemoveA11y` |
+| chip 列朗讀 | `referenceChipsA11yLabel` |
+| 找不到的提示 | `fieldReferenceNotFound`（`FieldBlock` 提示格） |
+| 過濾框、無符合項 | 同 4.46（`searchPlaceholder`、`referencePickerNoMatch`） |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊；同列 chip 與觸發器垂直置中 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | 根節點 `Semantics` label `referenceChipsA11yLabel`（代入欄位 label 與筆數）；chip 為文字節點，找不到者附 `fieldReferenceNotFound`；移除鈕 `Semantics.button`，label `referenceChipsRemoveA11y`（代入值）；加入觸發器 `Semantics.button`，`expanded` 隨開合；覆蓋層同 4.46 |
+| 狀態變化播報 | 筆數變化經 `FieldBlock` 提示格的 live region 播報寫入結果（4.48），本元件不另播 |
+| 非視覺替代訊號 | 找不到以圖示與朗讀承載，不只靠外框色 |
+| 焦點順序與操作路徑（桌機） | 依 chip 原序走各移除鈕，最後為加入觸發器（disabled、locked 除外；locked 時已持有的焦點保留）；覆蓋層內同 4.46；欄位間 Tab 順序見 4.50 |
+| 對比 | 依 §4.0.2：`textPrimary` / `surfaceBase` 5.79:1；`error` 外框與圖示屬非文字圖形，門檻 3:1，`error` / `surfaceBase` 6.54:1（§4.0.2 表 1），通過 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 empty / set（含找不到的 chip）/ open / open 無可加入項 / locked / disabled
+- [ ] 加入：選取呼叫 `onAdded` 恰一次並收合；對照：Esc 收合不呼叫
+- [ ] open 的選項不含已在 `selected` 內的值；對照：`selected` 為空時選項等於 `options`
+- [ ] 移除鈕呼叫 `onRemoved` 恰一次；locked 時不呼叫
+- [ ] `selected` 含重複值時每筆各一個 chip、testKey 依位置不重複，移除第二筆傳出的 index 為其位置（對照：移除第一筆傳出的 index 不同）
+- [ ] 傳 `locked: true` 後清單維持送出前的內容（不樂觀加入或移除）
+- [ ] 移除後改傳 `selected`：焦點移到下一個移除鈕；移除最後一項時移到加入觸發器
+- [ ] 兩種視窗尺寸下不溢位；`selected` 20 筆時換列、高隨列數增加
+- [ ] chip 最長測試文案截斷
+- [ ] 顏色、內距、圓角引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 單一引用 | `ReferencePicker` |
+| 已宣告 domain 的多值欄位 | `AppCheckboxGroup` |
+| 點 chip 跳到被引用節點 | `RelationItem`（檢視模式） |
+| 顯示非互動的分類標記 | `Badge` |
+
+### 4.53 AppCheckboxGroup（容器）
+
+**實作類別**：`AppCheckboxGroup`（`AppCheckbox` × N 垂直；頁面層禁以 `Column` 自組多個 `AppCheckbox`，§6）。
+
+**用途**：表單欄位的多值選擇，值為已宣告的 domain（SPEC-009 FR-09「多值引用（domain）：核取清單」）。1.1 使用處：SPEC depends_on_domains；EVT producers、consumers。
+**新增容器而非沿用 `ReferenceChips` 的理由**：值域是專案已宣告的 domain，數量小且整份可見（以 `docs/system-layer.md` §1.3 的 domain 清單為準），使用者需要一次看到全部候選並比較；chips 只顯示已選的值，未選的要開覆蓋層才看得到。
+**內容角色**：標籤（每個核取項為一個 domain 名）+ 動作 + 狀態（核取值）。
+**何時不用**：節點 ID 的多值引用（`ReferenceChips`）；單一布林設定（`AppCheckbox` 單獨使用）；互斥單選（`AppRadioGroup`）。
+**出現畫面**：節點詳情的編輯模式（SPEC-001 §6），經 `FieldList`（4.50）與 `FieldBlock`（4.48）。
+**層級**：L2
+
+#### 變體
+
+| 變體 | 外觀差異 | 行為差異 | 何時選用 |
+|------|---------|---------|---------|
+| `default` | 單一變體 | | |
+
+#### 狀態矩陣
+
+| 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
+|------|------|---------|---------|---------|------|---------|
+| ready | 依 `options` 原序列出核取項，`selected` 內者 checked；`selected` 中不在 `options` 的值接在最後，checked，`FieldBlock` 提示格顯示 `fieldValueOutOfDomain` | 切換任一項 | 預設 | 切換 → 呼叫 `onToggled(value, checked)`，呼叫端傳 `locked: true` → locked | —（`selected` 與 `options` 由呼叫端傳入，元件不 watch，§2） | 等確認才顯示 |
+| locked | 全部核取項外觀同 disabled，核取值維持送出前（不樂觀切換）；已持有焦點者保留焦點 | 無 | `locked` 為 `true`（4.44〈值格鎖定〉） | `locked` 改為 `false` → ready | 資料態：Edit domain 的寫入進行中旗標，經 `FieldList` 下發 | 等確認才顯示 |
+| disabled | 依 §4.0.1 disabled；不進 Tab 順序 | 無 | `enabled` 為 `false`（外部已改阻擋） | 放棄並重讀成功 → 以新 key 重建；完成 → FieldList 移除 | 資料態：Edit domain 的編輯狀態，經 `FieldList` 下發 | 等確認才顯示 |
+| 選項為空 | 不渲染核取項；`FieldBlock` 提示格 `checkboxGroupNoOptions` | 無 | `options` 與 `selected` 皆為空（專案未宣告任何 domain） | 重新掃描後呼叫端改傳 `options` → ready | — | 等確認才顯示 |
+
+互動瞬態由各 `AppCheckbox` 承載（4.43）。
+
+#### 套用時點
+
+> 判準：`component-contract-design` skill〈套用時點的四問〉。
+
+| # | 問句 | 答 |
+|---|------|----|
+| 1 | 設定或動作 | 設定——切換改變欄位值 |
+| 2 | 套用時點 | 一次切換為一次提交，(a)–(e) 判法同 4.52 → 立即提交 |
+| 3 | 容器何時關閉 | 無可關閉的容器——清單常駐於 `FieldBlock` 值格 |
+| 4 | 生效是否當下可見 | 有——受理為 `written` 後核取值改變；受理前維持原值 |
+
+#### 回饋契約
+
+| 事件 | 觸發者 | 反應 | 動畫 token | 時間門檻 | 回饋通道（桌機） | 對應狀態邊 | 填寫者 |
+|------|--------|------|-----------|---------|-----------------|-----------|--------|
+| 可互動提示 affordance | 使用者接近 | 由各 `AppCheckbox` 承載（4.43） | — | — | 由子件承載 | 不適用 | 規格撰寫者 |
+| 焦點 focus | 使用者／輔助技術 | 由各 `AppCheckbox` 承載；群組以 `Semantics` 容器朗讀欄位 label | 無 | 無 | §1 子表「焦點」列 | 不適用 | 規格撰寫者 |
+| 按下確認 press-ack | 使用者 | 由被點的 `AppCheckbox` 承載（第一層）；本容器將其 `onChanged(v)` 轉為 `onToggled(value, v)` 恰一次；核取外觀不在點擊當下改變，等呼叫端改傳 `selected`（與 4.43 在變更記錄的本地即時用法不同） | Material 內建 ripple | pressed 於 `Motion.feedback` 內 | §1 子表「按下確認」列 | ready → locked | 規格撰寫者 |
+| 定位提示 locate | 系統 | 不移動焦點（`1.0.0-W3-553.3.1` 題 2） | 無 | 無 | §1 子表「定位提示」列 | 不適用 | 規格撰寫者 |
+| 狀態變更提示 state-change | 呼叫端（`written` 後改傳 `selected`） | 被切換項的核取外觀離散替換；`checked` 旗標改變由輔助技術播報（4.43） | 無 | 無 | §1 子表「狀態變更提示」列 | locked →（`written`）→ ready（新值）；locked →（被拒、讀寫失敗）→ ready（原值） | 規格撰寫者 |
+| 等待與結果 | 系統 | 掛載點：第一層為被點的 `AppCheckbox`；第二層為 `FieldBlock` writing（本容器 locked）；第三層為 `FieldBlock` 的寫入結果與驗證狀態，四段結局見 4.48 | — | 見 4.48 | §1 子表「等待與結果」列 | 不適用 | 規格撰寫者 |
+
+#### 操作機制
+
+| 形態 | 主要動作 | 任務所需精度 | 該形態輸入精度 | 替代機制 | 回饋通道 |
+|------|---------|-------------|--------------|---------|---------|
+| 桌機 | 依 §4.0.7 點選列（每個核取項一個 Tab 停留點，Space 切換） | | | | |
+
+#### 尺寸契約
+
+| 項目 | 值 |
+|------|-----|
+| 尺寸模式 | 寬填滿父格位；高 = 核取項數 × `LayoutSize.hitTargetMin` + 間距（5.21） |
+| 最小尺寸 | 寬：`Space.xs` + `LayoutSize.iconLg` + `Space.xs` + 4 × `AppFontSize.body` + `Space.xs`（同 `AppRadioGroup`，5.17）；高：`LayoutSize.hitTargetMin`（一項時） |
+| 最小命中區 | `LayoutSize.hitTargetMin`（每個核取項的核取框 + label 整體，4.43） |
+| 最大尺寸 | 寬：父格位寬；高：不設上限，不內嵌捲動（溢出由 `FieldList` 的垂直捲動承接） |
+| `kMinWindowSize` 下的行為 | 維持 |
+| `kDesignSize` 下的行為 | 維持 |
+
+#### 內容政策
+
+| 文字 slot | 可否換行 | 最大行數 | 超出處置 | 最長測試文案 |
+|-----------|---------|---------|---------|-------------|
+| 核取項 label（domain 原值） | 否 | 1 | 截斷（4.43） | `TestCopy.domainName`；`TestCopy.longToken` |
+
+#### slot 契約
+
+| slot | 接受型別 | 必填 | 文字來源 |
+|------|---------|------|---------|
+| `options` | `List<String>`，0..N（無上限） | 是 | 呼叫端：Graph domain 的已宣告 domain 清單（`DomainBundle` 的 `domain` 原值，CLAUDE.md §6 domain 名稱權威寫法），依 domain 名字母序；資料值不進 i18n |
+| `selected` | `List<String>`，依 frontmatter 原序 | 是 | 不適用 |
+| `onToggled` | `void Function(String value, bool checked)` | 是。必填欄位取消最後一項時，呼叫端不發出寫入，`FieldBlock` 顯示「必填空白」（4.48） | 不適用 |
+| `locked` | `bool` | 否（預設 `false`） | 不適用 |
+| `enabled` | `bool` | 否（預設 `true`） | 不適用 |
+| `semanticLabel` | `String` | 是 | 呼叫端（欄位 label） |
+| `testKey` | `Key` | 是（群組根 `action-nodeDetail-field-<fieldKey>`；核取項 `option-nodeDetail-field-<fieldKey>-<value>` 由元件推導，類別為 SPEC-003 §2.9 既有類別） | 不適用 |
+
+#### 使用 design token
+
+| 面向 | token |
+|------|-------|
+| 色彩 | 由 `AppCheckbox` 承載（4.43） |
+| 間距 | 核取項間 0（命中區相鄰，5.21） |
+| 字體 | 由 `AppCheckbox` 承載 |
+| 圓角 | 由 `AppCheckbox` 承載 |
+| 動畫 | 由 `AppCheckbox` 承載 |
+| 尺寸 | `LayoutSize.hitTargetMin` |
+
+#### i18n
+
+| 文字 | i18n key |
+|------|---------|
+| 選項為空 | `checkboxGroupNoOptions`（`FieldBlock` 提示格） |
+| 值域外 | `fieldValueOutOfDomain`（沿用） |
+
+#### 組合規則
+
+| 項目 | 值 |
+|------|-----|
+| 可放入的容器 | `FieldBlock.editable`（值格） |
+| 不得放置的區域 | 依 §4.0.8 |
+| 對齊基準 | 值格起始側對齊 |
+| 作為表格或列表的一欄時 | 不適用 |
+
+#### 無障礙
+
+| 面向 | 要求 |
+|------|------|
+| 朗讀標籤 | 群組 `Semantics(container: true)`，label 為 `semanticLabel`；各核取項依 4.43 |
+| 狀態變化播報 | 依 4.43（`checked` 旗標）；寫入結果由 `FieldBlock` 提示格 live region 播報 |
+| 非視覺替代訊號 | 依 4.43 |
+| 焦點順序與操作路徑（桌機） | 核取項依顯示順序進入 Tab 順序（disabled、locked 除外；locked 時已持有的焦點保留）；Space 切換；欄位間 Tab 順序見 4.50 |
+| 對比 | 依 4.43 |
+
+#### 測試點（widget test）
+
+- [ ] 一支測試渲染 ready（含值域外的值）/ locked / disabled / 選項為空
+- [ ] 點核取項呼叫 `onToggled` 恰一次，`checked` 為點擊前值的反面；對照：checked 與 unchecked 各點一次，兩次傳出值不同
+- [ ] 點擊後未改傳 `selected` 時核取外觀不變（不樂觀切換）
+- [ ] 值域外的值接在最後且為 checked
+- [ ] 兩種視窗尺寸下不溢位；`options` 20 筆時高隨筆數增加、無內嵌捲動
+- [ ] 最長測試文案截斷
+- [ ] 間距引用 token 非硬編碼
+
+#### 反例
+
+| 不該拿它做什麼 | 應改用 |
+|---------------|--------|
+| 節點 ID 的多值引用 | `ReferenceChips` |
+| 互斥單選 | `AppRadioGroup` |
+| 篩選列的布林開關 | `AppCheckbox`（單獨使用，`Toolbar.history`） |
+
 ---
 
 ## 5. 容器元件
@@ -8078,7 +8402,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | label：`AppText.body`（`secondary`）；值格：`editable` 為 `AppTextInput`、`AppDropdown`、`ReferencePicker`、`AppRadioGroup` 之一，`readOnly` 為 `AppText.body` 或 `AppText.mono`；提示格：`AppText.caption` |
+| 接受的子件類型 | label：`AppText.body`（`secondary`）；值格：`editable` 為 `AppTextInput`、`AppDropdown`、`ReferencePicker`、`AppRadioGroup`、`ReferenceChips`（5.20）、`AppCheckboxGroup`（5.21）之一，`readOnly` 為 `AppText.body` 或 `AppText.mono`；提示格：`AppText.caption` |
 | 子件數量上限 | label 1、值格 1、提示格 0..1（共 3） |
 
 #### 排列不變式
@@ -8097,6 +8421,8 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | `AppTextInput` | `Space.sm` + 4 × `AppFontSize.body` + `Space.sm` | 64 | 64 |
 | `AppDropdown` / `ReferencePicker` | `Space.sm` + 4 × `AppFontSize.body` + `Space.xs` + `LayoutSize.iconMd` + `Space.sm` | 83 | 83 |
 | `AppRadioGroup` | `Space.xs` + `LayoutSize.iconLg` + `Space.xs` + 4 × `AppFontSize.body` + `Space.xs` | 77 | 77 |
+| `ReferenceChips`（1.148） | 見 5.20 | ≤ 64 | 64 |
+| `AppCheckboxGroup`（1.148） | 同 `AppRadioGroup`（5.21） | 77 | 77 |
 | 唯讀值、提示格（換行或截斷） | 一字元 + 省略號 | ≤ 24 | 24 |
 | **容器最小寬（最大值）** | | **83** | **83** |
 
@@ -8178,6 +8504,56 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 |------|---------|----------------|
 | 容器最小寬 ≤ 父格位寬 | ≤ 56 ≤ 238，成立 | 56 ≤ 238，成立 |
 
+### 5.20 ReferenceChips
+
+**對應第 4 章條目**：4.52（1.148 新增，`1.1.0-W1-111`）
+
+#### 子件契約
+
+| 項目 | 值 |
+|------|-----|
+| 接受的子件類型 | 元件自帶子件：chip（`AppText.mono` 值 + 移除鈕）× N、加入觸發器 × 1；不接受呼叫端傳入的 widget |
+| 子件數量上限 | chip 不設上限（隨 `selected`）；加入觸發器恰 1，恆在最後 |
+
+#### 排列不變式
+
+| 不變式 | 值 |
+|--------|-----|
+| 不重疊 | chip 與觸發器依序橫排，同列互斥；排不下的子件整個移到下一列，不在列內縮小到最小寬以下 |
+| 最小間距 | 水平與垂直皆 `Space.xs`；呼叫端不得覆寫 |
+| 空間不足策略 | 主軸（水平）：換列。單一子件寬超過容器寬時，該子件獨佔一列並縮至容器寬，chip 文字截斷（4.52 內容政策）。交叉軸（垂直）：不觸發——高 = 列數 × `LayoutSize.hitTargetMin` + (列數 − 1) × `Space.xs`，不設上限，溢出由 `FieldList` 的垂直捲動承接 |
+
+**最小寬**（§4.0.3「一字元」= 該 slot 字級 1em）：
+
+| 子件 | 最小寬（token 式） | 實機字型代入 | 測試字型（Ahem）代入 |
+|------|-------------------|-------------|--------------------|
+| chip | `Space.sm` + 一字元 + 省略號 + `Space.xs` + `LayoutSize.hitTargetMin` | ≤ 8 + 24 + 4 + 28 = 64 | 64 |
+| 加入觸發器 | `Space.sm` + `LayoutSize.iconMd` + `Space.xs` + 一字元 + 省略號 + `Space.sm` | ≤ 8 + 15 + 4 + 24 + 8 = 59 | 59 |
+| **容器最小寬（最大值）** | | **≤ 64** | **64** |
+
+比較對象：`FieldBlock` 值格寬，`kMinWindowSize` 下為 476（5.17、5.18）。64 ≤ 476，成立；本容器的最小寬小於 5.17 既有最大值 83，`FieldBlock` 容器最小寬不變。
+
+### 5.21 AppCheckboxGroup
+
+**對應第 4 章條目**：4.53（1.148 新增，`1.1.0-W1-111`）
+
+#### 子件契約
+
+| 項目 | 值 |
+|------|-----|
+| 接受的子件類型 | `AppCheckbox`（4.43，`locked`／`enabled` 由本容器下發） |
+| 子件數量上限 | 不設上限（隨 `options` 與值域外的 `selected`） |
+
+#### 排列不變式
+
+| 不變式 | 值 |
+|--------|-----|
+| 不重疊 | 核取項垂直互斥，單欄堆疊；交叉軸（寬）各核取項填滿容器寬 |
+| 最小間距 | 0：相鄰核取項的命中區相接，視覺間距由各項自身的高（`LayoutSize.hitTargetMin`）與內距承載；呼叫端不得覆寫 |
+| 空間不足策略 | 主軸（垂直）：不觸發——高 = 項數 × `LayoutSize.hitTargetMin`，不設上限，溢出由 `FieldList` 的垂直捲動承接，不內嵌捲動（避免巢狀捲動）。交叉軸（寬）：固定為父格位寬，label 截斷（4.43） |
+
+**最小寬**：`Space.xs` + `LayoutSize.iconLg` + `Space.xs` + 4 × `AppFontSize.body` + `Space.xs` = 77（同 5.17 的 `AppRadioGroup` 列）。比較對象同 5.20：77 ≤ 476，成立；`FieldBlock` 容器最小寬不變。
+
 ---
 
 ## 6. 原生元件禁用對照表
@@ -8191,14 +8567,14 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | `Icon` | `AppIcon` | 尺寸只取具名階；語意標籤規則統一 |
 | `Divider` / `VerticalDivider` | `Divider`（本檔 4.3）；側欄與主區分隔為 `AppShell` 內部 | 顏色與線寬統一 |
 | `ElevatedButton` / `FilledButton` / `OutlinedButton` / `TextButton` / `IconButton` | `AppButton` | 三變體與 disabled 常駐說明契約；禁 icon-only |
-| `Chip` / `ActionChip` / `FilterChip` | `Badge`（非互動）/ `FilterDropdown`（篩選） | 徽章明訂非互動；篩選有自己的狀態集 |
+| `Chip` / `ActionChip` / `FilterChip` / `InputChip` | `Badge`（非互動）/ `FilterDropdown`（篩選）/ `ReferenceChips`（表單多值引用，1.148） | 徽章明訂非互動；篩選有自己的狀態集；多值引用的加入與移除各為一次寫入、不樂觀更新 |
 | `TextField` / `TextFormField` | `SearchField`（清單搜尋）/ `AppTextInput`（表單欄位，1.140） | 防抖動與清除契約；表單欄位的提交與還原契約 |
 | `DropdownButton` / `DropdownMenu` / `PopupMenuButton` / `Autocomplete` | `FilterDropdown`（篩選）/ `AppDropdown`（表單列舉）/ `ReferencePicker`（表單引用）（後兩者 1.140） | 篩選狀態集與播報（待 W1-057）；表單無「全部」項、值域外值的呈現 |
 | `Radio` / `RadioListTile` / `RadioGroup`（Flutter） | `AppRadioGroup`（1.140） | 選取等寫入確認才移動標示、鍵盤只移焦點不選取（用戶裁定，`1.0.0-W3-675`） |
 | `FormField` / `Form` / `InputDecorator` 自組欄位 | `FieldBlock`（1.140） | label、提示與寫入狀態集中於單一容器 |
 | `DataTable`（Material）/ `Table` | `DataTable`（本檔 4.36）+ `TableRow` | 虛擬捲動與欄規格 |
 | `ListTile` | `ListRow` | 五變體與兩端固定策略 |
-| `Checkbox` / `CheckboxListTile` / `Switch` / `SwitchListTile` | `AppCheckbox` | 文字與核取框同一命中區、朗讀 `checked` 旗標（1.131） |
+| `Checkbox` / `CheckboxListTile` / `Switch` / `SwitchListTile` | `AppCheckbox`；多個核取項排成清單時用 `AppCheckboxGroup`（1.148） | 文字與核取框同一命中區、朗讀 `checked` 旗標（1.131）；清單的鎖定與值域外值由容器承載 |
 | `ExpansionTile` / `ExpansionPanel` | `Section.collapsible` + `ExpanderIcon` | 展開狀態存於 provider、offset 不歸零 |
 | `ScaffoldMessenger.showSnackBar(SnackBar(...))` 直呼 | `AppSnackBar` | 停留時間引用 `Motion` token |
 | `showDialog` / `AlertDialog` / `showModalBottomSheet` / `Drawer` | `SwitcherOverlay`（0.1 唯一覆蓋層） | §1 覆蓋表面對映無 dialog / sheet / drawer |
@@ -8259,6 +8635,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.148 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 1 項（component-contract-design，起點判定為路徑 A：兩個新元件無實作與呼叫端，來源為 SPEC-009 FR-09 逐欄位表）。<br>- 新增 4.52 `ReferenceChips`（容器，5.20）：FR-09「多值引用（節點 ID）」；加入與移除各為一次立即提交（套用時點四問，與 `1.0.0-W3-675` 同一判法）；找不到的值為值對映參數，提示 `fieldReferenceNotFound`；重複值逐筆顯示，chip 與移除鈕的 key 依位置推導；正向檔多值的寫法待決（SPEC-009 v1.10），`partiallyWritten` 呈現待決（第 2 項）。<br>- 新增 4.53 `AppCheckboxGroup`（容器，5.21）：FR-09「多值引用（domain）」；一次切換為一次立即提交；值域外的值接在最後。<br>- 4.43 `AppCheckbox` 增 `locked`、`enabled`（僅在 4.53 內）。<br>- 4.48 值格清單、`editable`／`readOnly` 判定改為依 FR-09「自」與目前版本，提示格優先序補兩則；5.17 子件類型與最小寬表；4.46〈何時不用〉；§3 兩列；§6 `Chip`、`Checkbox` 兩列。<br>- §4.0.6 新增五個 key，帶規格先行標記（`1.1.0-W2-001`、`1.1.0-W2-002`）。<br>- §4.0.9 寫回重驗結果：4.52 待 SPEC-009 v1.10 與第 2 項。<br>- frontmatter 版號原停在 1.146（1.147 漏改），本版一併更正 |
 | 1.147 | 2026-11-12 | `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉，定義標記格式與移除時點；讀本表的契約測試對帶標記的列跳過比對 |
 | 1.146 | 2026-11-11 | `1.0.0-W3-553.6`：重驗 4.46 第 1 條（1.145 `allowEmpty` 定案後全節無佔位標記），六條通過；§4.0.9〈1.144 的重驗結果〉4.46 列改為可被畫面票引用。4.48 在 1.145 新增「必填空白」後重驗，六條仍通過；補測試點（狀態矩陣列舉、與未送出的優先序、必填空白的對照）與回饋契約 state-change 的狀態邊。至此 4.44–4.51 全部可被畫面票引用 |
 | 1.145 | 2026-11-11 | `1.0.0-W3-686`。依用戶裁定 2026-11-11；Q1–Q3 由主控依該裁定推導。<br>**4.46 `ReferencePicker`**<br>- `allowEmpty` 定案：PROP target_version 傳 `true`，SPEC domain 傳 `false`；清空時寫入 `null`，寫法見 SPEC-009 FR-03〈清空〉。<br>- 改寫隔離的引用原誤寫為「SPEC-009 FR-04」，改為 FR-03。<br>- open 態的 `allowEmpty` 首項不參與過濾、固定在首列；覆蓋層算式的 N 含首項；驗收補一條對照。<br>- 修正兩處 `1.0.0-W3-553.6` 刻意留下的殘留：〈新增元件而非併入 `AppDropdown` 的理由〉的列舉上限 8 改為 10；〈`kMinWindowSize` 下的行為〉的可用高扣除 `LayoutSize.titleBarHeight`，改為 288（結論不變：264 ≤ 288）。<br>**4.44 `AppTextInput`**<br>- `onSubmitted`：草稿 trim 後為空時照常呼叫，由呼叫端依 SPEC-009 FR-09〈可否清空〉寫入 `null` 或擋下。<br>**4.48 `FieldBlock`**<br>- 新增「必填空白」狀態，提示格優先序排在寫入失敗之後、未送出之前；i18n 表補一列。<br>**§4.0.6**<br>- 新增〈1.145 新增〉：`fieldRequiredEmpty`。<br>**§4.0.9 重驗**<br>- 4.46 第 1 條待 `1.0.0-W3-553.6` 重驗，結果由該票回寫。 |
