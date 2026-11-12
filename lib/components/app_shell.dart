@@ -22,6 +22,15 @@ import 'page_column.dart';
 import 'project_switcher_entry.dart';
 import 'switcher_overlay.dart';
 
+/// 工作區唯讀降級的原因（SPEC-001 §1〈「唯讀降級」同樣是疊加旗標〉）。
+enum ReadonlyWorkspaceReason {
+  /// 資料夾不是 git repo。
+  notGit,
+
+  /// 找不到 git 可執行檔。
+  gitMissing,
+}
+
 /// 根框架容器（SPEC-004 §4.27）。
 ///
 /// | slot | 必填 | 說明 |
@@ -51,6 +60,7 @@ class AppShell extends StatelessWidget {
     this.degradedBuiltinVersion,
     this.degradedProjectVersion,
     this.inferredVersion,
+    this.readonlyWorkspaceReason,
     this.overlay,
     this.testKey = shellKey,
   }) : assert(
@@ -64,9 +74,11 @@ class AppShell extends StatelessWidget {
          'pages 恰 7 項（SPEC-004 4.27 slot 契約）',
        ),
        assert(
-         bottomItems.length == 0 || bottomItems.length == 2,
+         bottomItems.length == 0 ||
+             bottomItems.length == 2 ||
+             bottomItems.length == 3,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'bottomItems 為空或恰 2 項（SPEC-004 4.27 側欄底部 slot）',
+         'bottomItems 為 0、2 或 3 項（暫時放寬；收緊為 0 或恰 3 由 1.0.0-W3-553.17 完成）',
        );
 
   /// 整合測試與元件測試用來確認「已抵達殼」的錨點（SPEC-004 4.27 slot
@@ -88,9 +100,14 @@ class AppShell extends StatelessWidget {
   /// 六個頁面，與 [navItems] 同序（SPEC-004 4.27 slot 契約）。
   final List<PageColumn> pages;
 
-  /// 側欄底部兩項（`NavItem.action`，依序設定、鍵盤快捷鍵；SPEC-004 4.27
-  /// 〈側欄底部 slot〉）。空清單表示呼叫端尚未掛接，不渲染底部區。
+  /// 側欄底部三項（`NavItem.action`，依序設定、鍵盤快捷鍵、寫入清單；
+  /// SPEC-004 4.27〈側欄底部 slot〉）。寫入清單項的失敗計數 badge 由呼叫端
+  /// 放進該 `NavItem.badge`。空清單表示呼叫端尚未掛接，不渲染底部區。
   final List<NavItem> bottomItems;
+
+  /// 工作區唯讀降級原因；非 `null` 時七畫面返回列常駐渲染
+  /// `badge-<screen>-readonly-workspace`（SPEC-004 4.27 state-change 列）。
+  final ReadonlyWorkspaceReason? readonlyWorkspaceReason;
 
   /// 當前可見頁序號（`IndexedStack.index`）。
   final int selectedIndex;
@@ -167,6 +184,7 @@ class AppShell extends StatelessWidget {
                 degradedBuiltinVersion: degradedBuiltinVersion,
                 degradedProjectVersion: degradedProjectVersion,
                 inferredVersion: inferredVersion,
+                readonlyReason: readonlyWorkspaceReason,
               ),
             ),
           ),
@@ -317,7 +335,11 @@ class _MainArea extends StatelessWidget {
     required this.degradedBuiltinVersion,
     required this.degradedProjectVersion,
     required this.inferredVersion,
+    required this.readonlyReason,
   });
+
+  /// 工作區唯讀降級原因；非 `null` 時渲染唯讀徽章，與降級、推定版本徽章並列。
+  final ReadonlyWorkspaceReason? readonlyReason;
 
   final int selectedIndex;
   final String screenName;
@@ -345,7 +367,10 @@ class _MainArea extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (hasBackAction || isDegraded || hasInferredVersion)
+        if (hasBackAction ||
+            isDegraded ||
+            hasInferredVersion ||
+            readonlyReason != null)
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: Space.md,
@@ -354,23 +379,39 @@ class _MainArea extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (isDegraded)
-                  Badge.tag(
-                    key: Key('badge-$screenName-degraded-schema'),
-                    label: l10n.degradedSchemaBadgeLabel(
-                      degradedBuiltinVersion ?? '',
-                      degradedProjectVersion ?? '',
-                    ),
-                  )
-                else if (hasInferredVersion)
-                  Badge.tag(
-                    key: Key('badge-$screenName-inferred-version'),
-                    label: l10n.inferredVersionBadgeLabel(
-                      inferredVersion ?? '',
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
+                Flexible(
+                  child: Wrap(
+                    spacing: Space.sm,
+                    runSpacing: Space.xxs,
+                    children: [
+                      if (isDegraded)
+                        Badge.tag(
+                          key: Key('badge-$screenName-degraded-schema'),
+                          label: l10n.degradedSchemaBadgeLabel(
+                            degradedBuiltinVersion ?? '',
+                            degradedProjectVersion ?? '',
+                          ),
+                        )
+                      else if (hasInferredVersion)
+                        Badge.tag(
+                          key: Key('badge-$screenName-inferred-version'),
+                          label: l10n.inferredVersionBadgeLabel(
+                            inferredVersion ?? '',
+                          ),
+                        ),
+                      if (readonlyReason != null)
+                        Badge.tag(
+                          key: Key('badge-$screenName-readonly-workspace'),
+                          label: switch (readonlyReason!) {
+                            ReadonlyWorkspaceReason.notGit =>
+                              l10n.readonlyWorkspaceNotGitBadge,
+                            ReadonlyWorkspaceReason.gitMissing =>
+                              l10n.readonlyWorkspaceGitMissingBadge,
+                          },
+                        ),
+                    ],
+                  ),
+                ),
                 if (hasBackAction)
                   AppButton(
                     label: l10n.backAction,

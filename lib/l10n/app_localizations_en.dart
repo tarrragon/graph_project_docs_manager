@@ -1153,6 +1153,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not reload this file. Try Discard and reload again';
 
   @override
+  String get readonlyWorkspaceNotGitBadge =>
+      'This folder is not a git repository, so it cannot be edited in the app';
+
+  @override
+  String get readonlyWorkspaceGitMissingBadge =>
+      'git was not found, so files cannot be edited in the app';
+
+  @override
+  String get writeLogTitle => 'Write Log';
+
+  @override
   String get nodeDetailBodyUnavailableMessage =>
       'Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan';
 

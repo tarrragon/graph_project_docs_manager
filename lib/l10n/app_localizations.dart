@@ -1867,6 +1867,24 @@ abstract class AppLocalizations {
   /// **'無法重新讀取這個檔案，請再按一次放棄並重讀'**
   String get editBannerReloadFailed;
 
+  /// SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag）；editFieldsAction 的 disabledReason
+  ///
+  /// In zh, this message translates to:
+  /// **'此資料夾不是 git repo，無法在 App 內編輯'**
+  String get readonlyWorkspaceNotGitBadge;
+
+  /// SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag，git 不可用）
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到 git，無法在 App 內編輯'**
+  String get readonlyWorkspaceGitMissingBadge;
+
+  /// SPEC-001 §12 面板標題；SPEC-004 4.7 NavItem.action 標籤（nav-action-writeLog）
+  ///
+  /// In zh, this message translates to:
+  /// **'寫入清單'**
+  String get writeLogTitle;
+
   /// SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明
   ///
   /// In zh, this message translates to:

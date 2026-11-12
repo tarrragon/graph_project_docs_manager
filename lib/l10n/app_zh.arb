@@ -1945,6 +1945,18 @@
   "@editBannerReloadFailed": {
     "description": "SPEC-004 4.49 negative（重讀讀取失敗）"
   },
+  "readonlyWorkspaceNotGitBadge": "此資料夾不是 git repo，無法在 App 內編輯",
+  "@readonlyWorkspaceNotGitBadge": {
+    "description": "SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag）；editFieldsAction 的 disabledReason"
+  },
+  "readonlyWorkspaceGitMissingBadge": "找不到 git，無法在 App 內編輯",
+  "@readonlyWorkspaceGitMissingBadge": {
+    "description": "SPEC-004 4.27 badge-<screen>-readonly-workspace（Badge.tag，git 不可用）"
+  },
+  "writeLogTitle": "寫入清單",
+  "@writeLogTitle": {
+    "description": "SPEC-001 §12 面板標題；SPEC-004 4.7 NavItem.action 標籤（nav-action-writeLog）"
+  },
   "nodeDetailBodyUnavailableMessage": "無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新",
   "@nodeDetailBodyUnavailableMessage": {
     "description": "SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明"

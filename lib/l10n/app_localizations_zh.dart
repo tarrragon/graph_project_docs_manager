@@ -1072,6 +1072,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editBannerReloadFailed => '無法重新讀取這個檔案，請再按一次放棄並重讀';
 
   @override
+  String get readonlyWorkspaceNotGitBadge => '此資料夾不是 git repo，無法在 App 內編輯';
+
+  @override
+  String get readonlyWorkspaceGitMissingBadge => '找不到 git，無法在 App 內編輯';
+
+  @override
+  String get writeLogTitle => '寫入清單';
+
+  @override
   String get nodeDetailBodyUnavailableMessage =>
       '無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新';
 
