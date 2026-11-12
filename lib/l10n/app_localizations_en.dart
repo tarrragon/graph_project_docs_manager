@@ -1159,6 +1159,76 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get fieldDraftUnsentHint =>
+      'Not sent yet (Enter to send, Esc to revert)';
+
+  @override
+  String get fieldDraftUnsentHintMultiLine =>
+      'Not sent yet (⌘Enter to send, Esc to revert)';
+
+  @override
+  String get fieldWriteInProgress => 'Writing';
+
+  @override
+  String get fieldSeeWriteLogHint => 'See the write log for how to restore';
+
+  @override
+  String get fieldBlockedSnapshotFailed =>
+      'Could not create a snapshot, so the file was not changed';
+
+  @override
+  String get fieldBlockedRewriteNotIsolated =>
+      'This field cannot be changed on its own, so the file was not changed. Use an external editor';
+
+  @override
+  String get fieldIoFailed =>
+      'Reading or writing failed, so the file was not changed';
+
+  @override
+  String get fieldNotEditableHint =>
+      'This field cannot be edited in the app yet';
+
+  @override
+  String get fieldRequiredEmpty =>
+      'This field is required, so the blank value was not sent';
+
+  @override
+  String get validationRunning => 'Validating';
+
+  @override
+  String get validationPassed => 'Validation passed';
+
+  @override
+  String validationFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new issues found',
+      one: '1 new issue found',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get validationUnavailable => 'Could not validate';
+
+  @override
+  String get validationUnavailableExecutableMissing =>
+      'uv or the doc CLI was not found';
+
+  @override
+  String get validationUnavailableUnexpectedExitCode =>
+      'The validator exited with an unexpected code';
+
+  @override
+  String get validationUnavailableUnparsableOutput =>
+      'The validator\'s output could not be parsed';
+
+  @override
+  String get validationUnavailableTimedOut =>
+      'Validation took longer than 30 seconds and was stopped';
+
+  @override
   String get radioYes => 'Yes';
 
   @override
