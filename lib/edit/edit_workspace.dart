@@ -18,6 +18,10 @@ const int _errorLevel = 900;
 /// 工作區的編輯模式（由 Edit 在工作區開啟時判定，不放進 Workspace）。
 enum EditMode { writable, readOnly }
 
+/// 唯讀降級的原因（SPEC-001 §1〈唯讀降級〉）：[notGit] 資料夾不是 git
+/// repo；[gitMissing] `git` 無法執行（找不到、逾時或行程錯誤）。
+enum EditReadonlyReason { notGit, gitMissing }
+
 /// `beginEditing` 的結果。
 sealed class BeginEditingResult {
   const BeginEditingResult();
@@ -46,9 +50,12 @@ final class EditingReadFailed extends BeginEditingResult {
 /// repo 或 `git` 無法執行即唯讀降級；之後每次寫入不重判（編輯中 `git` 失效
 /// 由閘門步驟 3 回傳 `snapshotFailed`，不靜默放行）。
 class EditWorkspace {
-  EditWorkspace._(this.mode, this._context);
+  EditWorkspace._(this.mode, this.readonlyReason, this._context);
 
   final EditMode mode;
+
+  /// 唯讀降級原因；[mode] 為 writable 時為 null。
+  final EditReadonlyReason? readonlyReason;
   final EditGateContext _context;
 
   static Future<EditWorkspace> open({
@@ -62,10 +69,12 @@ class EditWorkspace {
   }) async {
     final editTimer = timer ?? (duration) => Future<void>.delayed(duration);
     final runner = EditGitRunner(port: git, timer: editTimer, root: root);
-    final mode = await _probeMode(runner);
+    final reason = await _probeReadonlyReason(runner);
+    final mode = reason == null ? EditMode.writable : EditMode.readOnly;
     developer.log('edit mode: ${mode.name}', name: _tag); // i18n-exempt
     return EditWorkspace._(
       mode,
+      reason,
       EditGateContext(
         files: files,
         git: runner,
@@ -78,13 +87,15 @@ class EditWorkspace {
     );
   }
 
-  static Future<EditMode> _probeMode(EditGitRunner runner) async {
+  static Future<EditReadonlyReason?> _probeReadonlyReason(
+    EditGitRunner runner,
+  ) async {
     final result = await runner.run(['rev-parse', '--is-inside-work-tree']);
+    if (result == null) return EditReadonlyReason.gitMissing;
     final inside =
-        result != null &&
         result.exitCode == 0 &&
         String.fromCharCodes(result.stdout).trim() == 'true';
-    return inside ? EditMode.writable : EditMode.readOnly;
+    return inside ? null : EditReadonlyReason.notGit;
   }
 
   /// 開始編輯：本 domain 自己讀取目標檔位元組作為 M（不取 Corpus 解析時的
