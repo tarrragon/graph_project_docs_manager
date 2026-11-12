@@ -18,7 +18,6 @@ import '../../helpers/spec_first_marker.dart';
 const Set<String> pendingAdditionExemptions = <String>{
   'editFieldsAction',
   'nodeDetailEditReadFailedMessage',
-  'referencePickerNoMatch',
   'writeLogEmptyMessage',
 };
 

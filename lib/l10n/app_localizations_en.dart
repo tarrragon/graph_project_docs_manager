@@ -271,6 +271,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get referencePickerNoMatch => 'No matching items';
+
+  @override
   String get searchClearAction => 'Clear search';
 
   @override

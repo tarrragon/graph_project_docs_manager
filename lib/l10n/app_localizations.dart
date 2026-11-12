@@ -548,6 +548,12 @@ abstract class AppLocalizations {
   /// **'{label}，目前：{value}'**
   String dropdownA11yLabel(String label, String value);
 
+  /// SPEC-004 §4.46：ReferencePicker 過濾後無符合項的文字
+  ///
+  /// In zh, this message translates to:
+  /// **'沒有符合的項目'**
+  String get referencePickerNoMatch;
+
   /// SPEC-004 §4.12：SearchField 清除按鈕文案
   ///
   /// In zh, this message translates to:

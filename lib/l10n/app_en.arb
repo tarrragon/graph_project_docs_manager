@@ -79,6 +79,7 @@
   "filterAllOption": "All",
   "filterA11yLabel": "{label} filter, current: {value}",
   "dropdownA11yLabel": "{label}, current: {value}",
+  "referencePickerNoMatch": "No matching items",
   "filterStatusLabel": "Status",
   "filterPriorityLabel": "Priority",
   "sortA11yLabel": "{label}, sortable, current: {order}",

@@ -262,6 +262,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get referencePickerNoMatch => '沒有符合的項目';
+
+  @override
   String get searchClearAction => '清除搜尋';
 
   @override
