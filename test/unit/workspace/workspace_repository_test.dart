@@ -14,6 +14,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
@@ -166,8 +168,8 @@ void main() {
             .where((e) => e.event == WorkspaceLogEvent.persistIssuing)
             .every(
               (e) =>
-                  e.message.contains('workspace.path') &&
-                  e.message.contains('/tmp/ws'),
+                  e.payload[WorkspaceLogKeys.key] == 'workspacePath' &&
+                  !e.payload.values.any((v) => '$v'.contains('/tmp/ws')),
             ),
         isTrue,
       );
@@ -187,7 +189,7 @@ void main() {
       expect(
         log.entries
             .where((e) => e.event == WorkspaceLogEvent.restoreIssuing)
-            .every((e) => e.message.contains('workspace.path')),
+            .every((e) => e.payload[WorkspaceLogKeys.key] == 'workspacePath'),
         isTrue,
       );
       expect(preferences.calls.any((c) => c.method == 'open'), isTrue);
@@ -1240,21 +1242,22 @@ class _DirectoryProbeRecorder implements WorkspaceDirectoryProbePort {
   }
 }
 
-/// 日誌記錄器：累積 (事件識別碼, 訊息, 等級, 錯誤)，供索引順序斷言。
+/// 日誌記錄器：實作 `LogSink<WorkspaceLogEvent>`，累積 (事件識別碼, 負載,
+/// 等級, 錯誤)，供索引順序斷言。
 ///
-/// 斷言應綁 [WorkspaceLogEvent]（穩定契約），不綁 `message`（可自由改寫的
-/// 除錯文案）——0.3.1-W3-132 解除文字內容耦合，時序驗證的量測手段從
-/// `indexOfSubstring` 改為 [indexOfEvent]，語意不變。
+/// 斷言綁 [WorkspaceLogEvent]（穩定契約）與 FR-03 白名單負載；
+/// 等級以 `developer.log` 數值（warning = 900）記錄。
 class _LogRecorder {
   final entries = <_LogEntry>[];
 
   void call(
-    String message, {
-    required WorkspaceLogEvent event,
-    int? level,
+    WorkspaceLogEvent event,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
     Object? error,
   }) {
-    entries.add(_LogEntry(message, event, level, error));
+    entries.add(_LogEntry(fields.toJson(), event, level.devLogLevel, error));
   }
 
   /// 是否存在任何一筆識別碼為 [event] 的日誌。
@@ -1267,8 +1270,8 @@ class _LogRecorder {
 }
 
 class _LogEntry {
-  const _LogEntry(this.message, this.event, this.level, this.error);
-  final String message;
+  const _LogEntry(this.payload, this.event, this.level, this.error);
+  final Map<String, Object> payload;
   final WorkspaceLogEvent event;
   final int? level;
   final Object? error;
