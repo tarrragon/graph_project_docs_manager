@@ -2,9 +2,9 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/edit/type_table_field_domain_source.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/screens/edit/field_input_mapping.dart';
-import 'package:graph_project_docs_manager/screens/edit/type_table_field_domain_source.dart';
 
 final _table = TypeTable({
   'SPEC': NodeTypeEntry(

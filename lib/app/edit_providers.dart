@@ -11,8 +11,8 @@ import 'package:graph_project_docs_manager/components/app_shell.dart'
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_workspace.dart';
-import 'package:graph_project_docs_manager/screens/edit/field_input_mapping.dart';
-import 'package:graph_project_docs_manager/screens/edit/type_table_field_domain_source.dart';
+import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
+import 'package:graph_project_docs_manager/edit/type_table_field_domain_source.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 

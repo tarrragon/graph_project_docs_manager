@@ -1,8 +1,8 @@
 /// 需求：[SPEC-009 v1.4 FR-09] 讀型別表的值域來源正式實作。
 library;
 
+import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
-import 'package:graph_project_docs_manager/screens/edit/field_input_mapping.dart';
 
 /// 以 [TypeTable] 回答完整性欄位；值域一律視為無機器定義。
 class TypeTableFieldDomainSource implements FieldDomainSource {
