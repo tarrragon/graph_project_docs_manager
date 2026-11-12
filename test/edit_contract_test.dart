@@ -6,10 +6,15 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-Future<String> _analyze(String file) async {
-  final r = await Process.run('fvm', ['dart', 'analyze', file]);
-  return '${r.stdout}${r.stderr}';
-}
+// analyzer 結束碼：0 = 無問題，3 = 有 error（實測）。
+const int _positiveExitCode = 0;
+const int _negativeExitCode = 3;
+
+Future<ProcessResult> _analyze(String file) =>
+    Process.run('fvm', ['dart', 'analyze', file]);
+
+String _describe(ProcessResult r) =>
+    'exitCode=${r.exitCode}\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}';
 
 void main() {
   const dir = 'test/fixtures/edit/path_type';
@@ -24,14 +29,20 @@ void main() {
     tmp.createSync(recursive: true);
     final source = File('$dir/negative.dart.txt').readAsLinesSync();
     File('${tmp.path}/negative.dart').writeAsStringSync(source.join('\n'));
-    final out = await _analyze('${tmp.path}/negative.dart');
+    final result = await _analyze('${tmp.path}/negative.dart');
+    final out = '${result.stdout}${result.stderr}';
+    final why = _describe(result);
+    expect(result.exitCode, _negativeExitCode, reason: why);
     final callLine = source.indexWhere((l) => l.contains("beginEditing('")) + 1;
-    expect(out, contains('error'));
-    expect(out, contains('negative.dart:$callLine:'));
+    expect(out, contains('error'), reason: why);
+    expect(out, contains('negative.dart:$callLine:'), reason: why);
   }, timeout: slow);
 
   test('P-9 positive：WorkspaceRelativePath 呼叫零 error', () async {
-    final out = await _analyze('$dir/positive.dart');
-    expect(out, isNot(contains('error')));
+    final result = await _analyze('$dir/positive.dart');
+    final out = '${result.stdout}${result.stderr}';
+    final why = _describe(result);
+    expect(result.exitCode, _positiveExitCode, reason: why);
+    expect(out, isNot(contains('error')), reason: why);
   }, timeout: slow);
 }

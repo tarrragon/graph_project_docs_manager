@@ -5,14 +5,12 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/corpus/corpus_log_event.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
 import 'package:graph_project_docs_manager/services/directory_watch_source.dart';
 import 'package:graph_project_docs_manager/services/file_watch_canary_io.dart';
-
-const String _tag = 'corpus_watch';
 
 /// 監看事件來源；測試覆寫為假來源。
 final watchSourceProvider = Provider<WatchSource>(
@@ -59,8 +57,7 @@ final corpusWatcherProvider = Provider<CorpusWatcher>((ref) {
     clock: ref.read(watchClockProvider),
     canaryIo: ref.read(watchCanaryIoProvider),
     onChanged: (_) => ref.read(watchChangedSinkProvider).listener?.call(),
-    log: (message, {int level = 0}) =>
-        developer.log(message, name: _tag, level: level),
+    log: defaultCorpusWatchLogSink,
   );
   ref.onDispose(() => unawaited(watcher.stop()));
   return watcher;

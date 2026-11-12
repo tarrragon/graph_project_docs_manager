@@ -8,14 +8,17 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 
 class _Events {
   final List<WorkspaceLogEvent> events = [];
   void call(
-    String message, {
-    required WorkspaceLogEvent event,
-    int? level,
+    WorkspaceLogEvent event,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
     Object? error,
   }) => events.add(event);
 }

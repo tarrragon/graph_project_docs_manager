@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-12"
-version: "1.5"
+version: "1.7"
 owner: L54-main
 has_functional_requirements: true
 
@@ -163,7 +163,57 @@ depends_on_domains: [workspace, schema, corpus, observability]
     - 寫 `null`：解析層只有目標鍵的值改變，位元組層只有值範圍改變，兩道都通過。
     - 移除鍵：解析結果少一個鍵，違反允許變更集合（理由同「`updated` 缺席時不新增」），回傳 `blocked(rewriteNotIsolated)`。
   - 驗證器不區分 `null`、空字串與缺鍵：`1.0.0-W3-686` 以 fixture 實測，`doc validate` 與 `doc uc verify` 對三者回傳相同結束碼。所以清空的合法性由本條與 FR-09 決定，不交給驗證器。
-- **1.0 一次寫入只寫一個檔**，不存在批次中途失敗。1.1 的兩檔寫入（反向欄位）在 1.1 規劃波補進本規格：寫入順序、閘門是整批判定或逐檔判定，以及第二檔失敗時的回復（〈2026-09-10〉批次中途失敗；PROP-007〈失敗防護〉第 3 列）。
+- **1.0 一次寫入只寫一個檔**，不存在批次中途失敗。1.1 起，改寫有反向欄位的邊時，一次寫入會寫多個檔，規則見下方〈多檔寫入（1.1）〉。
+
+#### 多檔寫入（1.1）
+
+用戶裁定 2026-11-12（`1.1.0-W1-111`，選項 A）。
+
+**適用範圍**：文件節點的邊中，只有 provenance 有反向欄位：SPEC 的 `source_proposal`（正向）對應 PROP 的 `outputs.spec_refs`（反向）。blood、spawn 也有反向欄位，但兩者都是 ticket 欄位，屬於 1.2，經 ticket CLI 寫入，不走本節。其餘 1.1 邊欄位沒有反向欄位，照單檔寫入處理。
+
+**寫入集合**：改寫 SPEC `source_proposal` 的一次寫入，寫入集合包含：
+
+- SPEC 本身（正向檔）。
+- 每一個 `outputs.spec_refs` 成員資格因這次改寫而變動的 PROP（反向檔）：移出時從清單刪除該 SPEC id，加入時把該 SPEC id 附加到清單末尾。
+
+例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致（已含或已不含該 SPEC id），該檔不列入寫入集合。反向檔的 id 在圖上查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+
+**反向檔的允許變更集合**：`outputs.spec_refs` 與 `updated` 兩個鍵（`updated` 規則同上方〈允許變更集合〉）。
+
+- 只改寫清單的值範圍。`outputs` 或 `spec_refs` 鍵不存在時不新增鍵，整批回傳 `blocked(rewriteNotIsolated)`，理由同「`updated` 缺席時不新增」。
+- 兩道改寫隔離檢查對反向檔同樣適用。
+- PROP `outputs` 其他兩個清單（`usecase_refs`、`ticket_refs`）與表格列編輯仍自 1.4 起開放（FR-09）。
+
+**反向檔的 M**：使用者只對正向檔開始編輯，反向檔沒有「開始編輯」時點。反向檔的 M 取送出當下、步驟 1 讀到的內容。
+
+- 後果：反向檔的外部改動只由步驟 5 的重比把關，涵蓋步驟 1 到步驟 5 之間的改動；送出之前的外部改動會被當成基準。
+- 這和直接用外部編輯器改該檔的效果相同（以磁碟現況為準），不會覆蓋使用者看不到的改動。
+
+**閘門整批判定**：寫入集合中每個檔依序跑 FR-01 步驟 1～4（讀 W、改寫並隔離檢查、快照、寫暫存檔並 fsync）。任一檔在任一步不通過，整批停止，刪除所有已寫的暫存檔，所有目標檔不變，回傳該檔的結果（`blocked` 或 `ioFailed`，帶路徑）。
+
+- 理由：步驟 1～4 都不動目標檔。全部通過才進入 `rename`，能把「只成功一部分」的時窗縮到 `rename` 階段。
+- 快照逐檔各自判定（W ≠ H 的檔才快照），各檔的快照 SHA 分別攜帶。
+
+**`rename` 順序**：先反向檔（依路徑字串排序），最後正向檔。每個檔在 `rename` 前各自跑步驟 5 的重比。
+
+- 理由：正向檔是使用者在畫面上編輯的對象。它放在最後，正向檔落檔就代表整批完成；中途失敗時，畫面上的值維持原狀，與使用者看到的「沒寫成」一致。
+
+**中途失敗的回復**：第 k 個檔在步驟 5 或步驟 6 失敗時（k ≥ 2，前 k−1 個檔已 `rename`）：
+
+1. 刪除其餘暫存檔。
+2. 依相反順序，把已 `rename` 的檔還原為各自步驟 1 讀到的 W 位元組。還原走同一套暫存檔加 `rename`，但不跑閘門：還原的內容就是這次寫入前的內容，不需要再做改寫隔離檢查。
+3. 全部還原成功：回傳第 k 個檔的原結果（`blocked(externallyModified)` 或 `ioFailed`）。所有目標檔等同未動。
+4. 任一檔還原失敗：回傳 `partiallyWritten`（FR-05），攜帶已落檔且未還原的檔案清單與各檔的取回說明（FR-02 的兩種指令，依該檔是否有快照）。
+
+已知限制：還原時不重比磁碟內容，`rename` 之後到還原之前若有外部寫入，會被還原覆蓋。這個時窗與步驟 5～6 的殘餘時窗同量級。
+
+**寫入後驗證**：FR-05 的驗證範圍與 baseline 只套用正向檔。反向檔不跑 baseline，也不跑寫入後驗證。
+
+- 理由：baseline 必須在寫入前對該檔跑完，對反向檔跑 baseline 等於讓每次邊寫入都多等一輪 CLI（每個檔最長 30 秒）。
+- 反向檔的改寫由兩道隔離檢查把關，只動一個清單值與 `updated`。
+- 正反向一致由整批判定與回復保證，不靠驗證器：`doc validate` 不檢查 provenance 的反向一致性（`.claude/skills/doc/doc_system/commands/validate.py` 不讀 `outputs`、`source_proposal`，2026-11-12 查證）。整批寫入只會有三種結局：全部落檔、全部未動、`partiallyWritten`。前兩種正反向一致，第三種以結果型別呈現，所以不一致不會只寫進日誌。
+
+**M 的更新**：受理為 `written` 時，正向檔的 M 依 FR-01 更新。反向檔不在編輯中，沒有 M 可更新。
 
 **驗收標準**：
 
@@ -175,6 +225,14 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 寫入後目標檔的權限位元與寫入前相同
 - [ ] 清空 PROP target_version 後，該鍵仍存在且值為 `null`；檔案除該值與 `updated` 外逐位元組相同
 - [ ] 內文含非法 UTF-8 位元組的檔案，修正任一欄位時回傳 `rewriteNotIsolated` 且目標檔不變（v1.5）
+- [ ] 多檔寫入（v1.6）：把 SPEC `source_proposal` 由 PROP-A 改為 PROP-B 後，PROP-A 的 `outputs.spec_refs` 不含該 SPEC、PROP-B 的含該 SPEC，三個檔除各自允許變更集合外逐位元組相同
+- [ ] 多檔寫入（v1.6）：反向檔缺 `outputs.spec_refs` 鍵時，整批回傳 `rewriteNotIsolated`，所有檔不變
+- [ ] 多檔寫入（v1.6）：任一檔在步驟 1～4 不通過時，所有目標檔不變，同目錄不殘留暫存檔
+- [ ] 多檔寫入（v1.6）：第 2 個檔 `rename` 失敗（以注入模擬）且還原成功時，回傳原失敗結果，已 `rename` 的檔還原為寫入前的位元組
+- [ ] 多檔寫入（v1.6）：還原也失敗（以注入模擬）時，回傳 `partiallyWritten`，攜帶未還原的路徑清單與各檔的取回說明
+- [ ] 多檔寫入（v1.6）：`rename` 順序為反向檔在前、正向檔最後
+- [ ] 多檔寫入（v1.6）：修正 `danglingRef` 的 `source_proposal`（舊值指向不存在的 PROP）時，只寫 SPEC 與新 PROP 兩個檔
+- [ ] 多檔寫入（v1.6）：新值指向不存在的 PROP 時，整批回傳 `rewriteNotIsolated`，所有檔不變
 
 ---
 
@@ -231,8 +289,11 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | `written` | 位元組已落檔 | 快照 SHA（有快照時） |
 | `blocked` | 閘門阻擋，檔案未動 | 原因：`externallyModified`／`snapshotFailed`／`rewriteNotIsolated` |
 | `ioFailed` | 讀取、寫入或 `rename` 失敗，檔案未動 | IO 失敗分類（不含路徑以外的訊息） |
+| `partiallyWritten`（1.1） | 多檔寫入中途失敗，且有檔案還原失敗（FR-03〈多檔寫入（1.1）〉），寫入集合中有些檔已落檔、有些未動 | 已落檔且未還原的路徑清單，各附取回說明（FR-02）；觸發失敗的檔案路徑與原因 |
 
-`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因：`executableMissing`、`unexpectedExitCode`、`unparsableOutput`、`timedOut`）。
+多檔寫入時，`written` 攜帶寫入集合中每個檔的路徑與快照 SHA（有快照的檔）；`blocked` 與 `ioFailed` 攜帶觸發停止的檔案路徑，且寫入集合中所有檔都未動。
+
+`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因：`executableMissing`、`unexpectedExitCode`、`unparsableOutput`、`timedOut`、`baselineNotReady`）。
 
 **約束條件**：
 
@@ -245,9 +306,15 @@ depends_on_domains: [workspace, schema, corpus, observability]
   - 問題的比對鍵為驗證器回報的識別值（UC 編號等）加出現次數，不用行號或路徑：改寫會使行號位移。
   - 每次寫入成功後，該次寫入後的問題集合成為下一次寫入的 baseline；放棄並重讀時重跑 baseline。
   - baseline 為 `unavailable` 時，該次編輯期間所有寫入的驗證結果皆為 `unavailable`。
+  - **baseline 與寫入的先後**（執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`））：
+    - 寫入的 rename 之前 baseline 量測尚未完成時，丟棄這份 baseline；之後才完成的量測結果不採用。該次寫入的驗證結果為 `unavailable(baselineNotReady)`。
+    - 該次寫入後取得的問題集合，成為下一次寫入的 baseline。
+    - 寫入後的驗證為 `unavailable` 時，保留原 baseline，不以該次寫入取代。
+    - baseline 因前一點被丟棄、且尚未取得任何寫入後問題集合時（例如該次寫入的驗證也是 `unavailable`），寫入的驗證為 `unavailable(baselineNotReady)`；第一個取得的寫入後問題集合，成為下一次寫入的 baseline。baseline 量測完成但結果為 `unavailable` 時，依上一條「baseline 為 `unavailable`」處理，不適用本點。
+    - 理由：寫入後才完成的 baseline 量到的是已改寫的內容，差集會漏掉新問題而誤報 `passed`。丟棄它不阻擋輸入（NFR-01），也不誤報。
   - 理由：`uc verify` 分不出提及與使用（上游 tarrragon/claude#98），寫入檔本身的提及會讓每次寫入都報錯。上游修正後 baseline 不再含這類誤報，差集判定照樣成立，條文不需改。
 - **CLI 結束碼對應**：0 為無問題；1 為有問題，解析輸出取得問題集合；2 為驗證器無法定位或解析目標文件。結束碼 2 同樣套用 baseline：baseline 不是 2、寫入後才出現 2，判為 `failed`；baseline 已是 2 時，寫入後的 2 屬既有問題，不判 `failed`。理由：寫入已通過 Corpus 的隔離檢查，驗證器卻變得無法解析，代表兩套解析不一致，正是要浮上來的索引不同步；而驗證器原本就無法解析的檔案，若每次寫入都判 `failed`，就與「baseline 已有的問題不算驗證失敗」矛盾。
-- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill，原因 `executableMissing`）、結束碼不在上述三值（`unexpectedExitCode`）、輸出無法解析（`unparsableOutput`），或驗證子行程逾時（`timedOut`）。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
+- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill，原因 `executableMissing`）、結束碼不在上述三值（`unexpectedExitCode`）、輸出無法解析（`unparsableOutput`）、驗證子行程逾時（`timedOut`），或 baseline 尚未完成即寫入（`baselineNotReady`，見〈baseline 與寫入的先後〉）。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
 - **驗證子行程逾時 30 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：baseline 與寫入後驗證的每一個 CLI 子行程（`doc validate`、`doc uc verify`）各自計時，自子行程啟動起算，超過 30 秒即終止該子行程，該次驗證為 `unavailable(timedOut)`。baseline 逾時時依上一條「baseline 為 `unavailable`」規則，該次編輯期間的驗證皆為 `unavailable`；放棄並重讀時重跑 baseline。
   - 理由：CLI 本身約 0.35＋0.52 秒（NFR-01），經 `uv run` 另加行程啟動，`uv` 第一次執行可能要先建立環境，可達數秒以上。驗證不阻擋輸入（NFR-01），逾時設長的成本低；設短則第一次執行就可能誤報無法驗證，而 baseline 誤報會使整次編輯的驗證皆無法判定。
   - 驗證逾時不影響寫入結果：寫入已受理為 `written`，檔案不回滾（同驗證失敗）。
@@ -261,6 +328,8 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] baseline 結束碼為 2 時，寫入後結束碼仍為 2 不判 `failed`；baseline 結束碼非 2、寫入後為 2 時判 `failed`
 - [ ] 驗證器無法執行、或 baseline 為 `unavailable` 時為 `unavailable`
 - [ ] 驗證子行程超過 30 秒（以注入模擬）時，子行程被終止，驗證狀態為 `unavailable(timedOut)`，寫入結果仍為 `written`、檔案未回滾
+- [ ] baseline 量測完成前寫入時，該次驗證為 `unavailable(baselineNotReady)`、不為 `passed`；之後才完成的 baseline 不被採用，下一次寫入以該次寫入後的問題集合為 baseline（v1.7）
+- [ ] 寫入後驗證為 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次寫入的 baseline（v1.7）
 
 ---
 
@@ -315,12 +384,17 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼／`executableMissing`／`timedOut` 三擇一 |
 | `readIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
 | `writeIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
+| `writeRolledBack`（1.1） | warning | — | 觸發失敗的路徑、已還原的路徑數 |
+| `writePartiallyWritten`（1.1） | error | `platform_io` | 觸發失敗的路徑、未還原的路徑清單、還原失敗的 `osError.errorCode` |
 | `validationCompleted` | `passed` 為 info；`failed`、`unavailable` 為 warning | `unavailable` 為 `external_process`；其餘無 | 路徑、節點 ID、狀態；`failed` 加新增問題數；`unavailable` 加 CLI 結束碼或原因 enum（FR-05，含 `timedOut`）二擇一 |
 
 **約束條件**：
 
 - `rewriteNotIsolated` 歸 `gate_blocked`：它是本 domain 的前置閘門依規則拒絕繼續，不是未預期例外。
 - `failed` 不帶 `error_source`：驗證失敗是驗證器的判定結果，不是 App 的失敗。
+- 多檔寫入中途失敗（1.1）的記錄方式依結局分兩種，維持一次失敗只記一筆：
+  - 還原全部成功：記觸發檔的原失敗事件（`writeBlocked` 或 `writeIoFailed`），另記一筆 `writeRolledBack`。`writeRolledBack` 是回復動作，不是第二次失敗，所以不帶 `error_source`。
+  - 有檔還原失敗：只記一筆 `writePartiallyWritten`，觸發失敗的路徑放在它的欄位裡，不另記原失敗事件。
 - `osError` 為 null 時不帶 `osError.errorCode` 欄位。
 - `blob_sha` 以 SPEC-010 FR-03 的 commit SHA 包裝型別記錄。該型別的名稱是 commit，實際記的是 blob；兩者同為 40 字元小寫十六進位，序列化結果相同。此名稱不符為已知限制，SPEC-010 新增物件 SHA 型別時改用。
 - 不新增 App 自有的跨 session 內容副本（〈2026-09-10〉C-1）。射程限跨 session 存活的副本：編輯器內文字級 undo（`re_editor` 內建）與 session 內的單步復原不受限。
@@ -412,13 +486,13 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | PROP | target_version | 可搜尋下拉（todolist 版本） | 可搜尋下拉 | 1.0 |
 | PROP | proposed_by | 單行 | 單行 | 1.0 |
 | PROP | proposed_date、confirmed_date | 唯讀（status 轉 confirmed 不連動填寫：一次寫入只改目標欄位，FR-03） | 唯讀 | — |
-| PROP | outputs | 表格列編輯（三個清單各為 chips） | — | 1.4 |
+| PROP | outputs | 表格列編輯（三個清單各為 chips） | — | 1.4；其中 `spec_refs` 的值改寫提前到 1.1，只作為 SPEC `source_proposal` 多檔寫入的反向檔（FR-03〈多檔寫入（1.1）〉），不提供直接編輯 |
 | PROP | related_proposals | chips 加搜尋 | — | 1.1 |
 | PROP | supersedes | 可搜尋下拉（可空） | — | 1.1 |
 | SPEC | domain | 可搜尋下拉（已宣告 domain） | 可搜尋下拉 | 1.0 |
 | SPEC | subdomain、owner | 單行 | 單行 | 1.0 |
 | SPEC | has_functional_requirements | 單選鈕組（是／否） | 單選鈕組 | 1.0 |
-| SPEC | source_proposal | 依邊的 forward_cardinality：one 為可搜尋下拉、many 為 chips | — | 1.1 |
+| SPEC | source_proposal | 依邊的 forward_cardinality：one 為可搜尋下拉、many 為 chips | — | 1.1（多檔寫入，同批改寫 PROP `outputs.spec_refs`，FR-03〈多檔寫入（1.1）〉） |
 | SPEC | related_usecases、related_specs、implements_requirements | chips 加搜尋 | — | 1.1 |
 | SPEC | depends_on_domains | 核取清單 | — | 1.1 |
 | UC | primary_actor | 單行 | 單行 | 1.0 |
@@ -527,3 +601,5 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.3 | 2026-11-11 | `1.0.0-W3-553.3`（主控裁定）：FR-06 預警觸發來源由監看事件改為 EVT-CORPUS-001，收到後重讀正在編輯的檔案與 M 比較；明寫 EVT-CORPUS-002 不跨界、Edit 不消費；驗收補「內容相同時狀態不變」；對應用例補 UC-08（UC-08 已照此寫）。`1.0.0-W3-683`（主控裁定，規格自相矛盾當期修）：FR-01 約束新增〈M 的更新〉——`written` 之後 M 改為寫入落檔的位元組，`blocked`、`ioFailed` 時 M 不變，M 只在開始編輯、`written` 受理、放棄並重讀三個時點設定；驗收補連續兩次寫入一條 |
 | 1.4 | 2026-11-11 | `1.0.0-W3-686`。依用戶裁定 2026-11-11；Q1–Q3 由主控依該裁定推導。<br>**FR-03**<br>- 新增〈清空〉：清空就是把值的位元組範圍改寫為 `null`，不寫空字串，也不移除鍵。<br>- 寫明兩道隔離檢查對 `null` 的判定，以及移除鍵為何回傳 `rewriteNotIsolated`。<br>- 寫明驗證器不區分三種寫法（fixture 實測）。<br>- 驗收補一條：清空 target_version。<br>**FR-09**<br>- 新增〈可否清空〉，把 1.0 可編輯欄位分成三類：可清空（寫 `null`）、必填空白擋下（提示 `fieldRequiredEmpty`）、元件無清空途徑。<br>- 草稿 trim 後為空即視為空白；非空的值不修剪。<br>- SPEC domain 不可清空。 |
 | 1.5 | 2026-11-12 | `1.0.0-W3-553.10`。執行期澄清，用戶裁定（2026-11-12，經主控 AUQ）。<br>**FR-03**<br>- 新增〈非 UTF-8 內容〉：檔案內容不是合法 UTF-8 時，一律回傳 `blocked(rewriteNotIsolated)`，不寫入。理由是解析層以嚴格 UTF-8 解碼整檔，改寫前就沒有可用的解析結果。<br>- 驗收補第 8 條：內文含非法 UTF-8 位元組的檔案，修正欄位時回傳 `rewriteNotIsolated` 且目標檔不變。<br>- 實作行為不變（553.10 已是此行為），本版只把它寫進規格。 |
+| 1.6 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波）。用戶裁定 2026-11-12（經主控 AUQ）：1.1 改寫 `source_proposal` 時，同批改寫 PROP `outputs.spec_refs`（選項 A）。<br>**FR-03**<br>- 新增〈多檔寫入（1.1）〉，內容包括：適用範圍（文件節點只有 provenance）、寫入集合、反向檔的允許變更集合與 M、閘門整批判定、`rename` 順序、中途失敗的回復、寫入後驗證只套正向檔。<br>- 驗收補 8 條。<br>**FR-05**<br>- `WriteResult` 新增 `partiallyWritten`，並寫明多檔寫入時各結果攜帶的內容。<br>**FR-07**<br>- 新增 `writeRolledBack`、`writePartiallyWritten`，並寫明兩種結局的記錄方式。<br>**FR-09**<br>- `source_proposal` 列註明多檔寫入；PROP `outputs` 列註明 `spec_refs` 值改寫提前到 1.1，只作為反向檔。 |
+| 1.7 | 2026-11-12 | 執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`）。<br>**FR-05**<br>- 新增〈baseline 與寫入的先後〉，內容包括：寫入 rename 前 baseline 尚未完成時丟棄該 baseline；新原因值 `baselineNotReady`；該次寫入後的問題集合接替成為 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline。<br>- `ValidationStatus` 的 `unavailable` 原因與〈`unavailable` 的情況〉補 `baselineNotReady`。<br>- 驗收補 2 條。 |

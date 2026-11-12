@@ -7,14 +7,14 @@
 library;
 
 import 'dart:convert';
-import 'dart:developer' as developer;
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:yaml/yaml.dart';
 
+import 'corpus_log_event.dart';
 import 'docs_file_system.dart';
-
-const _tag = 'corpus.non_domain_paths_reader';
 
 /// 需求：[SPEC-006 FR-10 規則 2、2a] 格式錯誤的四種子原因。
 enum NonDomainPathsMalformedReason {
@@ -197,20 +197,23 @@ Future<NonDomainPathsReadResult> readNonDomainPaths({
       projectTable.nonDomainPathsFile ?? builtinTable.nonDomainPathsFile;
   final key = projectTable.nonDomainPathsKey ?? builtinTable.nonDomainPathsKey;
   if (path == null || key == null) {
-    _log(
-      // i18n-exempt: 開發者診斷 log
-      'no non-domain paths location in either table; absent',
-      900,
+    corpusLogSink(
+      CorpusLogEvent.nonDomainPathsLocationMissing,
+      LogFields.empty,
+      level: LogLevel.warning,
     );
     return _absentResult;
   }
   final read = await fileSystem.readBytes(path);
   switch (read) {
     case DocsReadFailure(:final reason):
-      _log(
-        // i18n-exempt: 開發者診斷 log
-        'non-domain paths file unreadable, absent: $path (${reason.name})',
-        800,
+      corpusLogSink(
+        CorpusLogEvent.nonDomainPathsUnreadable,
+        LogFields({
+          CorpusLogKeys.path: corpusPathValue(path),
+          CorpusLogKeys.reason: LogValue.enumValue(reason),
+        }),
+        source: ErrorSource.platformIo,
       );
       return _absentResult;
     case DocsReadSuccess(:final bytes):
@@ -225,10 +228,12 @@ NonDomainPathsReadResult _classify(String path, String key, List<int> bytes) {
     document = loadYaml(utf8.decode(bytes));
   } on FormatException catch (error) {
     // YamlException 為 FormatException 子型別；UTF-8 解碼失敗同歸 YAML 解析失敗。
-    _log(
-      // i18n-exempt: 開發者診斷 log
-      'non-domain paths file YAML invalid: $path ($error)',
-      900,
+    corpusLogSink(
+      CorpusLogEvent.nonDomainPathsYamlInvalid,
+      LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+      level: LogLevel.warning,
+      source: ErrorSource.parse,
+      error: error,
     );
     return _malformed(path, NonDomainPathsWholeFileReason.yamlInvalid);
   }
@@ -250,10 +255,14 @@ NonDomainPathsReadResult _declared(String path, List<dynamic> value) {
   if (nonStringCount == 0) {
     return NonDomainPathsReadDeclared(patterns);
   }
-  _log(
-    // i18n-exempt: 開發者診斷 log
-    'non-domain paths non-string elements skipped: $path ($nonStringCount)',
-    900,
+  corpusLogSink(
+    CorpusLogEvent.nonDomainPathsElementsSkipped,
+    LogFields({
+      CorpusLogKeys.path: corpusPathValue(path),
+      CorpusLogKeys.count: LogValue.integer(nonStringCount),
+    }),
+    level: LogLevel.warning,
+    source: ErrorSource.parse,
   );
   return NonDomainPathsReadDeclaredWithBadElements(
     path: path,
@@ -266,14 +275,14 @@ NonDomainPathsReadResult _malformed(
   String path,
   NonDomainPathsWholeFileReason reason,
 ) {
-  _log(
-    // i18n-exempt: 開發者診斷 log
-    'non-domain paths file malformed: $path (${reason.name})',
-    900,
+  corpusLogSink(
+    CorpusLogEvent.nonDomainPathsMalformed,
+    LogFields({
+      CorpusLogKeys.path: corpusPathValue(path),
+      CorpusLogKeys.reason: LogValue.enumValue(reason),
+    }),
+    level: LogLevel.warning,
+    source: ErrorSource.parse,
   );
   return NonDomainPathsReadMalformed(path: path, reason: reason);
-}
-
-void _log(String message, int level) {
-  developer.log(message, name: _tag, level: level);
 }

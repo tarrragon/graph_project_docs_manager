@@ -7,10 +7,13 @@
 /// §2 依賴邊 Corpus → Workspace）。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+import 'corpus_log_event.dart';
 import 'parse_outcome.dart';
 
 /// [DocsFileSystemEntry.kind] 三選一。
@@ -128,10 +131,11 @@ class DefaultDocsFileSystem implements DocsFileSystem {
     try {
       return DocsReadSuccess(await file.readAsBytes());
     } on FileSystemException catch (e) {
-      developer.log(
-        '讀取失敗：$relativePath', // i18n-exempt: 開發者 debug log
-        name: 'DocsFileSystem',
-        level: 900,
+      corpusLogSink(
+        CorpusLogEvent.fileReadFailed,
+        LogFields({CorpusLogKeys.path: corpusPathValue(relativePath)}),
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return DocsReadFailure(reasonForFileSystemFailure(e));

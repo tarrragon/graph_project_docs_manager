@@ -10,16 +10,15 @@
 /// 與日誌兩者共同承載，不互相抵扣。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import '../services/macos_preferences_channel.dart';
 import 'editor_preference.dart';
-
-/// 呼叫端標籤，供 `developer.log` 的 `name` 參數使用。
-const String _tag = 'ExternalOpener';
+import 'workspace_io_log_event.dart';
 
 /// [ExternalOpener.open] 的四種結果（SPEC-003 §2.2「介面」）。
 enum ExternalOpenResult {
@@ -78,14 +77,17 @@ class MacosExternalOpener implements ExternalOpener {
   Future<ExternalOpenResult> open(String path, {int? line}) async {
     // 呼叫發出日誌：必須在前置檢查之前，使無論走哪條結果分支都留下一筆
     // 記錄（INV-PORT-OBSERVE-001，SPEC-003 §2.2〈呼叫發出日誌〉表）。
-    developer.log(line == null ? path : '$path:$line', name: _tag);
+    externalOpenerLogSink(
+      ExternalOpenerLogEvent.openRequested,
+      LogFields({WorkspaceIoLogKeys.hasLine: LogValue.boolean(line != null)}),
+    );
 
     final type = await FileSystemEntity.type(path);
     if (type == FileSystemEntityType.notFound) {
-      developer.log(
-        '路徑不存在：$path', // i18n-exempt: 開發者診斷字串，非使用者可見文字
-        name: _tag,
-        level: 900, // warning
+      externalOpenerLogSink(
+        ExternalOpenerLogEvent.pathNotFound,
+        LogFields.empty,
+        level: LogLevel.warning,
       );
       return ExternalOpenResult.notFound;
     }
@@ -98,10 +100,10 @@ class MacosExternalOpener implements ExternalOpener {
         ExternalOpenResult.opened,
       );
     }
-    developer.log(
-      '所選編輯器無 handler，退回系統預設：${editor.id}', // i18n-exempt: 開發者診斷字串
-      name: _tag,
-      level: 900, // warning
+    externalOpenerLogSink(
+      ExternalOpenerLogEvent.editorHandlerMissing,
+      LogFields({WorkspaceIoLogKeys.editorId: LogValue.fieldName(editor.id)}),
+      level: LogLevel.warning,
     );
     return _launch(path, ExternalOpenResult.openedWithoutEditor);
   }
@@ -128,26 +130,28 @@ class MacosExternalOpener implements ExternalOpener {
       // Process.run 無法 spawn 執行檔時（權限、沙盒等）拋 ProcessException，
       // 不會回傳非零 exitCode——契約必須在此攔截，否則例外會繞過
       // ExternalOpenResult 直接傳到呼叫端。
-      developer.log(
-        '呼叫失敗：$target，${e.message}', // i18n-exempt: 開發者診斷字串，非使用者可見文字
-        name: _tag,
-        level: 900, // warning
+      externalOpenerLogSink(
+        ExternalOpenerLogEvent.launchFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.externalProcess,
+        error: e,
       );
       return ExternalOpenResult.failed;
     }
 
     if (result.exitCode == 0) {
-      developer.log(
-        '已開啟：$target', // i18n-exempt: 開發者診斷字串，非使用者可見文字
-        name: _tag,
-      );
+      externalOpenerLogSink(ExternalOpenerLogEvent.opened, LogFields.empty);
       return onSuccess;
     }
 
-    developer.log(
-      '開啟失敗：$target，stderr=${result.stderr}', // i18n-exempt: 開發者診斷字串，非使用者可見文字
-      name: _tag,
-      level: 900, // warning
+    externalOpenerLogSink(
+      ExternalOpenerLogEvent.openExitNonZero,
+      LogFields({
+        WorkspaceIoLogKeys.exitCode: LogValue.integer(result.exitCode),
+      }),
+      level: LogLevel.warning,
+      source: ErrorSource.externalProcess,
     );
     return ExternalOpenResult.failed;
   }

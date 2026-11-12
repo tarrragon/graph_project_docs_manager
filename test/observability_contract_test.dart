@@ -59,11 +59,13 @@ typedef WorkspaceLogSink = void Function(String message);
   group('O3-1 欄位值白名單編譯期守衛', () {
     late List<String> positiveErrors;
     late List<String> negativeErrors;
+    late ProcessResult positiveResult;
+    late ProcessResult negativeResult;
     late String negativeSource;
 
     setUpAll(() async {
       final scratch = Directory(_scratchDir)..createSync(recursive: true);
-      Future<List<String>> analyzeFixture(String name) async {
+      Future<ProcessResult> analyzeFixture(String name) async {
         final text = File('$_fixtureDir/$name.dart.txt').readAsStringSync();
         if (name == 'negative') negativeSource = text;
         final target = File('${scratch.path}/$name.dart')
@@ -79,14 +81,13 @@ typedef WorkspaceLogSink = void Function(String message);
         } on ProcessException catch (e) {
           fail('找不到 fvm，無法執行 O3-1（不得改用 PATH 上的 dart）：$e');
         }
-        return [
-          for (final line in '${result.stdout}\n${result.stderr}'.split('\n'))
-            if (line.startsWith('ERROR|')) line,
-        ];
+        return result;
       }
 
-      positiveErrors = await analyzeFixture('positive');
-      negativeErrors = await analyzeFixture('negative');
+      positiveResult = await analyzeFixture('positive');
+      negativeResult = await analyzeFixture('negative');
+      positiveErrors = _errorLines(positiveResult);
+      negativeErrors = _errorLines(negativeResult);
     });
 
     tearDownAll(() {
@@ -95,11 +96,22 @@ typedef WorkspaceLogSink = void Function(String message);
     });
 
     test('positive：包裝型別 0 個 error（正向對照）', () {
-      expect(positiveErrors, isEmpty);
+      // 實測 positive 的 exitCode 為 2（scratch 副本有 UNUSED_IMPORT warning）。
+      expect(
+        positiveResult.exitCode,
+        _positiveExitCode,
+        reason: _describe(positiveResult),
+      );
+      expect(positiveErrors, isEmpty, reason: _describe(positiveResult));
     });
 
     test('negative：字串值至少一個 error，且位置在字串值那一行', () {
-      expect(negativeErrors, isNotEmpty);
+      expect(
+        negativeResult.exitCode,
+        _negativeExitCode,
+        reason: _describe(negativeResult),
+      );
+      expect(negativeErrors, isNotEmpty, reason: _describe(negativeResult));
       final markerLine =
           negativeSource
               .split('\n')
@@ -113,6 +125,18 @@ typedef WorkspaceLogSink = void Function(String message);
     });
   });
 }
+
+// analyzer 結束碼：2 = 有 warning/info 無 error，3 = 有 error（實測）。
+const int _positiveExitCode = 2;
+const int _negativeExitCode = 3;
+
+List<String> _errorLines(ProcessResult r) => [
+  for (final line in '${r.stdout}\n${r.stderr}'.split('\n'))
+    if (line.startsWith('ERROR|')) line,
+];
+
+String _describe(ProcessResult r) =>
+    'exitCode=${r.exitCode}\n--- stdout ---\n${r.stdout}\n--- stderr ---\n${r.stderr}';
 
 const _frozenWorkspace = [
   'chooseFolderPanelOpening',

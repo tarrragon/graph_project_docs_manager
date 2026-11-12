@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 
 import '../../../helpers/fake_watch_source.dart';
 import '../../../helpers/manual_debounce_clock.dart';
@@ -35,7 +36,8 @@ void main() {
         source: source,
         clock: clock,
         onChanged: (_) {},
-        log: (m, {int level = 0}) => logs.add(_Log(m, level)),
+        log: (event, fields, {level = LogLevel.info, source, error}) =>
+            logs.add(_Log(event.name, level.devLogLevel)),
       );
     });
 
