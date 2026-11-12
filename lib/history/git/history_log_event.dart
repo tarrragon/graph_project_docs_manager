@@ -3,7 +3,7 @@
 /// 形態沿用 `GraphLogEvent` 的注入接縫；生產預設轉呼 `developer.log`。
 library;
 
-import 'dart:developer' as developer;
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 
 /// History git 程序日誌事件（穩定契約）。
 enum HistoryLogEvent {
@@ -48,51 +48,24 @@ enum HistoryLogEvent {
 class HistoryLogKeys {
   HistoryLogKeys._();
 
-  static const String root = 'root';
   static const String head = 'head';
-  static const String gitVersion = 'gitVersion';
   static const String category = 'category';
   static const String reason = 'reason';
   static const String exitCode = 'exitCode';
-  static const String stderrSummary = 'stderrSummary';
+  static const String argumentCount = 'argumentCount';
   static const String commitCount = 'commitCount';
   static const String outputBytes = 'outputBytes';
   static const String gitDurationMs = 'gitDurationMs';
   static const String parseDurationMs = 'parseDurationMs';
   static const String eventCount = 'eventCount';
-  static const String counters = 'counters';
-  static const String arguments = 'arguments';
 }
 
-/// 日誌注入接縫。
-typedef HistoryLogSink = void Function(
-  String message, {
-  required HistoryLogEvent event,
-  required Map<String, Object?> payload,
-  int? level,
-});
+/// 前置檢查結果類別（`category` 欄位的值）。
+enum HistoryLogCategory { ready, notWorkTree, gitNotFound, noCommit, failed }
 
-/// 日誌級別（對應 `package:logging` 數值）。
-class HistoryLogLevel {
-  HistoryLogLevel._();
+/// 降級原因（`reason` 欄位的值）。
+enum HistoryDegradeReason { schemaBlocked, streamError }
 
-  static const int debug = 500;
-  static const int info = 800;
-  static const int warning = 900;
-}
-
-const String _tag = 'HistoryGit';
-
-/// 生產預設：轉呼 `developer.log(name: 'HistoryGit')`。
-void defaultHistoryLogSink(
-  String message, {
-  required HistoryLogEvent event,
-  required Map<String, Object?> payload,
-  int? level,
-}) {
-  developer.log(
-    '${event.name} $message $payload',
-    name: _tag,
-    level: level ?? HistoryLogLevel.info,
-  );
-}
+/// 生產預設：經共用 writer 輸出，domain 為 `history`。
+final LogSink<HistoryLogEvent> defaultHistoryLogSink =
+    defaultLogSink<HistoryLogEvent>('history');

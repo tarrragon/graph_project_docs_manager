@@ -1076,4 +1076,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get writeLogTitle => '寫入清單';
+
+  @override
+  String get nodeDetailBodyUnavailableMessage =>
+      '無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新';
+
+  @override
+  String fieldValueOutOfDomain(String value) {
+    return '目前值「$value」不在可選值內';
+  }
+
+  @override
+  String get radioYes => '是';
+
+  @override
+  String get radioNo => '否';
 }

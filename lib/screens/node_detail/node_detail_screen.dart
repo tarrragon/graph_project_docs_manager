@@ -139,6 +139,21 @@ class _NodeAbsentView extends ConsumerWidget {
   }
 }
 
+/// 需求：[SPEC-004 4.20 本文來源的界線] 本文為 `null`（讀取或切分失敗）時
+/// 改放 `nodeDetailBodyUnavailableMessage`，不建構 `DocumentBody`。
+Widget _bodyOrUnavailable(BuildContext context, String? body) {
+  if (body == null) {
+    return AppText.multiLine(
+      AppLocalizations.of(context).nodeDetailBodyUnavailableMessage,
+      maxLines: 3,
+    );
+  }
+  return DocumentBody(
+    markdown: body,
+    testKey: const Key('panel-nodeDetail-document-body'),
+  );
+}
+
 /// 正常／部分損壞共用：`TwoColumnLayout`[主欄「meta + 標題 + 徽章 + 分隔線
 /// + 內文」、右欄「關聯分節」]（SPEC-004 §3.6 §6「正常」列）。
 class _ReadyView extends ConsumerWidget {
@@ -151,7 +166,7 @@ class _ReadyView extends ConsumerWidget {
     final node = ref.watch(nodeDetailNodesProvider)[nodeId];
     if (node == null) return const _UnsetView();
     // 部分損壞分支（state-nodeDetail-partial）在 0.x 不可達而退場，
-    // 恢復條件見 1.0.0-W3-656。
+    // 恢復條件見 1.1.0-W3-656。
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
       children: [
@@ -165,10 +180,7 @@ class _ReadyView extends ConsumerWidget {
         AppText.singleLine(node.title, variant: AppTextVariant.title),
         BadgeRow(children: [Badge.status(label: node.status)]),
         const Divider(),
-        DocumentBody(
-          markdown: ref.watch(nodeDetailBodyProvider(nodeId)),
-          testKey: const Key('panel-nodeDetail-document-body'),
-        ),
+        _bodyOrUnavailable(context, ref.watch(nodeDetailBodyProvider(nodeId))),
       ],
     );
 

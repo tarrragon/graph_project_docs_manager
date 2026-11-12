@@ -1,0 +1,11 @@
+// O3-1 正向對照：同一呼叫以白名單包裝型別為值，必須 0 個 error。
+// 副檔名為 .txt 以免被 analyze 掃到；測試執行時複製到 .dart_tool 再分析。
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+enum SampleEvent { sampled }
+
+void emit(LogSink<SampleEvent> sink) {
+  sink(SampleEvent.sampled, LogFields({'count': LogValue.integer(1)}));
+}

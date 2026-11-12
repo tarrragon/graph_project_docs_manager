@@ -25,6 +25,7 @@ import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_providers.dar
 import 'package:graph_project_docs_manager/screens/uc_flow/uc_flow_screen.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/external_opener.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/workspace/stale_open_result.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
@@ -260,7 +261,14 @@ void main() {
     final logged = <(String, String)>[];
     setUp(() {
       logged.clear();
-      staleOpenLogSink = (name, message) => logged.add((name, message));
+      staleOpenLogSink =
+          (event, fields, {level = LogLevel.info, source, error}) {
+            final json = fields.toJson();
+            logged.add((
+              json[StaleOpenLogKeys.screen]! as String,
+              json[StaleOpenLogKeys.i18nKey]! as String,
+            ));
+          };
     });
     tearDown(() => staleOpenLogSink = defaultStaleOpenLogSink);
 
@@ -369,8 +377,7 @@ void main() {
           );
           expect(logged, hasLength(1));
           expect(logged.single.$1, tags[entry.key]);
-          expect(logged.single.$2, contains(openResultKey(result)));
-          expect(logged.single.$2, contains('因專案已改變而丟棄'));
+          expect(logged.single.$2, openResultKey(result));
         });
       }
 

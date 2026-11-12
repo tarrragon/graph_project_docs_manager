@@ -34,7 +34,7 @@ class NodeDetailUnset extends NodeDetailState {
 }
 
 /// 正常態：節點存在即渲染正常態（部分損壞在 0.x 不可達，恢復條件見
-/// 1.0.0-W3-656）。
+/// 1.1.0-W3-656）。
 class NodeDetailReady extends NodeDetailState {
   const NodeDetailReady({required this.nodeId});
 

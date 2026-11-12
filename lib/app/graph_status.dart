@@ -12,6 +12,8 @@
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 
 /// 「專案未就緒」的三個原因（SPEC-001 共用定義，`0.1.0-W3-335.37` R9）。
 enum ProjectUnreadyReason {
@@ -30,6 +32,18 @@ enum ProjectUnreadyReason {
 }
 
 /// 專案未就緒的原因；`null` 表 Domain 視圖已建立圖。
+///
+/// 取自 [domainViewStateProvider]（1.0.0-W3-661）：未選專案、載入中、載入
+/// 失敗、三個阻擋狀態（不是框架／無可消費型別表／不相容）各對應一個原因；
+/// 其餘狀態（含降級旗標生效後的正常或空圖）圖已建立，回 `null`。
 final projectUnreadyReasonProvider = Provider<ProjectUnreadyReason?>(
-  (ref) => null,
+  (ref) => switch (ref.watch(domainViewStateProvider)) {
+    DomainUnset() => ProjectUnreadyReason.notSelected,
+    DomainLoading() => ProjectUnreadyReason.loading,
+    DomainLoadFailed() => ProjectUnreadyReason.loadFailed,
+    DomainNotFramework() ||
+    DomainSchemaUnconsumable() ||
+    DomainSchemaIncompatible() => ProjectUnreadyReason.incompatible,
+    _ => null,
+  },
 );

@@ -1952,5 +1952,26 @@
   "writeLogTitle": "寫入清單",
   "@writeLogTitle": {
     "description": "SPEC-001 §12 面板標題；SPEC-004 4.7 NavItem.action 標籤（nav-action-writeLog）"
+  },
+  "nodeDetailBodyUnavailableMessage": "無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新",
+  "@nodeDetailBodyUnavailableMessage": {
+    "description": "SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明"
+  },
+  "fieldValueOutOfDomain": "目前值「{value}」不在可選值內",
+  "@fieldValueOutOfDomain": {
+    "description": "SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "radioYes": "是",
+  "@radioYes": {
+    "description": "SPEC-004 4.47 布林欄位選項"
+  },
+  "radioNo": "否",
+  "@radioNo": {
+    "description": "SPEC-004 4.47 布林欄位選項"
   }
 }

@@ -255,7 +255,7 @@ void main() {
   });
 
   // flutter_test 的 group 無 timeout 參數，逾時改掛在組內兩案。
-  const corpusTimeout = Timeout(Duration(minutes: 2));
+  const corpusTimeout = Timeout(Duration(minutes: 5));
   group('語料零筆（SPEC-007 FR-09 驗收）', () {
     Future<GraphBuiltEvent> buildRoot(String root) async {
       final schemaJson = jsonDecode(

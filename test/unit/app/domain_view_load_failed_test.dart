@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/domain_view_loader.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
@@ -35,7 +36,8 @@ ProviderContainer _container({
         return fake;
       }),
       domainViewLogSinkProvider.overrideWithValue(
-        (message, {level = 500}) => logs?.add((message, level)),
+        (event, fields, {level = LogLevel.debug, source, error}) =>
+            logs?.add((event.name, level.devLogLevel)),
       ),
     ],
   );

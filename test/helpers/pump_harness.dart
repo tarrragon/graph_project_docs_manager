@@ -73,7 +73,9 @@ Future<ProviderContainer> pumpHarness(
   await tester.pumpWidget(
     ProviderScope(
       // Riverpod 3 禁止重複 override：同一 provider 後者取代前者（同 2.x）。
-      overrides: lastWinsByProvider(overrides),
+      // 預設 Domain 視圖已就緒：projectUnreadyReasonProvider 取自該狀態
+      // （1.0.0-W3-661），預設 Loading 會讓各畫面落「專案未就緒」。
+      overrides: lastWinsByProvider([_readyDomainOverride(), ...overrides]),
       child: _AppChrome(
         key: chromeKey,
         locale: locale,

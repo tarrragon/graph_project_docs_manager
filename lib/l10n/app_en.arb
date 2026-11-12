@@ -305,5 +305,9 @@
   "editBannerReloadFailed": "Could not reload this file. Try Discard and reload again",
   "readonlyWorkspaceNotGitBadge": "This folder is not a git repository, so it cannot be edited in the app",
   "readonlyWorkspaceGitMissingBadge": "git was not found, so files cannot be edited in the app",
-  "writeLogTitle": "Write Log"
+  "writeLogTitle": "Write Log",
+  "nodeDetailBodyUnavailableMessage": "Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan",
+  "fieldValueOutOfDomain": "Current value \"{value}\" is not an allowed value",
+  "radioYes": "Yes",
+  "radioNo": "No"
 }
