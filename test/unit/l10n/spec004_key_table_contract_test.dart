@@ -19,7 +19,6 @@ const Set<String> pendingAdditionExemptions = <String>{
   'dropdownA11yLabel',
   'editDoneAction',
   'editFieldsAction',
-  'fieldEmptyValue',
   'nodeDetailEditReadFailedMessage',
   'readonlyWorkspaceGitMissingBadge',
   'readonlyWorkspaceNotGitBadge',

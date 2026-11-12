@@ -422,6 +422,10 @@
   "@searchPlaceholder": {
     "description": "SPEC-004 §4.12：SearchField 佔位文字"
   },
+  "fieldEmptyValue": "未填",
+  "@fieldEmptyValue": {
+    "description": "SPEC-004 §4.44：AppTextInput 空值 placeholder；4.45、4.46 空值文字"
+  },
 
   "searchClearAction": "清除搜尋",
   "@searchClearAction": {
