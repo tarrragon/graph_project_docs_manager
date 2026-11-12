@@ -427,6 +427,19 @@
     "description": "SPEC-004 §4.44：AppTextInput 空值 placeholder；4.45、4.46 空值文字"
   },
 
+  "dropdownA11yLabel": "{label}，目前：{value}",
+  "@dropdownA11yLabel": {
+    "description": "SPEC-004 §4.45：AppDropdown 觸發器朗讀標籤；4.46 同用",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+
   "searchClearAction": "清除搜尋",
   "@searchClearAction": {
     "description": "SPEC-004 §4.12：SearchField 清除按鈕文案"

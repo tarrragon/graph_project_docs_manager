@@ -257,6 +257,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fieldEmptyValue => '未填';
 
   @override
+  String dropdownA11yLabel(String label, String value) {
+    return '$label，目前：$value';
+  }
+
+  @override
   String get searchClearAction => '清除搜尋';
 
   @override
