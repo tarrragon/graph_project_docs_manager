@@ -4,9 +4,15 @@
 為何逐檔：同一次 `flutter test integration_test -d macos` 依序啟動兩個 macOS App 時，第二個確定性
 無法啟動（2026-10-21 重現實驗 RED 5/5，逐檔 GREEN 10/10）。
 
-結束碼：全部通過 0；任一檔失敗 1；找不到任何測試檔 2；總逾時 3。
-總逾時：全部檔案共用 900 秒預算（merge_gate 的 SUITE_TIMEOUT_SECONDS 為全域 3600 秒、不支援逐套件
-逾時，故在此實作）；超時以 killpg 終止整個程序群組（含 flutter_tester 與 App），並印 TIMEOUT_MESSAGE。
+結束碼：全部通過 0；任一檔失敗 1；找不到任何測試檔 2；單檔逾時 3。
+單檔逾時：每個檔各自有 300 秒上限、各自起算，前一檔耗時不扣後一檔（merge_gate 的 SUITE_TIMEOUT_SECONDS
+為全域 3600 秒、不支援逐套件逾時，故在此實作）；超時以 killpg 終止整個程序群組（含 flutter_tester 與
+App），並印含檔名的 TIMEOUT_MESSAGE。改自舊的 900 秒全檔共用預算：檔數增至 12 後總預算失準，
+高負載下連續兩次逾時（ffe408c4cc55、e9c8ebfc606f）。
+上限依據（.claude/logs/merge-gate-failures/ 的 bebcfabc933a、ffe408c4cc55 兩份 integration log）：
+flutter 輸出的單檔測試時間最大為 app_test 約 55 秒（含冷建置的首檔），其餘 0～28 秒；12 檔全跑完的
+總耗時 473～660 秒，平均單檔含建置與 pub 解析約 40～55 秒；swap 高時耗時約加倍，故取 300 秒
+（約觀測最大單檔的 2～3 倍）。
 名額：閘門持有者的子程序，本腳本直接啟動 fvm，不經 run-with-timeout，故不會再取名額。
 """
 import argparse
@@ -25,17 +31,17 @@ EXIT_FAILED = 1
 EXIT_NO_TESTS = 2
 EXIT_TIMEOUT = 3
 EXIT_USAGE = 64  # sysexits EX_USAGE；避開 1/2/3 已用值，--help 與未知參數共用
-TOTAL_TIMEOUT_SECONDS = 900
+FILE_TIMEOUT_SECONDS = 300
 READER_JOIN_SECONDS = 5
 # 逾時訊息字面；merge-gate.yaml 的 failure 正規式須含它
 # i18n-exempt: 開發者工具 stderr 診斷，非 App UI
-TIMEOUT_MESSAGE = f"[ERROR] integration 逾時（{TOTAL_TIMEOUT_SECONDS} 秒）"
+TIMEOUT_MESSAGE = f"[ERROR] integration 逾時（單檔 {FILE_TIMEOUT_SECONDS} 秒）"
 # 啟動失敗字面（與 merge-gate.yaml 的 failure 正規式一致）；即使 flutter 結束碼為 0 也視為失敗
 START_FAILURE_MARKERS = ("Unable to start the app", "Error waiting for a debug connection")
 
 
 class SuiteTimeout(Exception):
-    """總預算耗盡；子程序群組已被終止。"""
+    """單檔逾時；子程序群組已被終止。"""
 
 
 def discover_tests(root: Path) -> List[str]:
@@ -54,7 +60,7 @@ def kill_group(proc: subprocess.Popen) -> None:
 
 def run_streaming(test_file: str, deadline: float = float("inf"),
                   clock: Callable[[], float] = time.monotonic) -> Tuple[int, str]:
-    """執行單檔並即時串流輸出，回傳 (結束碼, 完整輸出)；超過 deadline 則殺群組並拋 SuiteTimeout。"""
+    """執行單檔並即時串流輸出，回傳 (結束碼, 完整輸出)；超過 deadline（呼叫端每檔各自給）則殺群組並拋 SuiteTimeout。"""
     proc = subprocess.Popen(["fvm", "flutter", "test", test_file, "-d", "macos"],
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                             start_new_session=True)
@@ -81,6 +87,14 @@ def run_streaming(test_file: str, deadline: float = float("inf"),
 
 def file_failed(returncode: int, output: str) -> bool:
     return returncode != 0 or any(m in output for m in START_FAILURE_MARKERS)
+
+
+def make_runner(stream: Optional[Callable] = None, clock: Callable[[], float] = time.monotonic,
+                limit: float = FILE_TIMEOUT_SECONDS) -> Callable[[str], Tuple[int, str]]:
+    """每個檔呼叫時才以 clock() + limit 起算 deadline，前一檔耗時不影響後一檔。"""
+    def runner(test_file: str) -> Tuple[int, str]:
+        return (stream or run_streaming)(test_file, clock() + limit)
+    return runner
 
 
 def run_all(files: Iterable[str], runner: Callable[[str], Tuple[int, str]] = run_streaming) -> int:
@@ -134,8 +148,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if usage_code:
         return usage_code
     root = Path(__file__).resolve().parents[2]
-    deadline = time.monotonic() + TOTAL_TIMEOUT_SECONDS
-    return run_all(discover_tests(root), lambda f: run_streaming(f, deadline))
+    return run_all(discover_tests(root), make_runner())
 
 
 if __name__ == "__main__":

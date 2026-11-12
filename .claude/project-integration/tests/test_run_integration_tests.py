@@ -155,3 +155,38 @@ def test_no_args_still_runs_tests(monkeypatch):
 
 def test_declared_command_calls_wrapper():
     assert _declared()["command"] == ["python3", ".claude/project-integration/run_integration_tests.py"]
+
+
+class _FakeClock:
+    """注入 clock：stream 以累加模擬單檔耗時，超過 deadline 即拋 SuiteTimeout（同真實 run_streaming 語意）。"""
+
+    def __init__(self, durations):
+        self.now, self.durations, self.deadlines = 0.0, durations, []
+
+    def __call__(self):
+        return self.now
+
+    def stream(self, f, deadline):
+        self.deadlines.append(deadline)
+        self.now += self.durations[f]
+        if self.now > deadline:
+            raise rit.SuiteTimeout()
+        return 0, PASS_OUT
+
+
+def test_per_file_budget_not_shared_across_files():
+    files = [f"f{i}" for i in range(12)]
+    clock = _FakeClock({f: 100.0 for f in files})  # 合計 1200 秒 > 舊總預算 900，單檔皆 < 300
+    runner = rit.make_runner(stream=clock.stream, clock=clock)
+    assert rit.run_all(files, runner) == 0
+    assert clock.deadlines[1] - 100.0 == rit.FILE_TIMEOUT_SECONDS  # 第二檔預算由自己起算
+
+
+def test_single_file_timeout_returns_3_and_names_file(capsys):
+    clock = _FakeClock({"a": 10.0, "slow": rit.FILE_TIMEOUT_SECONDS + 1, "c": 1.0})
+    runner = rit.make_runner(stream=clock.stream, clock=clock)
+    assert rit.run_all(["a", "slow", "c"], runner) == rit.EXIT_TIMEOUT
+    err = capsys.readouterr().err
+    assert "integration 逾時" in err and "slow" in err
+    assert any(re.search(_declared()["failure"], ln) for ln in err.splitlines())  # 正規式命中新訊息
+    assert len(clock.deadlines) == 2  # 逾時後不再啟動後續檔
