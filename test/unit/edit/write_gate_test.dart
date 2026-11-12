@@ -188,6 +188,23 @@ void main() {
     expect(h.git.calls, isEmpty);
   });
 
+  test('G-24 真實改寫遇非 UTF-8：blocked(rewriteNotIsolated)，無暫存檔、目標檔不變', () async {
+    final bytes = Uint8List.fromList([...fixtureBytes(docPlainText), 0xFF]);
+    final h = await EditHarness.create(bytes: bytes);
+    final session = await h.begin();
+    expect(
+      await _writeTitle(session),
+      isA<Blocked>().having(
+        (b) => b.reason,
+        'reason',
+        BlockedReason.rewriteNotIsolated,
+      ),
+    );
+    expect(h.files.kinds, isNot(contains('write')));
+    expect(h.files.kinds, isNot(contains('rename')));
+    expect(h.target, bytes);
+  });
+
   test('G-13 show 引數恰為 -C <根> show HEAD:./<相對路徑>', () async {
     final h = await EditHarness.create();
     final session = await h.begin();
