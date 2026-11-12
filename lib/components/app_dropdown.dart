@@ -63,13 +63,16 @@ class AppDropdown extends StatefulWidget {
   State<AppDropdown> createState() => _AppDropdownState();
 }
 
-class _AppDropdownState extends State<AppDropdown> {
+class _AppDropdownState extends State<AppDropdown>
+    with TickerProviderStateMixin {
   /// D1：全 App 同時至多一個選單展開。
   static _AppDropdownState? _openInstance;
 
   final LayerLink _link = LayerLink();
   final FocusNode _triggerFocus = FocusNode(debugLabel: 'AppDropdown.trigger');
-  final List<FocusNode> _optionFocus = [];
+  List<FocusNode> _optionFocus = [];
+  AnimationController? _ctrl;
+  final List<VoidCallback> _pendingTeardowns = [];
   OverlayEntry? _entry;
   int _highlight = 0;
   bool _openUp = false;
@@ -89,6 +92,9 @@ class _AppDropdownState extends State<AppDropdown> {
   void dispose() {
     _disposing = true;
     _closeMenu();
+    for (final t in List.of(_pendingTeardowns)) {
+      t();
+    }
     _triggerFocus.dispose();
     super.dispose();
   }
@@ -112,14 +118,20 @@ class _AppDropdownState extends State<AppDropdown> {
     _openInstance = this;
     _decideGeometry();
     _highlight = _selectedIndex < 0 ? 0 : _selectedIndex;
-    _optionFocus
-      ..clear()
-      ..addAll([
-        for (final _ in widget.options)
-          FocusNode(debugLabel: 'AppDropdown.option'),
-      ]);
-    _entry = OverlayEntry(builder: _buildOverlay);
+    final nodes = [
+      for (final _ in widget.options)
+        FocusNode(debugLabel: 'AppDropdown.option'),
+    ];
+    _optionFocus = nodes;
+    // 展開與收合時長取 Motion.overlay（SPEC-004 4.45 回饋契約）。
+    final ctrl = AnimationController(
+      vsync: this,
+      duration: Motion.overlay(context),
+    );
+    _ctrl = ctrl;
+    _entry = OverlayEntry(builder: (c) => _buildOverlay(c, ctrl, nodes));
     Overlay.of(context).insert(_entry!);
+    ctrl.forward();
     setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isOpen) _optionFocus[_highlight].requestFocus();
@@ -136,13 +148,31 @@ class _AppDropdownState extends State<AppDropdown> {
   }
 
   void _closeMenu({bool refocusTrigger = false}) {
-    _entry?.remove();
+    final entry = _entry;
+    final ctrl = _ctrl;
+    final nodes = _optionFocus;
     _entry = null;
+    _ctrl = null;
+    _optionFocus = [];
     if (identical(_openInstance, this)) _openInstance = null;
-    for (final n in _optionFocus) {
-      n.dispose();
+    var done = false;
+    void teardown() {
+      if (done) return;
+      done = true;
+      _pendingTeardowns.remove(teardown);
+      entry?.remove();
+      ctrl?.dispose();
+      for (final n in nodes) {
+        n.dispose();
+      }
     }
-    _optionFocus.clear();
+
+    if (_disposing || ctrl == null || ctrl.duration == Duration.zero) {
+      teardown();
+    } else {
+      _pendingTeardowns.add(teardown);
+      ctrl.reverse().whenComplete(teardown);
+    }
     if (mounted && !_disposing) setState(() {});
     if (refocusTrigger && !_disposing) _triggerFocus.requestFocus();
   }
@@ -274,7 +304,15 @@ class _AppDropdownState extends State<AppDropdown> {
     );
   }
 
-  Widget _buildOverlay(BuildContext context) {
+  Widget _buildOverlay(
+    BuildContext context,
+    AnimationController ctrl,
+    List<FocusNode> nodes,
+  ) {
+    return FadeTransition(opacity: ctrl, child: _overlayBody(nodes));
+  }
+
+  Widget _overlayBody(List<FocusNode> nodes) {
     return Stack(
       children: [
         Positioned.fill(
@@ -287,13 +325,13 @@ class _AppDropdownState extends State<AppDropdown> {
           link: _link,
           targetAnchor: _openUp ? Alignment.topLeft : Alignment.bottomLeft,
           followerAnchor: _openUp ? Alignment.bottomLeft : Alignment.topLeft,
-          child: SizedBox(width: _menuWidth, child: _menu()),
+          child: SizedBox(width: _menuWidth, child: _menu(nodes)),
         ),
       ],
     );
   }
 
-  Widget _menu() {
+  Widget _menu(List<FocusNode> nodes) {
     return Semantics(
       key: ValueKey('menu-nodeDetail-field-$_fieldKey'),
       role: SemanticsRole.menu,
@@ -314,7 +352,8 @@ class _AppDropdownState extends State<AppDropdown> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (var i = 0; i < widget.options.length; i++) _option(i),
+                for (var i = 0; i < widget.options.length; i++)
+                  _option(i, nodes),
               ],
             ),
           ),
@@ -323,7 +362,7 @@ class _AppDropdownState extends State<AppDropdown> {
     );
   }
 
-  Widget _option(int i) {
+  Widget _option(int i, List<FocusNode> nodes) {
     final o = widget.options[i];
     return Semantics(
       key: ValueKey('option-nodeDetail-field-$_fieldKey-${o.value}'),
@@ -331,7 +370,7 @@ class _AppDropdownState extends State<AppDropdown> {
       label: o.label,
       selected: o.value == widget.selected,
       child: Focus(
-        focusNode: _optionFocus[i],
+        focusNode: nodes[i],
         skipTraversal: true,
         child: InkWell(
           onTap: () => _select(o.value),

@@ -69,7 +69,7 @@ bool get _triggerHasFocus =>
 
 Future<void> _open(WidgetTester tester) async {
   await tester.tap(find.byKey(_testKey));
-  await tester.pump();
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -80,10 +80,10 @@ void main() {
       final host = await _pumpHost(tester, _dd());
       expect(find.text('未填'), findsOneWidget);
       host.value = _dd(selected: 'active');
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('進行中'), findsOneWidget);
       host.value = _dd(selected: 'legacy-value');
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('legacy-value'), findsOneWidget);
       expect(find.text('未填'), findsNothing);
     });
@@ -93,15 +93,15 @@ void main() {
       await _open(tester);
       expect(find.byKey(_menuKey), findsOneWidget);
       await tester.tap(find.byKey(_optionKey('draft')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byKey(_menuKey), findsNothing);
 
       host.value = _dd(selected: 'draft', locked: true);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await _open(tester);
       expect(find.byKey(_menuKey), findsNothing);
       host.value = _dd(selected: 'draft', enabled: false);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await _open(tester);
       expect(find.byKey(_menuKey), findsNothing);
     });
@@ -113,7 +113,7 @@ void main() {
       final data = tester.getSemantics(find.byKey(_testKey));
       expect(data.label, '狀態，目前：進行中');
       host.value = _dd();
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(tester.getSemantics(find.byKey(_testKey)).label, '狀態，目前：未填');
     });
   });
@@ -123,22 +123,22 @@ void main() {
       final host = await _pumpHost(tester, _dd(selected: 'draft'));
       await _open(tester);
       await tester.tap(find.byKey(_optionKey('active')));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
       expect(_triggerHasFocus, isTrue);
 
       host.value = _dd(selected: 'draft', locked: true);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(_triggerHasFocus, isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byKey(_menuKey), findsNothing);
 
       host.value = _dd(selected: 'draft');
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(_triggerHasFocus, isTrue);
       host.value = _dd(selected: 'draft', enabled: false);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(_triggerHasFocus, isFalse);
     });
 
@@ -150,12 +150,12 @@ void main() {
       );
       await _open(tester);
       await tester.tap(find.byKey(_optionKey('done')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(calls, ['done']);
       expect(find.text('草稿'), findsOneWidget);
       expect(find.text('完成'), findsNothing);
       host.value = _dd(selected: 'done', onChanged: calls.add);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.text('完成'), findsOneWidget);
     });
   });
@@ -168,15 +168,15 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyEvent(LogicalKeyboardKey.home);
       await tester.sendKeyEvent(LogicalKeyboardKey.end);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(calls, isEmpty);
       expect(find.byKey(_menuKey), findsNothing);
 
       await _open(tester);
       await tester.tap(find.byKey(_optionKey('active')));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(calls, isEmpty);
     });
 
@@ -185,16 +185,16 @@ void main() {
       await _pumpHost(tester, _dd(selected: 'draft', onChanged: calls.add));
       await _open(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byKey(_menuKey), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.end);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(calls, ['done']);
     });
   });
@@ -254,7 +254,7 @@ void main() {
       await _open(tester);
       expect(find.byKey(_menuKey), findsOneWidget);
       await tester.tapAt(const Offset(700, 500));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(find.byKey(_menuKey), findsNothing);
       expect(taps, 0);
     });
@@ -282,9 +282,9 @@ void main() {
       await _open(tester);
       expect(find.byKey(_menuKey), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(k2));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('menu-nodeDetail-field-other')),
         findsOneWidget,
@@ -375,6 +375,48 @@ void main() {
         );
         expectNoOverflow(tester);
       }
+    });
+  });
+
+  group('選單動畫（Motion.overlay）', () {
+    FadeTransition fade(WidgetTester tester) => tester.widget<FadeTransition>(
+      find
+          .ancestor(
+            of: find.byKey(_menuKey),
+            matching: find.byType(FadeTransition),
+          )
+          .first,
+    );
+
+    testWidgets('展開與收合時長等於 Motion.overlay，時長內完成', (tester) async {
+      await _pumpHost(tester, _dd(selected: 'draft'));
+      final expected = Motion.overlay(tester.element(find.byKey(_testKey)));
+      await tester.tap(find.byKey(_testKey));
+      await tester.pump();
+      final ctrl = fade(tester).opacity as AnimationController;
+      expect(ctrl.duration, expected);
+      expect(ctrl.value, lessThan(1));
+      await tester.pump(expected);
+      expect(ctrl.value, 1);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+      expect(find.byKey(_menuKey), findsOneWidget);
+      await tester.pump(expected);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_menuKey), findsNothing);
+    });
+
+    testWidgets('disableAnimations 時時長為零、立即收合', (tester) async {
+      await pumpHarness(
+        tester,
+        disableAnimations: true,
+        child: SizedBox(width: 240, child: _dd(selected: 'draft')),
+      );
+      await _open(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_menuKey), findsNothing);
     });
   });
 
