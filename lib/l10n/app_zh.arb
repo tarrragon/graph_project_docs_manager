@@ -1970,6 +1970,79 @@
       }
     }
   },
+  "fieldDraftUnsentHint": "尚未送出（Enter 送出、Esc 還原）",
+  "@fieldDraftUnsentHint": {
+    "description": "SPEC-004 4.48 提示格：單行輸入的未送出"
+  },
+  "fieldDraftUnsentHintMultiLine": "尚未送出（⌘Enter 送出、Esc 還原）",
+  "@fieldDraftUnsentHintMultiLine": {
+    "description": "SPEC-004 4.48 提示格：多行輸入的未送出"
+  },
+  "fieldWriteInProgress": "寫入中",
+  "@fieldWriteInProgress": {
+    "description": "SPEC-004 4.48 提示格 writing；4.51 寫入結果徽章"
+  },
+  "fieldSeeWriteLogHint": "取回方式見寫入清單",
+  "@fieldSeeWriteLogHint": {
+    "description": "SPEC-004 4.48 提示格：written 且有快照時接在驗證狀態之後"
+  },
+  "fieldBlockedSnapshotFailed": "無法建立快照，檔案未改",
+  "@fieldBlockedSnapshotFailed": {
+    "description": "SPEC-004 4.48 提示格：blocked(snapshotFailed)"
+  },
+  "fieldBlockedRewriteNotIsolated": "無法只改這個欄位，檔案未改。請改用外部編輯器",
+  "@fieldBlockedRewriteNotIsolated": {
+    "description": "SPEC-004 4.48 提示格：blocked(rewriteNotIsolated)"
+  },
+  "fieldIoFailed": "讀寫失敗，檔案未改",
+  "@fieldIoFailed": {
+    "description": "SPEC-004 4.48 提示格：ioFailed"
+  },
+  "fieldNotEditableHint": "此欄位目前不能在 App 內編輯",
+  "@fieldNotEditableHint": {
+    "description": "SPEC-004 4.48 readOnly 提示格"
+  },
+  "fieldRequiredEmpty": "此欄位必填，空白未送出",
+  "@fieldRequiredEmpty": {
+    "description": "SPEC-004 4.48 提示格：必填空白"
+  },
+  "validationRunning": "驗證中",
+  "@validationRunning": {
+    "description": "SPEC-004 4.48 提示格；4.51 驗證徽章"
+  },
+  "validationPassed": "驗證通過",
+  "@validationPassed": {
+    "description": "SPEC-004 4.48 提示格；4.51 驗證徽章"
+  },
+  "validationFailed": "發現 {count} 個新問題",
+  "@validationFailed": {
+    "description": "SPEC-004 4.48 提示格；4.51 驗證徽章",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "validationUnavailable": "無法驗證",
+  "@validationUnavailable": {
+    "description": "SPEC-004 4.48 提示格；原因接在其後"
+  },
+  "validationUnavailableExecutableMissing": "找不到 uv 或 doc CLI",
+  "@validationUnavailableExecutableMissing": {
+    "description": "SPEC-004 unavailable(executableMissing) 的原因"
+  },
+  "validationUnavailableUnexpectedExitCode": "驗證程式以非預期的結束碼結束",
+  "@validationUnavailableUnexpectedExitCode": {
+    "description": "SPEC-004 unavailable(unexpectedExitCode) 的原因"
+  },
+  "validationUnavailableUnparsableOutput": "驗證程式的輸出無法解析",
+  "@validationUnavailableUnparsableOutput": {
+    "description": "SPEC-004 unavailable(unparsableOutput) 的原因"
+  },
+  "validationUnavailableTimedOut": "驗證超過 30 秒，已停止",
+  "@validationUnavailableTimedOut": {
+    "description": "SPEC-004 unavailable(timedOut) 的原因"
+  },
   "radioYes": "是",
   "@radioYes": {
     "description": "SPEC-004 4.47 布林欄位選項"

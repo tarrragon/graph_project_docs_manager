@@ -1897,6 +1897,108 @@ abstract class AppLocalizations {
   /// **'目前值「{value}」不在可選值內'**
   String fieldValueOutOfDomain(String value);
 
+  /// SPEC-004 4.48 提示格：單行輸入的未送出
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未送出（Enter 送出、Esc 還原）'**
+  String get fieldDraftUnsentHint;
+
+  /// SPEC-004 4.48 提示格：多行輸入的未送出
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未送出（⌘Enter 送出、Esc 還原）'**
+  String get fieldDraftUnsentHintMultiLine;
+
+  /// SPEC-004 4.48 提示格 writing；4.51 寫入結果徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'寫入中'**
+  String get fieldWriteInProgress;
+
+  /// SPEC-004 4.48 提示格：written 且有快照時接在驗證狀態之後
+  ///
+  /// In zh, this message translates to:
+  /// **'取回方式見寫入清單'**
+  String get fieldSeeWriteLogHint;
+
+  /// SPEC-004 4.48 提示格：blocked(snapshotFailed)
+  ///
+  /// In zh, this message translates to:
+  /// **'無法建立快照，檔案未改'**
+  String get fieldBlockedSnapshotFailed;
+
+  /// SPEC-004 4.48 提示格：blocked(rewriteNotIsolated)
+  ///
+  /// In zh, this message translates to:
+  /// **'無法只改這個欄位，檔案未改。請改用外部編輯器'**
+  String get fieldBlockedRewriteNotIsolated;
+
+  /// SPEC-004 4.48 提示格：ioFailed
+  ///
+  /// In zh, this message translates to:
+  /// **'讀寫失敗，檔案未改'**
+  String get fieldIoFailed;
+
+  /// SPEC-004 4.48 readOnly 提示格
+  ///
+  /// In zh, this message translates to:
+  /// **'此欄位目前不能在 App 內編輯'**
+  String get fieldNotEditableHint;
+
+  /// SPEC-004 4.48 提示格：必填空白
+  ///
+  /// In zh, this message translates to:
+  /// **'此欄位必填，空白未送出'**
+  String get fieldRequiredEmpty;
+
+  /// SPEC-004 4.48 提示格；4.51 驗證徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證中'**
+  String get validationRunning;
+
+  /// SPEC-004 4.48 提示格；4.51 驗證徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證通過'**
+  String get validationPassed;
+
+  /// SPEC-004 4.48 提示格；4.51 驗證徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'發現 {count} 個新問題'**
+  String validationFailed(int count);
+
+  /// SPEC-004 4.48 提示格；原因接在其後
+  ///
+  /// In zh, this message translates to:
+  /// **'無法驗證'**
+  String get validationUnavailable;
+
+  /// SPEC-004 unavailable(executableMissing) 的原因
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到 uv 或 doc CLI'**
+  String get validationUnavailableExecutableMissing;
+
+  /// SPEC-004 unavailable(unexpectedExitCode) 的原因
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證程式以非預期的結束碼結束'**
+  String get validationUnavailableUnexpectedExitCode;
+
+  /// SPEC-004 unavailable(unparsableOutput) 的原因
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證程式的輸出無法解析'**
+  String get validationUnavailableUnparsableOutput;
+
+  /// SPEC-004 unavailable(timedOut) 的原因
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證超過 30 秒，已停止'**
+  String get validationUnavailableTimedOut;
+
   /// SPEC-004 4.47 布林欄位選項
   ///
   /// In zh, this message translates to:

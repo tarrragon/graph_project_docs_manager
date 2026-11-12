@@ -1090,6 +1090,59 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get fieldDraftUnsentHint => '尚未送出（Enter 送出、Esc 還原）';
+
+  @override
+  String get fieldDraftUnsentHintMultiLine => '尚未送出（⌘Enter 送出、Esc 還原）';
+
+  @override
+  String get fieldWriteInProgress => '寫入中';
+
+  @override
+  String get fieldSeeWriteLogHint => '取回方式見寫入清單';
+
+  @override
+  String get fieldBlockedSnapshotFailed => '無法建立快照，檔案未改';
+
+  @override
+  String get fieldBlockedRewriteNotIsolated => '無法只改這個欄位，檔案未改。請改用外部編輯器';
+
+  @override
+  String get fieldIoFailed => '讀寫失敗，檔案未改';
+
+  @override
+  String get fieldNotEditableHint => '此欄位目前不能在 App 內編輯';
+
+  @override
+  String get fieldRequiredEmpty => '此欄位必填，空白未送出';
+
+  @override
+  String get validationRunning => '驗證中';
+
+  @override
+  String get validationPassed => '驗證通過';
+
+  @override
+  String validationFailed(int count) {
+    return '發現 $count 個新問題';
+  }
+
+  @override
+  String get validationUnavailable => '無法驗證';
+
+  @override
+  String get validationUnavailableExecutableMissing => '找不到 uv 或 doc CLI';
+
+  @override
+  String get validationUnavailableUnexpectedExitCode => '驗證程式以非預期的結束碼結束';
+
+  @override
+  String get validationUnavailableUnparsableOutput => '驗證程式的輸出無法解析';
+
+  @override
+  String get validationUnavailableTimedOut => '驗證超過 30 秒，已停止';
+
+  @override
   String get radioYes => '是';
 
   @override
