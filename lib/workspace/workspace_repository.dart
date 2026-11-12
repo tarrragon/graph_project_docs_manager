@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import 'workspace_types.dart';
 
@@ -34,11 +37,9 @@ abstract interface class WorkspaceDirectoryProbePort {
 
 /// [WorkspaceRepository] 每個日誌呼叫點的事件識別碼。
 ///
-/// 獨立於 [WorkspaceLogSink] 的 `message` 文案：`message` 是人類可讀、可自由
-/// 改寫的除錯文字（標 `i18n-exempt: 開發者 debug log`），`event` 才是測試
-/// 斷言應綁定的穩定契約。改一句 `message` 文案不得使任何測試翻紅——這是
-/// 本列舉存在的理由（0.1.0-W3-121 Phase 4a 三視角發現：測試曾直接比對
-/// `message` 子字串，使文案與測試耦合）。
+/// 事件碼是測試斷言應綁定的穩定契約；[LogSink] 負載只收 SPEC-010 FR-03
+/// 白名單值，不再有自由文案（0.1.0-W3-121 Phase 4a 發現的文案與測試耦合
+/// 因而不可能再發生）。
 ///
 /// 命名分組對應各方法；`persist*` 與 `restore*` 刻意分開命名——
 /// [_persistAndInspect]（[chooseFolder]／[openPath] 共用）與 [restore] 各自
@@ -184,32 +185,55 @@ enum WorkspaceLogEvent {
   probeRecentProjectTimedOut,
 }
 
-/// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'WorkspaceRepository')`。
-///
-/// [event] 是測試斷言應綁定的穩定契約，[message] 只是可自由改寫的除錯文案
-/// （見 [WorkspaceLogEvent] doc comment）。「呼叫發出」事件（[WorkspaceLogEvent]
-/// 命名含 `Issuing` 者）的 [message] 措辭一律採「動詞片語 + 具名參數」，
-/// 不加「準備」前綴——五則呼叫發出事件曾有三種句型（僅一則帶「準備」），
-/// 統一後日誌讀者可用單一措辭特徵撈出所有呼叫發出點。
-typedef WorkspaceLogSink = void Function(
-  String message, {
-  required WorkspaceLogEvent event,
-  int? level,
-  Object? error,
+/// 負載鍵（SPEC-010 FR-03：值皆為白名單包裝型別；使用者路徑不入負載）。
+abstract final class WorkspaceLogKeys {
+  static const String key = 'key';
+  static const String present = 'present';
+  static const String ok = 'ok';
+  static const String found = 'found';
+  static const String timeoutSeconds = 'timeoutSeconds';
+  static const String storedVersion = 'storedVersion';
+  static const String count = 'count';
+  static const String nodeCount = 'nodeCount';
+  static const String ticketCount = 'ticketCount';
+  static const String issueCount = 'issueCount';
+  static const String index = 'index';
+}
+
+/// 偏好設定 key 的白名單值：key 含 `.`（如 `workspace.path`），不符 FR-03
+/// 欄位名字元集，故以 enum 值記錄；未列舉的 key 記 [WorkspacePrefKeyLog.other]。
+enum WorkspacePrefKeyLog {
+  workspacePath,
+  workspaceSchemaVersion,
+  workspaceRecentProjects,
+  other,
+}
+
+LogValue _prefKeyValue(String key) => LogValue.enumValue(switch (key) {
+  'workspace.path' => WorkspacePrefKeyLog.workspacePath,
+  'workspace.schemaVersion' => WorkspacePrefKeyLog.workspaceSchemaVersion,
+  'workspace.recentProjects' => WorkspacePrefKeyLog.workspaceRecentProjects,
+  _ => WorkspacePrefKeyLog.other,
 });
+
+/// 生產預設：經共用 writer 輸出，domain 為 `workspace`。
+final LogSink<WorkspaceLogEvent> defaultWorkspaceLogSink =
+    defaultLogSink<WorkspaceLogEvent>('workspace');
 
 class _DefaultWorkspacePreferencesHandle implements WorkspacePreferencesHandle {
   _DefaultWorkspacePreferencesHandle(this._prefs, this._log);
   final SharedPreferences _prefs;
-  final WorkspaceLogSink _log;
+  final LogSink<WorkspaceLogEvent> _log;
 
   @override
   String? readString(String key) {
     final value = _prefs.getString(key);
-    final state = value == null ? 'null' : 'present';
     _log(
-      'SharedPreferences read $key: $state', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.adapterPreferencesReadResult,
+      WorkspaceLogEvent.adapterPreferencesReadResult,
+      LogFields({
+        WorkspaceLogKeys.key: _prefKeyValue(key),
+        WorkspaceLogKeys.present: LogValue.boolean(value != null),
+      }),
     );
     return value;
   }
@@ -219,16 +243,20 @@ class _DefaultWorkspacePreferencesHandle implements WorkspacePreferencesHandle {
     try {
       final ok = await _prefs.setString(key, value);
       _log(
-        'SharedPreferences write $key: $ok', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterPreferencesWriteResult,
-        level: ok ? null : 900,
+        WorkspaceLogEvent.adapterPreferencesWriteResult,
+        LogFields({
+          WorkspaceLogKeys.key: _prefKeyValue(key),
+          WorkspaceLogKeys.ok: LogValue.boolean(ok),
+        }),
+        level: ok ? LogLevel.info : LogLevel.warning,
       );
       return ok;
     } catch (e) {
       _log(
-        'SharedPreferences write $key threw', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterPreferencesWriteResult,
-        level: 900,
+        WorkspaceLogEvent.adapterPreferencesWriteResult,
+        LogFields({WorkspaceLogKeys.key: _prefKeyValue(key)}),
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       rethrow;
@@ -238,22 +266,20 @@ class _DefaultWorkspacePreferencesHandle implements WorkspacePreferencesHandle {
 
 class _DefaultWorkspacePreferencesPort implements WorkspacePreferencesPort {
   const _DefaultWorkspacePreferencesPort(this._log);
-  final WorkspaceLogSink _log;
+  final LogSink<WorkspaceLogEvent> _log;
 
   @override
   Future<WorkspacePreferencesHandle> open() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _log(
-        'SharedPreferences opened', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterPreferencesOpenResult,
-      );
+      _log(WorkspaceLogEvent.adapterPreferencesOpenResult, LogFields.empty);
       return _DefaultWorkspacePreferencesHandle(prefs, _log);
     } catch (e) {
       _log(
-        'SharedPreferences open failed', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterPreferencesOpenResult,
-        level: 900,
+        WorkspaceLogEvent.adapterPreferencesOpenResult,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       rethrow;
@@ -264,14 +290,14 @@ class _DefaultWorkspacePreferencesPort implements WorkspacePreferencesPort {
 class _DefaultWorkspaceDirectoryProbePort
     implements WorkspaceDirectoryProbePort {
   const _DefaultWorkspaceDirectoryProbePort(this._log);
-  final WorkspaceLogSink _log;
+  final LogSink<WorkspaceLogEvent> _log;
 
   @override
   Future<bool> exists(String path) async {
     final found = await Directory(path).exists();
     _log(
-      'probe exists: $found', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.adapterProbeExistsResult,
+      WorkspaceLogEvent.adapterProbeExistsResult,
+      LogFields({WorkspaceLogKeys.found: LogValue.boolean(found)}),
     );
     return found;
   }
@@ -280,40 +306,21 @@ class _DefaultWorkspaceDirectoryProbePort
   Future<void> readFirstEntry(String path) async {
     try {
       await Directory(path).list().first;
-      _log(
-        'probe readFirstEntry: readable', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
-      );
+      _log(WorkspaceLogEvent.adapterProbeReadFirstEntryResult, LogFields.empty);
     } on StateError {
-      _log(
-        'probe readFirstEntry: empty', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
-      );
+      _log(WorkspaceLogEvent.adapterProbeReadFirstEntryResult, LogFields.empty);
       rethrow;
     } catch (e) {
       _log(
-        'probe readFirstEntry threw', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
-        level: 900,
+        WorkspaceLogEvent.adapterProbeReadFirstEntryResult,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       rethrow;
     }
   }
-}
-
-void _defaultLogSink(
-  String message, {
-  required WorkspaceLogEvent event,
-  int? level,
-  Object? error,
-}) {
-  developer.log(
-    '[${event.name}] $message', // i18n-exempt: 開發者 debug log
-    name: 'WorkspaceRepository',
-    level: level ?? 0,
-    error: error,
-  );
 }
 
 /// [WorkspaceUnavailable.reason] 固定文案：資料夾整個不存在或所在磁碟未掛載。
@@ -401,15 +408,17 @@ class WorkspaceRepository {
     DirectoryPathPicker? pickDirectoryPath,
     WorkspacePreferencesPort? preferencesPort,
     WorkspaceDirectoryProbePort? directoryProbe,
-    WorkspaceLogSink? logSink,
+    LogSink<WorkspaceLogEvent>? logSink,
   }) : _pickDirectoryPath = pickDirectoryPath ?? getDirectoryPath,
        _preferencesPort =
            preferencesPort ??
-           _DefaultWorkspacePreferencesPort(logSink ?? _defaultLogSink),
+           _DefaultWorkspacePreferencesPort(logSink ?? defaultWorkspaceLogSink),
        _directoryProbe =
            directoryProbe ??
-           _DefaultWorkspaceDirectoryProbePort(logSink ?? _defaultLogSink),
-       _log = logSink ?? _defaultLogSink;
+           _DefaultWorkspaceDirectoryProbePort(
+             logSink ?? defaultWorkspaceLogSink,
+           ),
+       _log = logSink ?? defaultWorkspaceLogSink;
 
   static const _pathKey = 'workspace.path';
 
@@ -433,7 +442,7 @@ class WorkspaceRepository {
   final DirectoryPathPicker _pickDirectoryPath;
   final WorkspacePreferencesPort _preferencesPort;
   final WorkspaceDirectoryProbePort _directoryProbe;
-  final WorkspaceLogSink _log;
+  final LogSink<WorkspaceLogEvent> _log;
 
   /// 最近專案項單次探測的逾時值（SPEC-005 §2.5）。
   // magic-exempt: 具名常數本身即為 SPEC-005 §2.5 定義的逾時值
@@ -450,9 +459,13 @@ class WorkspaceRepository {
       return const RecentProjectAvailable();
     } on TimeoutException {
       _log(
-        '最近專案探測逾時：$path，逾時值 ${probeTimeout.inSeconds} 秒', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.probeRecentProjectTimedOut,
-        level: 900,
+        WorkspaceLogEvent.probeRecentProjectTimedOut,
+        LogFields({
+          WorkspaceLogKeys.timeoutSeconds: LogValue.integer(
+            probeTimeout.inSeconds,
+          ),
+        }),
+        level: LogLevel.warning,
       );
       return const RecentProjectProbeTimedOut();
     }
@@ -460,33 +473,25 @@ class WorkspaceRepository {
 
   /// 開啟系統面板讓使用者選取資料夾。
   Future<ChooseFolderResult> chooseFolder() async {
-    _log(
-      '開啟資料夾選取面板', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.chooseFolderPanelOpening,
-    );
+    _log(WorkspaceLogEvent.chooseFolderPanelOpening, LogFields.empty);
     String? path;
     try {
       path = await _pickDirectoryPath();
     } catch (e) {
       _log(
-        '面板不可用', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.chooseFolderPanelUnavailable,
-        level: 900,
+        WorkspaceLogEvent.chooseFolderPanelUnavailable,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return ChooseFolderUnavailable('$e');
     }
     if (path == null) {
-      _log(
-        '使用者取消選取', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.chooseFolderCancelled,
-      );
+      _log(WorkspaceLogEvent.chooseFolderCancelled, LogFields.empty);
       return const ChooseFolderCancelled();
     }
-    _log(
-      '已選取：$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.chooseFolderPathSelected,
-    );
+    _log(WorkspaceLogEvent.chooseFolderPathSelected, LogFields.empty);
     return _persistAndInspect(path);
   }
 
@@ -508,16 +513,13 @@ class WorkspaceRepository {
       return ChooseFolderSelected(state);
     }
     _log(
-      '持久化，key=$_pathKey，path=$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.persistIssuing,
+      WorkspaceLogEvent.persistIssuing,
+      LogFields({WorkspaceLogKeys.key: _prefKeyValue(_pathKey)}),
     );
     String? failureReason;
     try {
       final handle = await _preferencesPort.open();
-      _log(
-        '偏好設定儲存已就緒', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.persistPreferencesReady,
-      );
+      _log(WorkspaceLogEvent.persistPreferencesReady, LogFields.empty);
       // 版號 key 與 path key 的首次寫入是同一次操作（0.2.0-W1-021 acceptance
       // 第 3 條、呼應 0.1.0-W3-121 裁決 B 的交叉判據前提）：只要 path 曾被
       // 寫入，版號一定同時存在，不會出現「有 path 但版號 key 從未寫過」這種
@@ -531,17 +533,18 @@ class WorkspaceRepository {
         await _writeSchemaVersion(handle);
       } else {
         _log(
-          '持久化失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.persistWriteReturnedFalse,
-          level: 900,
+          WorkspaceLogEvent.persistWriteReturnedFalse,
+          LogFields.empty,
+          level: LogLevel.warning,
         );
         failureReason = '寫入回報 false'; // i18n-exempt: 診斷用回傳值，非 log
       }
     } catch (e) {
       _log(
-        '持久化失敗（例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.persistWriteThrew,
-        level: 900,
+        WorkspaceLogEvent.persistWriteThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       failureReason = '$e'; // i18n-exempt: 診斷用回傳值，非 log
@@ -561,22 +564,20 @@ class WorkspaceRepository {
         '$_currentSchemaVersion',
       );
       if (ok) {
-        _log(
-          '已持久化', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.persistCompleted,
-        );
+        _log(WorkspaceLogEvent.persistCompleted, LogFields.empty);
         return;
       }
       _log(
-        '版號 key 寫入回報 false', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.persistWriteReturnedFalse,
-        level: 900,
+        WorkspaceLogEvent.persistWriteReturnedFalse,
+        LogFields.empty,
+        level: LogLevel.warning,
       );
     } catch (e) {
       _log(
-        '版號 key 寫入拋例外', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.persistWriteThrew,
-        level: 900,
+        WorkspaceLogEvent.persistWriteThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
     }
@@ -590,18 +591,15 @@ class WorkspaceRepository {
   /// 失敗時的回饋（浮層維持展開、不轉狀態、清單不變）與「選擇其他資料夾」
   /// 選定後失敗完全一致（`0.2.1-W1-054`）。
   Future<ChooseFolderResult> openPath(String path) async {
-    _log(
-      '依最近專案路徑重新載入：$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.openPathIssuing,
-    );
+    _log(WorkspaceLogEvent.openPathIssuing, LogFields.empty);
     return _persistAndInspect(path);
   }
 
   /// App 啟動時呼叫，還原先前選定的資料夾。
   Future<WorkspaceState> restore() async {
     _log(
-      '還原工作資料夾，key=$_pathKey', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.restoreIssuing,
+      WorkspaceLogEvent.restoreIssuing,
+      LogFields({WorkspaceLogKeys.key: _prefKeyValue(_pathKey)}),
     );
     WorkspacePreferencesHandle handle;
     try {
@@ -611,9 +609,10 @@ class WorkspaceRepository {
       // 固定為穩定文案常數（見 WorkspaceUnavailable 契約），不外露原始
       // 例外字串。
       _log(
-        '還原失敗（例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.restoreOpenThrew,
-        level: 900,
+        WorkspaceLogEvent.restoreOpenThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return const WorkspaceUnavailable(
@@ -621,10 +620,7 @@ class WorkspaceRepository {
         reason: _reasonPreferencesUnavailable,
       );
     }
-    _log(
-      '偏好設定儲存已就緒', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.restorePreferencesReady,
-    );
+    _log(WorkspaceLogEvent.restorePreferencesReady, LogFields.empty);
     final rawPath = handle.readString(_pathKey);
     final rawVersion = handle.readString(_schemaVersionKey);
     final migration = _migrateSchema(
@@ -637,10 +633,7 @@ class WorkspaceRepository {
       SchemaMigrationFailed() => null,
     };
     if (migration is SchemaMigrated) {
-      _log(
-        '偵測到舊版資料，已就地遷移', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.restoreMigrated,
-      );
+      _log(WorkspaceLogEvent.restoreMigrated, LogFields.empty);
     }
     if (migration is SchemaMigrationFailed) {
       // 遷移失敗不阻擋 App：與 0.1.0-W3-121 裁決一致（restore() 任何失敗
@@ -648,23 +641,21 @@ class WorkspaceRepository {
       // App 啟動）。因不信任舊結構，選擇當作「從未選過資料夾」而非嘗試
       // 沿用可能已損毀的值——見 tech-decisions.md 同一補記段的決策記錄。
       _log(
-        '版號無法辨識，判定遷移失敗（storedVersion=${migration.storedVersion}）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.restoreMigrationFailed,
-        level: 900,
+        WorkspaceLogEvent.restoreMigrationFailed,
+        LogFields({
+          if (migration.storedVersion case final version?)
+            WorkspaceLogKeys.storedVersion: LogValue.integer(version),
+        }),
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
       return const WorkspaceUnset();
     }
     if (path == null) {
-      _log(
-        '無已儲存路徑', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.restoreNoStoredPath,
-      );
+      _log(WorkspaceLogEvent.restoreNoStoredPath, LogFields.empty);
       return const WorkspaceUnset();
     }
-    _log(
-      '已還原：$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.restoreCompleted,
-    );
+    _log(WorkspaceLogEvent.restoreCompleted, LogFields.empty);
     return _inspect(path);
   }
 
@@ -711,17 +702,18 @@ class WorkspaceRepository {
   /// 一律回空清單，失敗原因只進日誌（不互相抵扣，同 [restore] 契約）。
   Future<List<RecentProject>> loadRecentProjects() async {
     _log(
-      '讀取最近專案清單，key=$_recentProjectsKey', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.recentProjectsLoadIssuing,
+      WorkspaceLogEvent.recentProjectsLoadIssuing,
+      LogFields({WorkspaceLogKeys.key: _prefKeyValue(_recentProjectsKey)}),
     );
     WorkspacePreferencesHandle handle;
     try {
       handle = await _preferencesPort.open();
     } catch (e) {
       _log(
-        '讀取最近專案清單失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsLoadOpenThrew,
-        level: 900,
+        WorkspaceLogEvent.recentProjectsLoadOpenThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return const [];
@@ -734,18 +726,16 @@ class WorkspaceRepository {
   /// 整份寫回。清單損壞時以空清單為基底寫入（損壞內容被取代，見規格
   /// 「損壞時不覆寫的邊界」），並記一筆 level 900 日誌使遺失可被觀測。
   Future<bool> addRecentProject(String path) async {
-    _log(
-      '新增最近專案，path=$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.recentProjectsAddIssuing,
-    );
+    _log(WorkspaceLogEvent.recentProjectsAddIssuing, LogFields.empty);
     WorkspacePreferencesHandle handle;
     try {
       handle = await _preferencesPort.open();
     } catch (e) {
       _log(
-        '新增最近專案失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsAddOpenThrew,
-        level: 900,
+        WorkspaceLogEvent.recentProjectsAddOpenThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return false;
@@ -769,22 +759,23 @@ class WorkspaceRepository {
       final success = await handle.writeString(_recentProjectsKey, encoded);
       if (success) {
         _log(
-          '已寫入最近專案清單，項數=${updated.length}', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.recentProjectsAddWriteSucceeded,
+          WorkspaceLogEvent.recentProjectsAddWriteSucceeded,
+          LogFields({WorkspaceLogKeys.count: LogValue.integer(updated.length)}),
         );
       } else {
         _log(
-          '新增最近專案失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.recentProjectsAddWriteReturnedFalse,
-          level: 900,
+          WorkspaceLogEvent.recentProjectsAddWriteReturnedFalse,
+          LogFields.empty,
+          level: LogLevel.warning,
         );
       }
       return success;
     } catch (e) {
       _log(
-        '新增最近專案失敗（例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsAddWriteThrew,
-        level: 900,
+        WorkspaceLogEvent.recentProjectsAddWriteThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return false;
@@ -798,20 +789,23 @@ class WorkspaceRepository {
     String path,
     RecentProjectCounts counts,
   ) async {
-    final summary =
-        '${counts.nodeCount}/${counts.ticketCount}/${counts.issueCount}';
     _log(
-      '更新最近專案計數，path=$path counts=$summary', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.countsSaveIssuing,
+      WorkspaceLogEvent.countsSaveIssuing,
+      LogFields({
+        WorkspaceLogKeys.nodeCount: LogValue.integer(counts.nodeCount),
+        WorkspaceLogKeys.ticketCount: LogValue.integer(counts.ticketCount),
+        WorkspaceLogKeys.issueCount: LogValue.integer(counts.issueCount),
+      }),
     );
     final WorkspacePreferencesHandle handle;
     try {
       handle = await _preferencesPort.open();
     } catch (e) {
       _log(
-        '更新最近專案計數失敗（開啟儲存管道例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.countsSaveOpenThrew,
-        level: 900,
+        WorkspaceLogEvent.countsSaveOpenThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return false;
@@ -819,10 +813,7 @@ class WorkspaceRepository {
     final projects = _readListForCountsSave(handle);
     if (projects == null) return false;
     if (!projects.any((project) => project.path == path)) {
-      _log(
-        '更新最近專案計數略過：清單無同 path 項', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.countsSaveNoMatchingProject,
-      );
+      _log(WorkspaceLogEvent.countsSaveNoMatchingProject, LogFields.empty);
       return false;
     }
     final updated = [
@@ -842,9 +833,10 @@ class WorkspaceRepository {
     final parsed = _parseRecentProjects(raw);
     if (parsed == null) {
       _log(
-        '更新最近專案計數失敗：清單損壞，不寫入', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.countsSaveBaseCorrupted,
-        level: 900,
+        WorkspaceLogEvent.countsSaveBaseCorrupted,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
     }
     return parsed;
@@ -857,23 +849,21 @@ class WorkspaceRepository {
     try {
       final success = await handle.writeString(_recentProjectsKey, encoded);
       if (success) {
-        _log(
-          '已寫入最近專案計數快照', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.countsSaveWriteSucceeded,
-        );
+        _log(WorkspaceLogEvent.countsSaveWriteSucceeded, LogFields.empty);
       } else {
         _log(
-          '更新最近專案計數失敗：寫入回報 false', // i18n-exempt: 開發者 debug log
-          event: WorkspaceLogEvent.countsSaveWriteReturnedFalse,
-          level: 900,
+          WorkspaceLogEvent.countsSaveWriteReturnedFalse,
+          LogFields.empty,
+          level: LogLevel.warning,
         );
       }
       return success;
     } catch (e) {
       _log(
-        '更新最近專案計數失敗（例外）', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.countsSaveWriteThrew,
-        level: 900,
+        WorkspaceLogEvent.countsSaveWriteThrew,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return false;
@@ -898,24 +888,22 @@ class WorkspaceRepository {
   List<RecentProject> _readRecentProjects(WorkspacePreferencesHandle handle) {
     final raw = handle.readString(_recentProjectsKey);
     if (raw == null) {
-      _log(
-        '最近專案清單不存在，回空清單', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsMissing,
-      );
+      _log(WorkspaceLogEvent.recentProjectsMissing, LogFields.empty);
       return const [];
     }
     final parsed = _parseRecentProjects(raw);
     if (parsed == null) {
       _log(
-        '最近專案清單格式損壞，回空清單', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsCorrupted,
-        level: 900,
+        WorkspaceLogEvent.recentProjectsCorrupted,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
       return const [];
     }
     _log(
-      '已讀取最近專案清單，項數=${parsed.length}', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.recentProjectsLoaded,
+      WorkspaceLogEvent.recentProjectsLoaded,
+      LogFields({WorkspaceLogKeys.count: LogValue.integer(parsed.length)}),
     );
     parsed.sort((a, b) => b.lastOpenedAt.compareTo(a.lastOpenedAt));
     return parsed;
@@ -931,9 +919,10 @@ class WorkspaceRepository {
     final parsed = _parseRecentProjects(raw);
     if (parsed == null) {
       _log(
-        '既有最近專案清單損壞，以空清單為基底被取代', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectsWriteBaseCorrupted,
-        level: 900,
+        WorkspaceLogEvent.recentProjectsWriteBaseCorrupted,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
       return const [];
     }
@@ -946,9 +935,10 @@ class WorkspaceRepository {
     if (parsed == null) return null;
     for (final index in parsed.invalidCountsIndexes) {
       _log(
-        '最近專案 counts 格式不符，視為無快照，index=$index', // i18n-exempt: 開發者 debug log
-        event: WorkspaceLogEvent.recentProjectCountsInvalid,
-        level: 900,
+        WorkspaceLogEvent.recentProjectCountsInvalid,
+        LogFields({WorkspaceLogKeys.index: LogValue.integer(index)}),
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
     }
     return parsed.projects;
@@ -961,20 +951,14 @@ class WorkspaceRepository {
   /// 檔案系統節點、能跟著搬移，路徑字串不能。對開發者工具而言可接受 ——
   /// 專案資料夾被搬走時，讓使用者重選一次是合理的。
   Future<WorkspaceState> _inspect(String path) async {
-    _log(
-      '探測資料夾是否存在：$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.inspectExistsIssuing,
-    );
+    _log(WorkspaceLogEvent.inspectExistsIssuing, LogFields.empty);
     if (!await _directoryProbe.exists(path)) {
       return WorkspaceUnavailable(
         lastKnownPath: path,
         reason: _reasonFolderMissing,
       );
     }
-    _log(
-      '讀取資料夾內容：$path', // i18n-exempt: 開發者 debug log
-      event: WorkspaceLogEvent.inspectReadIssuing,
-    );
+    _log(WorkspaceLogEvent.inspectReadIssuing, LogFields.empty);
     try {
       await _directoryProbe.readFirstEntry(path);
     } on FileSystemException catch (e) {
@@ -983,9 +967,10 @@ class WorkspaceRepository {
       // 不是需要中斷 App 的致命例外。原始 OSError 訊息只進日誌，不進
       // reason——那是 OS 語系文字，不受應用程式語系控制。
       _log(
-        '資料夾探測失敗：$path', // i18n-exempt: 開發者 debug log，非使用者可見文字
-        event: WorkspaceLogEvent.inspectReadFailed,
-        level: 900,
+        WorkspaceLogEvent.inspectReadFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return WorkspaceUnavailable(
