@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -254,6 +255,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fieldEmptyValue => '未填';
+
+  @override
+  String dropdownA11yLabel(String label, String value) {
+    return '$label，目前：$value';
+  }
 
   @override
   String get searchClearAction => '清除搜尋';

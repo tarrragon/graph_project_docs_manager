@@ -542,6 +542,12 @@ abstract class AppLocalizations {
   /// **'未填'**
   String get fieldEmptyValue;
 
+  /// SPEC-004 §4.45：AppDropdown 觸發器朗讀標籤；4.46 同用
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}，目前：{value}'**
+  String dropdownA11yLabel(String label, String value);
+
   /// SPEC-004 §4.12：SearchField 清除按鈕文案
   ///
   /// In zh, this message translates to:

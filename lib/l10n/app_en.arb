@@ -78,6 +78,7 @@
   "searchClearAction": "Clear search",
   "filterAllOption": "All",
   "filterA11yLabel": "{label} filter, current: {value}",
+  "dropdownA11yLabel": "{label}, current: {value}",
   "filterStatusLabel": "Status",
   "filterPriorityLabel": "Priority",
   "sortA11yLabel": "{label}, sortable, current: {order}",
