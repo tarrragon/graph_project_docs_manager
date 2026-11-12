@@ -1155,4 +1155,54 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get editDoneAction => '完成';
+
+  @override
+  String get writeResultWritten => '已寫入';
+
+  @override
+  String get writeResultBlocked => '未寫入';
+
+  @override
+  String get writeResultIoFailed => '讀寫失敗';
+
+  @override
+  String get writeResultExternallyModified => '檔案已在 App 外被修改，這次寫入沒有執行';
+
+  @override
+  String get writeLogColumnPath => '路徑';
+
+  @override
+  String get writeLogColumnField => '欄位';
+
+  @override
+  String get writeLogColumnResult => '寫入結果';
+
+  @override
+  String get writeLogColumnValidation => '驗證';
+
+  @override
+  String get writeLogColumnRestore => '取回方式';
+
+  @override
+  String writeLogProjectLabel(String project) {
+    return '專案：$project';
+  }
+
+  @override
+  String get writeLogSnapshotExpiryNote =>
+      '快照由 git 保留約兩週（gc.pruneExpire），之後可能被清除';
+
+  @override
+  String writeLogRowA11yLabel(
+    String pathLabel,
+    String path,
+    String fieldLabel,
+    String field,
+    String resultLabel,
+    String result,
+    String validationLabel,
+    String validation,
+  ) {
+    return '$pathLabel $path，$fieldLabel $field，$resultLabel $result，$validationLabel $validation';
+  }
 }

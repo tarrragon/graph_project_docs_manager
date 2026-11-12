@@ -1255,4 +1255,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editDoneAction => 'Done';
+
+  @override
+  String get writeResultWritten => 'Written';
+
+  @override
+  String get writeResultBlocked => 'Not written';
+
+  @override
+  String get writeResultIoFailed => 'Read or write failed';
+
+  @override
+  String get writeResultExternallyModified =>
+      'The file was changed outside the app, so this write was not performed';
+
+  @override
+  String get writeLogColumnPath => 'Path';
+
+  @override
+  String get writeLogColumnField => 'Field';
+
+  @override
+  String get writeLogColumnResult => 'Write result';
+
+  @override
+  String get writeLogColumnValidation => 'Validation';
+
+  @override
+  String get writeLogColumnRestore => 'How to restore';
+
+  @override
+  String writeLogProjectLabel(String project) {
+    return 'Project: $project';
+  }
+
+  @override
+  String get writeLogSnapshotExpiryNote =>
+      'git keeps the snapshot for about two weeks (gc.pruneExpire); it may be removed after that';
+
+  @override
+  String writeLogRowA11yLabel(
+    String pathLabel,
+    String path,
+    String fieldLabel,
+    String field,
+    String resultLabel,
+    String result,
+    String validationLabel,
+    String validation,
+  ) {
+    return '$pathLabel $path, $fieldLabel $field, $resultLabel $result, $validationLabel $validation';
+  }
 }
