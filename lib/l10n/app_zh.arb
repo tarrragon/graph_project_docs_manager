@@ -2064,6 +2064,10 @@
   "@radioNo": {
     "description": "SPEC-004 4.47 布林欄位選項"
   },
+  "editDoneAction": "完成",
+  "@editDoneAction": {
+    "description": "SPEC-004 4.50 doneButton（action-nodeDetail-edit-done）"
+  },
   "writeResultWritten": "已寫入",
   "@writeResultWritten": {
     "description": "SPEC-004 4.51 寫入結果徽章"

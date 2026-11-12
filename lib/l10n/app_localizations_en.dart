@@ -1254,6 +1254,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get radioNo => 'No';
 
   @override
+  String get editDoneAction => 'Done';
+
+  @override
   String get writeResultWritten => 'Written';
 
   @override

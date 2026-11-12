@@ -329,6 +329,7 @@
   "validationUnavailableTimedOut": "Validation took longer than 30 seconds and was stopped",
   "radioYes": "Yes",
   "radioNo": "No",
+  "editDoneAction": "Done",
   "writeResultWritten": "Written",
   "writeResultBlocked": "Not written",
   "writeResultIoFailed": "Read or write failed",

@@ -1154,6 +1154,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get radioNo => '否';
 
   @override
+  String get editDoneAction => '完成';
+
+  @override
   String get writeResultWritten => '已寫入';
 
   @override
