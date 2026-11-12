@@ -38,6 +38,9 @@ import '../../../helpers/gap_round_fakes.dart';
 import '../../../helpers/helpers.dart';
 import '../../../helpers/spec009/fake_edit_file_port.dart';
 import '../../../helpers/spec009/fake_edit_git_port.dart';
+import '../../../helpers/spec009/fake_validator_port.dart';
+import '../../../helpers/spec009/frontmatter_fixtures.dart'
+    show ucViolationOutput, unregisteredUc;
 
 const String _relative = 'docs/spec/x/SPEC-900.md';
 const String _otherRelative = 'docs/spec/x/SPEC-901.md';
@@ -110,6 +113,7 @@ class _Env {
     String doc = _doc,
     String nodeType = 'SPEC',
     TypeTable? typeTable,
+    FakeValidatorPort? validator,
   }) {
     final dir = Directory.systemTemp.createTempSync('node_detail_edit_');
     final root = dir.resolveSymbolicLinksSync();
@@ -132,6 +136,14 @@ class _Env {
       ),
       editGitPortProvider.overrideWithValue(fakeGit),
       editFilePortProvider.overrideWithValue(files),
+      // 預設驗證永不完成（提示格停在驗證中）；不讓測試啟動真實 doc 子行程。
+      editValidatorPortProvider.overrideWithValue(
+        validator ??
+            FakeValidatorPort(
+              validate: const [ValidatorHang()],
+              ucVerify: const [ValidatorHang()],
+            ),
+      ),
       attentionArbiterProvider.overrideWithValue(arbiter),
       scanRoundProvider.overrideWith(
         () => FakeScanRound(
@@ -190,7 +202,7 @@ Finder _hint(String field, String text) => find.descendant(
 
 /// 讓 git 子行程的 5 秒逾時計時器走完，避免殘留計時器。
 Future<void> _drainTimers(WidgetTester tester) =>
-    tester.pump(const Duration(seconds: 10));
+    tester.pump(const Duration(seconds: 40));
 
 void main() {
   group('進入編輯（SPEC-003 §3.6 編輯欄位）', () {
@@ -319,6 +331,34 @@ void main() {
       expect(_anchor('state-nodeDetail-editing'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
       expect(env.arbiter.requests, isEmpty);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('驗證通過：提示格由驗證中轉為通過', (tester) async {
+      final env = _Env.create(validator: FakeValidatorPort());
+      await _pump(tester, env);
+      await _enterEditing(tester);
+      await _submit(tester, 'title', '新標題');
+
+      expect(_hint('title', _zh.validationPassed), findsOneWidget);
+      expect(_hint('title', _zh.validationRunning), findsNothing);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('驗證發現新問題：提示格轉為失敗並帶問題數', (tester) async {
+      final env = _Env.create(
+        validator: FakeValidatorPort(
+          ucVerify: [
+            validatorOk,
+            ValidatorExit(1, ucViolationOutput(unregisteredUc, 1)),
+          ],
+        ),
+      );
+      await _pump(tester, env);
+      await _enterEditing(tester);
+      await _submit(tester, 'title', '新標題');
+
+      expect(_hint('title', _zh.validationFailed(1)), findsOneWidget);
       await _drainTimers(tester);
     });
 
@@ -741,6 +781,28 @@ void main() {
       expect(container.read(nodeDetailEditProvider), isNull);
       await _drainTimers(tester);
     });
+
+    // 已重現為紅燈。返回與 rail 兩者都先清 returnTo 再切目的地，僅憑 provider
+    // 值無法區分；修法需動 lib/app/router.dart（導覽模型，禁改檔），見票面
+    // NeedsContext。
+    testWidgets(
+      // 跳過原因：NeedsContext，需導覽模型區分返回與 rail（router.dart 禁改）。
+      skip: true,
+      'rail 切到的目的地等於 returnTo：模式保留，不當作返回',
+      (tester) async {
+        final env = _Env.create();
+        final container = await _pump(tester, env);
+        await _enterEditing(tester);
+        navigateTo(container.read, AppDestination.domain, NavIntent.jump);
+        navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+        // returnTo = domain；rail 直接切到 domain（與返回同終態）。
+        navigateTo(container.read, AppDestination.domain, NavIntent.rail);
+        await _flush(tester);
+
+        expect(container.read(nodeDetailEditProvider), isNotNull);
+        await _drainTimers(tester);
+      },
+    );
 
     testWidgets('返回：退出編輯模式；rail 切換：模式保留', (tester) async {
       final env = _Env.create();
