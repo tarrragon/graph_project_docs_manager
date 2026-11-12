@@ -4,6 +4,8 @@
 /// 列舉值域與必填集合都經 [FieldDomainSource] 讀取（CLAUDE.md §7）。
 library;
 
+import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
+
 /// 欄位的輸入元件。
 enum FieldInputElement {
   singleLine,
@@ -16,15 +18,6 @@ enum FieldInputElement {
 
 /// 送出被擋下的提示類別（SPEC-004 4.48）。
 enum FieldInputError { fieldRequiredEmpty }
-
-/// 值域來源：讀自 `tracking_schema.json` 的機器定義。
-abstract interface class FieldDomainSource {
-  /// 該欄位是否有機器定義的列舉值域。
-  bool hasMachineDefinedEnum(String nodeType, String field);
-
-  /// 該節點型別的完整性（必填）欄位集合，即 `completeness_fields`。
-  Set<String> completenessFields(String nodeType);
-}
 
 /// 送出判定結果。
 sealed class FieldSubmitDecision {

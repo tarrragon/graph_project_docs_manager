@@ -1,6 +1,7 @@
 // SPEC-009 v1.4 FR-09：逐欄位輸入元件對照與可否清空判定（F-1～F-7）。
 // 畫面狀態層純函式，不經元件。
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
 import 'package:graph_project_docs_manager/screens/edit/field_input_mapping.dart';
 
 /// 值域來源 fake：[enumFields] 為「節點型別.欄位」集合，[completeness] 為必填集合。
