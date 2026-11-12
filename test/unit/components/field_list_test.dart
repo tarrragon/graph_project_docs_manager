@@ -185,6 +185,79 @@ void main() {
       expect(button(tester, doneKey).enabled, isTrue);
     });
 
+    FieldBlock dropdownField() => FieldBlock.editable(
+      label: 'dd',
+      testKey: const ValueKey('card-nodeDetail-field-dd'),
+      value: AppDropdown(
+        key: const ValueKey('input-dd'),
+        options: const [DropdownOption(value: 'a', label: 'a')],
+        selected: 'a',
+        onChanged: (_) {},
+        semanticLabel: 'dd',
+        locked: true,
+        enabled: false,
+        testKey: const ValueKey('action-nodeDetail-field-dd'),
+      ),
+    );
+
+    FieldBlock pickerField() => FieldBlock.editable(
+      label: 'rp',
+      testKey: const ValueKey('card-nodeDetail-field-rp'),
+      value: ReferencePicker(
+        key: const ValueKey('input-rp'),
+        options: const [ReferenceOption(value: 'a', label: 'a')],
+        selected: 'a',
+        onChanged: (_) {},
+        semanticLabel: 'rp',
+        allowEmpty: true,
+        locked: true,
+        enabled: false,
+        testKey: const ValueKey('action-nodeDetail-field-rp'),
+      ),
+    );
+
+    AppDropdown dd(WidgetTester t) =>
+        t.widget<AppDropdown>(find.byKey(const ValueKey('input-dd')));
+    ReferencePicker rp(WidgetTester t) =>
+        t.widget<ReferencePicker>(find.byKey(const ValueKey('input-rp')));
+
+    testWidgets('writing：AppDropdown 與 ReferencePicker 收到 locked', (
+      tester,
+    ) async {
+      await pumpList(
+        tester,
+        list(fields: [dropdownField(), pickerField()], writeInProgress: true),
+      );
+      expect(dd(tester).locked, isTrue);
+      expect(dd(tester).enabled, isTrue);
+      expect(rp(tester).locked, isTrue);
+      expect(rp(tester).enabled, isTrue);
+      expect(rp(tester).allowEmpty, isTrue);
+    });
+
+    testWidgets('blocked：AppDropdown 與 ReferencePicker 收到 enabled false', (
+      tester,
+    ) async {
+      await pumpList(
+        tester,
+        list(fields: [dropdownField(), pickerField()], isBlocked: true),
+      );
+      expect(dd(tester).enabled, isFalse);
+      expect(dd(tester).locked, isFalse);
+      expect(rp(tester).enabled, isFalse);
+      expect(rp(tester).locked, isFalse);
+    });
+
+    testWidgets('editing：兩者覆寫呼叫端傳入值為 locked false／enabled true', (
+      tester,
+    ) async {
+      await pumpList(tester, list(fields: [dropdownField(), pickerField()]));
+      expect(dd(tester).locked, isFalse);
+      expect(dd(tester).enabled, isTrue);
+      expect(rp(tester).locked, isFalse);
+      expect(rp(tester).enabled, isTrue);
+    });
+
     testWidgets('呼叫端原本傳的 locked／enabled 被容器覆寫為下發值', (tester) async {
       final field = FieldBlock.editable(
         label: 'x',

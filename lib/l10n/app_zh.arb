@@ -439,6 +439,10 @@
       }
     }
   },
+  "referencePickerNoMatch": "沒有符合的項目",
+  "@referencePickerNoMatch": {
+    "description": "SPEC-004 §4.46：ReferencePicker 過濾後無符合項的文字"
+  },
 
   "searchClearAction": "清除搜尋",
   "@searchClearAction": {

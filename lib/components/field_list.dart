@@ -11,11 +11,13 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../tokens/tokens.dart';
 import 'app_button.dart';
+import 'app_dropdown.dart';
 import 'app_radio_group.dart';
 import 'app_text.dart';
 import 'app_text_input.dart';
 import 'field_block.dart';
 import 'notice_banner.dart';
+import 'reference_picker.dart';
 
 /// 「放棄並重讀」的結果（SPEC-004 4.49〈等待與結果〉）。
 enum FieldListReloadResult {
@@ -217,6 +219,31 @@ class _FieldListState extends State<FieldList> {
         selected: value.selected,
         onChanged: value.onChanged,
         semanticLabel: value.semanticLabel,
+        enabled: enabled,
+        locked: locked,
+        testKey: value.testKey,
+      );
+    }
+    if (value is AppDropdown) {
+      return AppDropdown(
+        key: value.key,
+        options: value.options,
+        selected: value.selected,
+        onChanged: value.onChanged,
+        semanticLabel: value.semanticLabel,
+        enabled: enabled,
+        locked: locked,
+        testKey: value.testKey,
+      );
+    }
+    if (value is ReferencePicker) {
+      return ReferencePicker(
+        key: value.key,
+        options: value.options,
+        selected: value.selected,
+        onChanged: value.onChanged,
+        semanticLabel: value.semanticLabel,
+        allowEmpty: value.allowEmpty,
         enabled: enabled,
         locked: locked,
         testKey: value.testKey,
