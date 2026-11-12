@@ -1,5 +1,8 @@
 # macOS 編譯與 integration_test 的 CI 承接（0.5.0-W1-231.6，用戶裁決 D1=C）。
 # 全套件於本機合併閘門執行；CI 只承接 integration_test 與編譯。
+# 整合測試需要的外部工具（目前是 uv、doc），新增時須在同一張票更新本 workflow 的安裝步驟。
+# 理由：本機合併閘門的環境原本就有這些工具，閘門綠燈證明不了 CI 也有；
+# 553.11 新增的整合測試即因此漏裝工具而讓 CI 紅燈。
 name: macos-integration
 
 on:
@@ -10,11 +13,12 @@ on:
 jobs:
   flutter-integration-macos:
     runs-on: macos-latest
-    # job 逾時 = 首檔建置 + 每檔若干分鐘：10 分鐘（checkout、pub get、冷建置，
-    # 實測 run 38512696486 建置約 67 秒）+ 每檔 5 分鐘（啟動 App 與單項逾時 2 分鐘的餘裕）。
-    # 現有 1 檔，預計 114.13 後共 3 檔，取 3 檔上限 25 分鐘；檔數超過 3 時須重估。
+    # job 逾時 = 首檔建置 + 前置安裝 + 每檔若干分鐘：10 分鐘（checkout、pub get、冷建置，
+    # 實測 run 38512696486 建置約 67 秒）+ 5 分鐘（setup-uv、doc shim 安裝與 doc --help 預熱）
+    # + 每檔 2 分鐘（實測每檔建置加執行約 20 秒，餘裕涵蓋啟動 App 與單項逾時 2 分鐘）。
+    # 現有 11 檔：10 + 5 + 11 x 2 = 37，取 40 分鐘；檔數超過 11 時須重估。
     # 仍遠小於舊紀錄卡住拖到的約 43 分鐘。
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7.0.1
       # Flutter 版本唯一來源為 .fvmrc（JSON），不在 workflow 寫死
@@ -25,6 +29,18 @@ jobs:
         with:
           flutter-version: ${{ steps.fvm.outputs.version }}
           channel: stable
+      - uses: astral-sh/setup-uv@v6.8.0
+        with:
+          version: "0.8.13"
+      # IoEditValidatorPort 以 PATH 上的 doc 執行驗證；用 repo 內安裝器產生 cwd-resolving shim，
+      # 不另裝副本。shim 裝進 RUNNER_TEMP/bin 並寫入 GITHUB_PATH（~/.local/bin 不保證在 PATH）。
+      - name: 安裝 doc CLI shim
+        run: |
+          SKILL_CLI_BIN_DIR="$RUNNER_TEMP/bin" python3 .claude/scripts/install-skill-clis.py
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # 煙霧檢查兼預熱 uv 依賴解析，避免首次解析吃掉單項逾時
+      - name: doc --help
+        run: doc --help
       - run: flutter pub get --enforce-lockfile
       # 單項測試逾時 2 分鐘（--timeout）。依據：單項正常數秒內完成；
       # 舊紀錄單項卡 10 分鐘（pumpAndSettle 預設逾時），0.5.0-W1-248.2 已將 settle 設為 30 秒，

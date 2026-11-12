@@ -50,14 +50,21 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    final uv = await Process.run('uv', ['--version']);
-    expect(uv.exitCode, 0, reason: '前置條件：PATH 上需有 uv（test-design §2.6）');
-    final probe = await Process.run('doc', ['--help']);
-    expect(
-      probe.exitCode,
-      0,
-      reason: '需要 uv 與 PATH 上的 doc CLI（CLAUDE.md §6）：${probe.stderr}',
-    );
+    try {
+      final uv = await Process.run('uv', ['--version']);
+      expect(uv.exitCode, 0, reason: '前置條件：PATH 上需有 uv（test-design §2.6）');
+      final probe = await Process.run('doc', ['--help']);
+      expect(
+        probe.exitCode,
+        0,
+        reason: '需要 uv 與 PATH 上的 doc CLI（CLAUDE.md §6）：${probe.stderr}',
+      );
+    } on ProcessException catch (e) {
+      fail(
+        '前置條件不足：PATH 上需有 uv 與 doc CLI'
+        '（test-design v0.5 §2.6；CI 安裝步驟見 macos-integration.yml）：$e',
+      );
+    }
   });
 
   test('IT-E6-1 新值含未登記 UC：written，驗證 failed 新增 1，新值未被改回', () async {
