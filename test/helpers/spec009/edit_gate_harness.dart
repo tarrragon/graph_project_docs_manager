@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/edit/edit_workspace.dart';
@@ -74,8 +75,11 @@ class EditHarness {
   }
 
   /// 開始編輯並清除計數：之後的讀取編號、操作記錄與 git 呼叫都自此起算。
-  Future<EditSession> begin() async {
-    final result = await workspace.beginEditing(path);
+  Future<EditSession> begin({CorpusParsedSource? corpusParsed}) async {
+    final result = await workspace.beginEditing(
+      path,
+      corpusParsed: corpusParsed,
+    );
     expect(result, isA<EditingStarted>());
     files.resetCounters();
     git.calls.clear();

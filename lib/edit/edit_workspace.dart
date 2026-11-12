@@ -1,11 +1,13 @@
 import 'dart:developer' as developer;
 
+import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/field_rewrite.dart';
+import 'package:graph_project_docs_manager/edit/session_write_list.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
 
@@ -58,6 +60,9 @@ class EditWorkspace {
   final EditReadonlyReason? readonlyReason;
   final EditGateContext _context;
 
+  /// 本 App session 的寫入清單（SPEC-009 FR-08）。
+  SessionWriteList get writeList => _context.writeList;
+
   static Future<EditWorkspace> open({
     required String root,
     required EditGitPort git,
@@ -80,6 +85,7 @@ class EditWorkspace {
         git: runner,
         now: now ?? DateTime.now,
         rewriter: rewriter ?? rewriteFrontmatterField,
+        writeList: SessionWriteList(),
         validator: validator == null
             ? null
             : EditValidatorRunner(port: validator, timer: editTimer),
@@ -100,11 +106,16 @@ class EditWorkspace {
 
   /// 開始編輯：本 domain 自己讀取目標檔位元組作為 M（不取 Corpus 解析時的
   /// 內容）。寫入函式的唯一路徑入口，只收 [WorkspaceRelativePath]。
-  Future<BeginEditingResult> beginEditing(WorkspaceRelativePath path) async {
+  Future<BeginEditingResult> beginEditing(
+    WorkspaceRelativePath path, {
+    CorpusParsedSource? corpusParsed,
+  }) async {
     if (mode == EditMode.readOnly) return const EditingReadOnly();
     try {
       final baseline = await _context.files.read(path.absolute);
-      return EditingStarted(EditSession(_context, path, baseline));
+      return EditingStarted(
+        EditSession(_context, path, baseline, corpusParsed: corpusParsed),
+      );
     } on EditFileException catch (error) {
       developer.log(
         'beginEditing read failed: code=${error.errorCode}', // i18n-exempt
