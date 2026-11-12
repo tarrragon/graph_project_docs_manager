@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-12"
-version: "1.8"
+version: "1.9"
 owner: L54-main
 has_functional_requirements: true
 
@@ -174,9 +174,9 @@ depends_on_domains: [workspace, schema, corpus, observability]
 **寫入集合**：改寫 SPEC `source_proposal` 的一次寫入，寫入集合包含：
 
 - SPEC 本身（正向檔）。
-- 每一個 `outputs.spec_refs` 成員資格因這次改寫而變動的 PROP（反向檔）：移出時從清單刪除該 SPEC id，加入時把該 SPEC id 附加到清單末尾。
+- 每一個 `outputs.spec_refs` 成員資格因這次改寫而變動的 PROP（反向檔）：移出時從清單刪除該 SPEC id 的全部出現，加入時把該 SPEC id 附加到清單末尾。
 
-例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致（已含或已不含該 SPEC id），該檔不列入寫入集合。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致，該檔不列入寫入集合：加入端已含該 SPEC id（不論出現幾次），或移出端完全不含該 SPEC id。移出端含該 id 時一律移除全部出現，理由是只移除一筆時，剩下的那筆仍指向已不再指向它的 SPEC，正反向不一致會殘留下來（Q1，PM 依規格內部一致性定案，`1.1.0-W1-111`）。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
 
 **反向檔的允許變更集合**：`outputs.spec_refs` 與 `updated` 兩個鍵（`updated` 規則同上方〈允許變更集合〉）。
 
@@ -421,6 +421,8 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | 正常流程中的即時確認 | session 內的可見回饋：本 session 寫過的檔案與欄位清單，每列附該次寫入的 `ValidationStatus`（FR-05）。理由：CLI 驗證非同步回來，使用者離開該檔後，要能在這份清單上看到失敗（`1.0.0-W3-187`，用戶裁定）。畫面形式由 SPEC-001／003 的編輯狀態承接 |
 | 事後追溯（關掉 App、崩潰、隔天） | structured log：`writeAccepted` 記路徑與欄位名，`snapshotTaken` 記快照 SHA（FR-07） |
 
+**多檔寫入的列法（1.1）**（Q2，用戶裁定 2026-11-12，經主控 AUQ，`1.1.0-W1-111`）：一次多檔寫入（FR-03〈多檔寫入（1.1）〉）在 session 寫入清單只佔一列，與單檔寫入一列對應一次修正相同。列內附寫入集合中每個檔的路徑與各自的取回說明（FR-02，依該檔是否有快照）。驗證狀態只顯示正向檔的，因為反向檔不跑寫入後驗證（FR-03）。結果為 `partiallyWritten` 時，列內改附未還原的檔案與取回說明（FR-05）。畫面形式由 SPEC-004 4.51 承接，在 1.1 規劃波 Step 4.5 補上。
+
 **約束條件**：
 
 - App 不建立 commit。使用者在 App 外以自己的 git 工具提交；App 內提交在 1.1 候選池（`1.1.0-W3-675`）。
@@ -604,3 +606,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.6 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波）。用戶裁定 2026-11-12（經主控 AUQ）：1.1 改寫 `source_proposal` 時，同批改寫 PROP `outputs.spec_refs`（選項 A）。<br>**FR-03**<br>- 新增〈多檔寫入（1.1）〉，內容包括：適用範圍（文件節點只有 provenance）、寫入集合、反向檔的允許變更集合與 M、閘門整批判定、`rename` 順序、中途失敗的回復、寫入後驗證只套正向檔。<br>- 驗收補 8 條。<br>**FR-05**<br>- `WriteResult` 新增 `partiallyWritten`，並寫明多檔寫入時各結果攜帶的內容。<br>**FR-07**<br>- 新增 `writeRolledBack`、`writePartiallyWritten`，並寫明兩種結局的記錄方式。<br>**FR-09**<br>- `source_proposal` 列註明多檔寫入；PROP `outputs` 列註明 `spec_refs` 值改寫提前到 1.1，只作為反向檔。 |
 | 1.7 | 2026-11-12 | 執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`）。<br>**FR-05**<br>- 新增〈baseline 與寫入的先後〉，內容包括：寫入 rename 前 baseline 尚未完成時丟棄該 baseline；新原因值 `baselineNotReady`；該次寫入後的問題集合接替成為 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline。<br>- `ValidationStatus` 的 `unavailable` 原因與〈`unavailable` 的情況〉補 `baselineNotReady`。<br>- 驗收補 2 條。 |
 | 1.8 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 2.5）：FR-03〈多檔寫入（1.1）〉〈寫入集合〉用詞修正，「在圖上查不到」改為「在 Corpus 的原始節點中查不到」。理由：Graph 與 Edit 同在 L3，讀 Graph 會新增同層依賴；Corpus 已在 Edit 的依賴內（`docs/spec/edit/domain-map.md` §3） |
+| 1.9 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 3 的 Q1、Q2）。<br>**FR-03**<br>- Q1（PM 依規格內部一致性定案）：〈寫入集合〉移出時移除該 SPEC id 的全部出現；加入端已含該 id（不論出現幾次）就不列入寫入集合。<br>**FR-08**<br>- Q2（用戶裁定 2026-11-12，經主控 AUQ）：新增〈多檔寫入的列法（1.1）〉。整批一列，列內附各檔路徑與取回說明，驗證狀態只顯示正向檔的；`partiallyWritten` 時附未還原的檔。畫面形式由 SPEC-004 4.51 承接 |
