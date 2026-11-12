@@ -11,8 +11,11 @@
 library;
 
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
+
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_io_log_event.dart';
 
 /// 探測目標專案的框架訊號。介面可 mock，生產預設為
 /// [DefaultFrameworkSignalProbe]。
@@ -48,10 +51,11 @@ class DefaultFrameworkSignalProbe implements FrameworkSignalProbePort {
       final content = (await file.readAsString()).trim();
       return content.isEmpty ? null : content;
     } on FileSystemException catch (e) {
-      developer.log(
-        'VERSION 讀取失敗：$workspacePath', // i18n-exempt: 開發者 debug log
-        name: 'FrameworkSignalProbe',
-        level: 900,
+      frameworkSignalProbeLogSink(
+        FrameworkSignalProbeLogEvent.versionReadFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return null;
@@ -71,28 +75,31 @@ class DefaultFrameworkSignalProbe implements FrameworkSignalProbePort {
       final raw = await file.readAsString();
       final decoded = jsonDecode(raw);
       if (decoded is! Map<String, dynamic>) {
-        developer.log(
-          'tracking_schema.json 最上層非物件：$workspacePath', // i18n-exempt: 開發者 debug log
-          name: 'FrameworkSignalProbe',
-          level: 900,
+        frameworkSignalProbeLogSink(
+          FrameworkSignalProbeLogEvent.schemaJsonNotObject,
+          LogFields.empty,
+          level: LogLevel.warning,
+          source: ErrorSource.parse,
         );
         return null;
       }
       final version = decoded['schema_generated_at_framework_version'];
       return version is String ? version : null;
     } on FileSystemException catch (e) {
-      developer.log(
-        'tracking_schema.json 讀取失敗：$workspacePath', // i18n-exempt: 開發者 debug log
-        name: 'FrameworkSignalProbe',
-        level: 900,
+      frameworkSignalProbeLogSink(
+        FrameworkSignalProbeLogEvent.schemaJsonReadFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
         error: e,
       );
       return null;
     } on FormatException catch (e) {
-      developer.log(
-        'tracking_schema.json 解析失敗：$workspacePath', // i18n-exempt: 開發者 debug log
-        name: 'FrameworkSignalProbe',
-        level: 900,
+      frameworkSignalProbeLogSink(
+        FrameworkSignalProbeLogEvent.schemaJsonParseFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
         error: e,
       );
       return null;

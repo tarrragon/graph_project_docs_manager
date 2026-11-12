@@ -1,12 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/open_path_resolver.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_io_log_event.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 void main() {
   group('resolveOpenPath', () {
     final logs = <String>[];
-    void capture(String message, {int level = 0}) =>
-        logs.add('$level|$message');
+    void capture(
+      OpenPathLogEvent event,
+      LogFields fields, {
+      LogLevel level = LogLevel.info,
+      ErrorSource? source,
+      Object? error,
+    }) => logs.add('${level.devLogLevel}|${event.name}|${fields.toJson()}');
 
     setUp(logs.clear);
 

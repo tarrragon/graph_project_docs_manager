@@ -5,14 +5,15 @@
 /// 以 trim 後等於 ```` ```yaml ```` 的行開啟、等於 ```` ``` ```` 的行關閉。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:yaml/yaml.dart';
 
+import 'corpus_log_event.dart';
 import 'frontmatter_classifier.dart';
 
-const _tag = 'corpus.uc_flow_extractor';
 const _fenceOpen = '```yaml';
 const _fenceClose = '```';
 
@@ -94,11 +95,11 @@ UcFlowExtraction extractUcFlow(Uint8List bytes, String path) {
   // 規則 3d：本文結尾未閉合的圍欄，含頂層 flow: 行即判為壞掉的 flow 區塊，
   // 不解析、不採用其步驟。
   if (inFence && _hasTopLevelFlowKey(fenceLines)) {
-    developer.log(
-      // i18n-exempt: 開發者 debug log
-      'UC 本文結尾有未閉合的 yaml 圍欄且含頂層 flow: 行，視為壞掉的 flow 區塊：$path',
-      name: _tag,
-      level: 900,
+    corpusLogSink(
+      CorpusLogEvent.flowFenceUnclosed,
+      LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+      level: LogLevel.warning,
+      source: ErrorSource.parse,
     );
     malformed = true;
   }
@@ -121,11 +122,14 @@ _evaluateBlock(List<String> blockLines, String path) {
   try {
     parsed = loadYaml(blockLines.join('\n'));
   } on YamlException catch (e) {
-    developer.log(
-      // i18n-exempt: 開發者 debug log
-      'UC 的 yaml 區塊解析失敗，略過該區塊（flow 區塊判定=$isFlowBlock）：$path',
-      name: _tag,
-      level: 900,
+    corpusLogSink(
+      CorpusLogEvent.yamlBlockInvalid,
+      LogFields({
+        CorpusLogKeys.path: corpusPathValue(path),
+        CorpusLogKeys.isFlowBlock: LogValue.boolean(isFlowBlock),
+      }),
+      level: LogLevel.warning,
+      source: ErrorSource.parse,
       error: e,
     );
     return (steps: null, malformed: isFlowBlock, nonMapItem: false);

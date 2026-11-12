@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
 
 import '../../../helpers/fake_watch_source.dart';
 import '../../../helpers/manual_debounce_clock.dart';
@@ -46,7 +47,7 @@ void main() {
       source: source,
       clock: clock,
       onChanged: (_) => scheduler.request(ScanTrigger.watch),
-      log: (_, {int level = 0}) {},
+      log: (_, _, {level = LogLevel.info, source, error}) {},
     );
   });
 

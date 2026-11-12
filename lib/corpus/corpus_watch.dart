@@ -8,6 +8,12 @@ library;
 
 import 'dart:async';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+import 'corpus_log_event.dart';
+
 /// FR-11 規則 4 靜默窗（W3）。
 const Duration watchQuietWindow = Duration(
   milliseconds: 500,
@@ -39,9 +45,6 @@ const Set<String> _topicFiles = {
   'docs/work-logs/topic-assignments.txt',
   'docs/work-logs/topics-registry.txt',
 };
-const int _warningLevel = 900; // magic-exempt: developer.log warning 級別
-const int _infoLevel = 800; // magic-exempt: developer.log info 級別
-const int _traceLevel = 500; // magic-exempt: developer.log 500 級別，B10 實機定位用
 
 /// EVT-CORPUS-002 單筆變動的種類（FR-11 規則 5）。
 enum WatchChangeKind { created, modified, deleted }
@@ -183,13 +186,13 @@ abstract interface class WatchCanaryIo {
 }
 
 /// FR-11 規則 1、2、10、11：監看生命週期（過濾 → 去抖 → 送出 EVT-CORPUS-002）。
-/// [log] 的 level 沿用 `developer.log`（900 為 warning）。
+/// [log] 為 SPEC-010 的 `LogSink<CorpusWatchLogEvent>`；逐檔變動記 debug。
 class CorpusWatcher {
   CorpusWatcher({
     required WatchSource source,
     required DebounceClock clock,
     required void Function(CorpusChangedEvent event) onChanged,
-    required void Function(String message, {int level}) log,
+    required LogSink<CorpusWatchLogEvent> log,
     String? nonDomainPathsLocation,
     this.readyTimeout = watchReadyTimeout,
     this.aliveTimeout = watchAliveTimeout,
@@ -202,7 +205,11 @@ class CorpusWatcher {
     _debouncer = WatchDebouncer(
       clock: clock,
       onFlush: (event) {
-        _log(_flushSummary(event), level: _traceLevel);
+        _log(
+          CorpusWatchLogEvent.changesFlushed,
+          _flushFields(event),
+          level: LogLevel.debug,
+        );
         onChanged(event);
       },
     );
@@ -217,7 +224,7 @@ class CorpusWatcher {
   final DebounceClock _clock;
   DebounceTimer? _readyTimer;
   final WatchSource _source;
-  final void Function(String message, {int level}) _log;
+  final LogSink<CorpusWatchLogEvent> _log;
   final String? _nonDomainPathsLocation;
   late final WatchDebouncer _debouncer;
   StreamSubscription<WatchChange>? _subscription;
@@ -238,8 +245,7 @@ class CorpusWatcher {
     if (gate.isCompleted || !identical(gate, _readyGate)) return;
     if (!_source.targetExists(workspaceRoot)) {
       // 規則 2：docs/ 缺席是「不建立監看」，不是監看失敗，不記 warning。
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _log('watch skipped, docs/ absent: $workspaceRoot', level: _infoLevel);
+      _log(CorpusWatchLogEvent.watchSkippedDocsAbsent, LogFields.empty);
       _openGate(gate);
       return;
     }
@@ -247,21 +253,14 @@ class CorpusWatcher {
         .watch(workspaceRoot)
         .listen(
           _onChange,
-          // i18n-exempt: 開發者日誌，非使用者介面字串
           onError: (Object e) =>
-              _fail(workspaceRoot, 'error: $e', gate), // i18n-exempt: 開發者日誌
-          onDone: () => _fail(
-            workspaceRoot,
-            'stream closed unexpectedly', // i18n-exempt: 開發者日誌
-            gate,
-          ),
+              _fail(WatchFailReason.streamError, gate, error: e),
+          onDone: () => _fail(WatchFailReason.streamClosed, gate),
         );
-    // i18n-exempt: 開發者日誌，非使用者介面字串
-    _log('watch started: $workspaceRoot', level: _infoLevel);
+    _log(CorpusWatchLogEvent.watchStarted, LogFields.empty);
     // 規則 10：就緒逾時視同監看失敗。
     _readyTimer = _clock.schedule(readyTimeout, () {
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _fail(workspaceRoot, 'ready timeout', gate);
+      _fail(WatchFailReason.readyTimeout, gate);
       _openGate(gate);
     });
     final timer = _readyTimer;
@@ -276,8 +275,7 @@ class CorpusWatcher {
             }
           },
           onError: (Object e) {
-            // i18n-exempt: 開發者日誌，非使用者介面字串
-            _fail(workspaceRoot, 'ready error: $e', gate);
+            _fail(WatchFailReason.readyError, gate, error: e);
             _openGate(gate);
           },
         );
@@ -296,17 +294,24 @@ class CorpusWatcher {
     try {
       io.write(root, path);
     } catch (e) {
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _log('alive check skipped, cannot write canary: $e', level: _infoLevel);
+      _log(
+        CorpusWatchLogEvent.aliveCheckSkipped,
+        LogFields.empty,
+        source: ErrorSource.platformIo,
+        error: e,
+      );
       return;
     }
-    // i18n-exempt: 開發者日誌，非使用者介面字串
-    _log('alive check canary written: $path', level: _traceLevel);
+    _log(
+      CorpusWatchLogEvent.canaryWritten,
+      LogFields.empty,
+      level: LogLevel.debug,
+    );
     _canaryPath = path;
     _canaryRoot = root;
     _aliveTimer = _clock.schedule(aliveTimeout, () {
       _removeCanary(); // 時限到期即刪
-      _fail(root, 'alive check timeout', gate); // i18n-exempt: 開發者日誌
+      _fail(WatchFailReason.aliveTimeout, gate);
     });
   }
 
@@ -315,19 +320,29 @@ class CorpusWatcher {
       for (final name in io.residualCanaries(root)) {
         try {
           io.delete(root, name);
-          // i18n-exempt: 開發者日誌，非使用者介面字串
-          _log('residual canary removed: $name', level: _traceLevel);
+          _log(
+            CorpusWatchLogEvent.residualCanaryRemoved,
+            LogFields({CorpusWatchLogKeys.path: corpusPathValue(name)}),
+            level: LogLevel.debug,
+          );
         } catch (e) {
           _log(
-            // i18n-exempt: 開發者日誌，非使用者介面字串
-            'residual canary removal failed: $name ($e)',
-            level: _warningLevel,
+            CorpusWatchLogEvent.residualCanaryRemovalFailed,
+            LogFields({CorpusWatchLogKeys.path: corpusPathValue(name)}),
+            level: LogLevel.warning,
+            source: ErrorSource.platformIo,
+            error: e,
           );
         }
       }
     } catch (e) {
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _log('residual canary scan failed: $e', level: _warningLevel);
+      _log(
+        CorpusWatchLogEvent.residualCanaryScanFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+        error: e,
+      );
     }
   }
 
@@ -343,15 +358,23 @@ class CorpusWatcher {
     try {
       _canaryIo?.delete(root, path);
     } catch (e) {
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _log('canary removal failed: $path ($e)', level: _warningLevel);
+      _log(
+        CorpusWatchLogEvent.canaryRemovalFailed,
+        LogFields({CorpusWatchLogKeys.path: corpusPathValue(path)}),
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+        error: e,
+      );
     }
   }
 
   void _onChange(WatchChange change) {
     if (change.relativePath == _canaryPath) {
-      // i18n-exempt: 開發者日誌，非使用者介面字串
-      _log('alive check canary event received', level: _traceLevel);
+      _log(
+        CorpusWatchLogEvent.canaryEventReceived,
+        LogFields.empty,
+        level: LogLevel.debug,
+      );
       _removeCanary();
       return;
     }
@@ -360,29 +383,44 @@ class CorpusWatcher {
       nonDomainPathsLocation: _nonDomainPathsLocation,
     );
     _log(
-      // i18n-exempt: developer log
-      'watch change ${change.relativePath} (${change.kind.name}): '
-      '${keep ? 'kept' : 'dropped'}',
-      level: _traceLevel,
+      CorpusWatchLogEvent.changeObserved,
+      LogFields({
+        CorpusWatchLogKeys.path: corpusPathValue(change.relativePath),
+        CorpusWatchLogKeys.kind: LogValue.enumValue(change.kind),
+        CorpusWatchLogKeys.kept: LogValue.boolean(keep),
+      }),
+      level: LogLevel.debug,
     );
     if (keep) _debouncer.add(change);
   }
 
-  static String _flushSummary(CorpusChangedEvent event) {
-    final kinds = <String, int>{};
-    for (final c in event.changes) {
-      kinds[c.kind.name] = (kinds[c.kind.name] ?? 0) + 1;
-    }
-    // i18n-exempt: developer log
-    return 'EVT-CORPUS-002 flush: ${event.changes.length} changes $kinds';
+  static LogFields _flushFields(CorpusChangedEvent event) {
+    int countOf(WatchChangeKind kind) =>
+        event.changes.where((c) => c.kind == kind).length;
+    return LogFields({
+      CorpusWatchLogKeys.changeCount: LogValue.integer(event.changes.length),
+      CorpusWatchLogKeys.createdCount: LogValue.integer(
+        countOf(WatchChangeKind.created),
+      ),
+      CorpusWatchLogKeys.modifiedCount: LogValue.integer(
+        countOf(WatchChangeKind.modified),
+      ),
+      CorpusWatchLogKeys.deletedCount: LogValue.integer(
+        countOf(WatchChangeKind.deleted),
+      ),
+    });
   }
 
   /// [gate] 為發起該次 start 的閘門；已被新的 start 取代者的失敗不生效（F4）。
-  void _fail(String workspaceRoot, String reason, Completer<void> gate) {
+  void _fail(WatchFailReason reason, Completer<void> gate, {Object? error}) {
     if (!isWatching || !identical(gate, _readyGate)) return;
-    // i18n-exempt: 開發者日誌，非使用者介面字串
-    final message = 'watch failed, stopped: $workspaceRoot ($reason)';
-    _log(message, level: _warningLevel);
+    _log(
+      CorpusWatchLogEvent.watchFailed,
+      LogFields({CorpusWatchLogKeys.reason: LogValue.enumValue(reason)}),
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
+      error: error,
+    );
     _subscription?.cancel();
     _subscription = null;
     _debouncer.clearPending();

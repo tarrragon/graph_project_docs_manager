@@ -6,12 +6,13 @@
 library;
 
 import 'dart:convert';
-import 'dart:developer' as developer;
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+import 'corpus_log_event.dart';
 import 'docs_file_system.dart';
 import 'parse_outcome.dart';
-
-const _tag = 'corpus.topic_files_reader';
 
 /// 需求：[SPEC-006 FR-12 規則 1] 指派檔位置（隨框架 ticket 系統固定）。
 const topicAssignmentsPath = 'docs/work-logs/topic-assignments.txt';
@@ -84,10 +85,15 @@ Future<TopicFilesReadResult> readTopicFiles({
     ..._unreadableEvents(assignments, registry),
     ..._mismatchEvents(assignments, registry, pairs),
   ];
-  final a = assignments.status.name;
-  final r = registry.status.name;
-  // i18n-exempt: 開發者診斷 log
-  _log('assignments=$a registry=$r mapped=${pairs.length}', 500);
+  corpusLogSink(
+    CorpusLogEvent.topicFilesSummarized,
+    LogFields({
+      CorpusLogKeys.assignmentsStatus: LogValue.enumValue(assignments.status),
+      CorpusLogKeys.registryStatus: LogValue.enumValue(registry.status),
+      CorpusLogKeys.mappedCount: LogValue.integer(pairs.length),
+    }),
+    level: LogLevel.debug,
+  );
   return TopicFilesReadResult(
     ticketTopics: Map.unmodifiable({for (final p in pairs) p.key: p.value}),
     assignmentsStatus: assignments.status,
@@ -107,8 +113,13 @@ Future<_FileRead> _readLines(DocsFileSystem fs, String path) async {
         final lines = text.split('\n').map(_stripCr).toList();
         return _FileRead(TopicFileStatus.present, lines);
       } on FormatException catch (e) {
-        // i18n-exempt: 開發者診斷 log
-        _log('topic file not utf-8: $path ($e)', 900);
+        corpusLogSink(
+          CorpusLogEvent.topicFileNotUtf8,
+          LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+          level: LogLevel.warning,
+          source: ErrorSource.parse,
+          error: e,
+        );
         return const _FileRead(TopicFileStatus.unreadable, <String>[]);
       }
   }
@@ -118,8 +129,15 @@ _FileRead _failedRead(String path, UnreadableReason reason) {
   if (reason == UnreadableReason.fileDeleted) {
     return const _FileRead(TopicFileStatus.absent, <String>[]);
   }
-  // i18n-exempt: 開發者診斷 log
-  _log('topic file unreadable: $path (${reason.name})', 900);
+  corpusLogSink(
+    CorpusLogEvent.topicFileUnreadable,
+    LogFields({
+      CorpusLogKeys.path: corpusPathValue(path),
+      CorpusLogKeys.reason: LogValue.enumValue(reason),
+    }),
+    level: LogLevel.warning,
+    source: ErrorSource.platformIo,
+  );
   return const _FileRead(TopicFileStatus.unreadable, <String>[]);
 }
 
@@ -140,8 +158,11 @@ List<MapEntry<String, String>> _parseAssignments(List<String> lines) {
     }
     pairs.add(MapEntry(id, topic));
   }
-  // i18n-exempt: 開發者診斷 log
-  _log('assignment lines skipped=$skipped', 500);
+  corpusLogSink(
+    CorpusLogEvent.topicAssignmentLinesSkipped,
+    LogFields({CorpusLogKeys.count: LogValue.integer(skipped)}),
+    level: LogLevel.debug,
+  );
   return pairs;
 }
 
@@ -185,8 +206,4 @@ List<TopicFilesParseFailedEvent> _mismatchEvents(
       unregisteredTopicCount: missing.length,
     ),
   ];
-}
-
-void _log(String message, int level) {
-  developer.log(message, name: _tag, level: level);
 }
