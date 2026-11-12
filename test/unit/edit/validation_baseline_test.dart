@@ -277,4 +277,59 @@ void main() {
       );
     });
   });
+
+  group('baseline 與寫入的先後（v1.7）', () {
+    const tenSeconds = Duration(seconds: 10);
+
+    test(
+      'V-19 baseline 未完成即寫入：unavailable(baselineNotReady)，延遲的 baseline 被丟棄',
+      () async {
+        final run = await _start(
+          ucVerify: [
+            const ValidatorAfter(tenSeconds, 0),
+            _uc(unregisteredUc, 1),
+          ],
+        );
+        expectUnavailable(
+          await _write(run),
+          UnavailableReason.baselineNotReady,
+        );
+        await run.advance(tenSeconds);
+        expect(await _write(run, value: '另一個標題'), isA<ValidationPassed>());
+      },
+    );
+
+    test('V-20 寫入後驗證 unavailable：保留原 baseline', () async {
+      final run = await _start(
+        validate: const [validatorOk, ValidatorHang(), validatorOk],
+        ucVerify: [validatorOk, _uc(unregisteredUc, 1)],
+      );
+      await run.session.writeField(field: 'title', newValue: '新標題');
+      await pumpEventQueue();
+      await run.advance(_validationTimeout);
+      await run.session.validationIdle;
+      expectUnavailable(run.lastStatus, UnavailableReason.timedOut);
+      expectFailed(await _write(run, field: 'priority', value: 'P0'), 1);
+    });
+
+    test('V-21 沒有可用 baseline：第一個取得的寫入後問題集合成為下一次 baseline', () async {
+      final run = await _start(
+        validate: const [validatorOk, ValidatorHang(), validatorOk],
+        ucVerify: [const ValidatorAfter(tenSeconds, 0), _uc(unregisteredUc, 1)],
+      );
+      await run.session.writeField(field: 'title', newValue: '新標題');
+      await pumpEventQueue();
+      await run.advance(_validationTimeout);
+      await run.session.validationIdle;
+      expectUnavailable(run.lastStatus, UnavailableReason.baselineNotReady);
+      expectUnavailable(
+        await _write(run, field: 'priority', value: 'P0'),
+        UnavailableReason.baselineNotReady,
+      );
+      expect(
+        await _write(run, field: 'priority', value: 'P1'),
+        isA<ValidationPassed>(),
+      );
+    });
+  });
 }

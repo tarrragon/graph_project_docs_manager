@@ -69,6 +69,7 @@ enum UnavailableReason {
   unexpectedExitCode,
   unparsableOutput,
   timedOut,
+  baselineNotReady,
 }
 
 /// 寫入後驗證的結果（SPEC-009 FR-05 `ValidationStatus`）。

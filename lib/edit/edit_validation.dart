@@ -26,35 +26,71 @@ class ValidationCoordinator {
 
   ValidationMeasure? _baseline;
   Future<void> _tail = Future.value();
+  Future<void> _baselineRun = Future.value();
+  bool _baselinePending = false;
+  int _epoch = 0;
 
-  /// 目前排入的驗證與 baseline 全部完成。
+  /// 已排入的寫入後驗證全部完成（不含 baseline 量測）。
   Future<void> get idle => _tail;
 
-  /// 開始編輯或放棄並重讀：重跑 baseline。
+  /// baseline 量測完成（或已被丟棄）。
+  Future<void> get baselineIdle => _baselineRun;
+
+  /// baseline 量測尚未完成。寫入在 rename 前讀取此值（SPEC-009 FR-05 v1.7）。
+  bool get baselinePending => _baselinePending;
+
+  /// 開始編輯或放棄並重讀：重跑 baseline。量測不排入驗證佇列，使尚未完成的
+  /// baseline 不阻擋寫入後驗證。
   void startBaseline() {
-    _enqueue(() async {
-      _baseline = await _measure();
-      _logMeasure('baseline', _baseline!);
-    });
+    final epoch = ++_epoch;
+    _baseline = null;
+    _baselinePending = true;
+    _baselineRun = _measureBaseline(epoch);
+  }
+
+  Future<void> _measureBaseline(int epoch) async {
+    try {
+      final measure = await _measure();
+      if (epoch != _epoch) return; // 已被丟棄：之後才完成的結果不採用
+      _baseline = measure;
+      _baselinePending = false;
+      _logMeasure('baseline', measure);
+    } on Object catch (error) {
+      developer.log(
+        'baseline failed: ${error.runtimeType}', // i18n-exempt
+        name: _tag,
+        level: _warningLevel,
+      );
+    }
   }
 
   /// `written` 受理之後呼叫：先通知 `running`，再排入量測與判定。
-  void validateAfterWrite() {
+  /// [baselineWasPending] 為 rename 前 baseline 尚未完成：丟棄該 baseline。
+  void validateAfterWrite({required bool baselineWasPending}) {
+    if (baselineWasPending) {
+      _epoch++;
+      _baseline = null;
+      _baselinePending = false;
+    }
     _onStatus(const ValidationRunning());
     _enqueue(() async {
-      final baseline =
-          _baseline ?? const MeasureUnavailable(UnavailableReason.timedOut);
-      final status = baseline is MeasureUnavailable
-          ? ValidationUnavailable(baseline.reason)
-          : await _judge(baseline);
+      final status = await _judge(_baseline);
       _logStatus(status);
       _onStatus(status);
     });
   }
 
-  Future<ValidationStatus> _judge(ValidationMeasure baseline) async {
+  /// 沒有可用 baseline：結果為 `baselineNotReady`，並以寫入後問題集合接替；
+  /// baseline 為 unavailable：不量測；其餘做差集，寫入後無法判定時保留原
+  /// baseline。
+  Future<ValidationStatus> _judge(ValidationMeasure? baseline) async {
+    if (baseline is MeasureUnavailable) {
+      return ValidationUnavailable(baseline.reason);
+    }
     final after = await _measure();
-    final status = judgeAgainstBaseline(baseline, after);
+    final status = baseline == null
+        ? const ValidationUnavailable(UnavailableReason.baselineNotReady)
+        : judgeAgainstBaseline(baseline, after);
     if (after is MeasureReady) {
       _baseline = after;
     }

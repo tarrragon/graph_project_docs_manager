@@ -28,7 +28,11 @@ Future<EditSession> _begin(EditFixtureRepo repo) async {
   )!;
   final started = await workspace.beginEditing(path);
   expect(started, isA<EditingStarted>());
-  return (started as EditingStarted).session;
+  final session = (started as EditingStarted).session;
+  // 前置條件（test-design §2.6）：baseline 量測完成後才寫入，本檔測的才是差集
+  // 判定，而不是 baseline 與寫入的競態（V-19）。
+  await session.baselineIdle;
+  return session;
 }
 
 Future<ValidationStatus> _write(
@@ -46,6 +50,8 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
+    final uv = await Process.run('uv', ['--version']);
+    expect(uv.exitCode, 0, reason: '前置條件：PATH 上需有 uv（test-design §2.6）');
     final probe = await Process.run('doc', ['--help']);
     expect(
       probe.exitCode,

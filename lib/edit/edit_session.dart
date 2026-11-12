@@ -73,6 +73,9 @@ class EditSession {
   Uint8List _baseline;
   ValidationCoordinator? _validation;
   ValidationStatus? _lastValidation;
+
+  /// 最近一次 rename 前，baseline 量測是否尚未完成（SPEC-009 FR-05 v1.7）。
+  bool _baselinePendingAtRename = false;
   final StreamController<WriteObservation> _observations =
       StreamController<WriteObservation>.broadcast(sync: true);
 
@@ -85,8 +88,11 @@ class EditSession {
   /// 最近一次寫入後驗證的狀態；尚無寫入為 null。
   ValidationStatus? get lastValidationStatus => _lastValidation;
 
-  /// 已排入的 baseline 與寫入後驗證全部完成。
+  /// 已排入的寫入後驗證全部完成（不含 baseline 量測）。
   Future<void> get validationIdle => _validation?.idle ?? Future.value();
+
+  /// 開始編輯（或放棄並重讀）時的 baseline 量測完成或被丟棄。
+  Future<void> get baselineIdle => _validation?.baselineIdle ?? Future.value();
 
   /// 放棄並重讀（SPEC-009 FR-06 的 M 與 baseline 部分）：以磁碟內容重新開始
   /// 編輯，M 改為新讀入的內容並重跑驗證 baseline。讀取失敗時回傳失敗分類，
@@ -113,7 +119,9 @@ class EditSession {
     final result = await _gatedWrite(field, newValue);
     _observations.add(WriteAccepted(result));
     if (result is Written) {
-      _validation?.validateAfterWrite();
+      _validation?.validateAfterWrite(
+        baselineWasPending: _baselinePendingAtRename,
+      );
     }
     return result;
   }
@@ -225,6 +233,7 @@ class EditSession {
     if (!_sameBytes(disk.value!, current)) {
       return const Blocked(BlockedReason.externallyModified);
     }
+    _baselinePendingAtRename = _validation?.baselinePending ?? false;
     return _attempt(
       IoOperation.rename,
       () => _context.files.rename(temp, _path.absolute),
