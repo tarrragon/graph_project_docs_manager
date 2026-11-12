@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-12"
-version: "1.6"
+version: "1.7"
 owner: L54-main
 has_functional_requirements: true
 
@@ -293,7 +293,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 
 多檔寫入時，`written` 攜帶寫入集合中每個檔的路徑與快照 SHA（有快照的檔）；`blocked` 與 `ioFailed` 攜帶觸發停止的檔案路徑，且寫入集合中所有檔都未動。
 
-`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因：`executableMissing`、`unexpectedExitCode`、`unparsableOutput`、`timedOut`）。
+`ValidationStatus`：`running` → `passed`／`failed`（攜帶新增問題數）／`unavailable`（攜帶原因：`executableMissing`、`unexpectedExitCode`、`unparsableOutput`、`timedOut`、`baselineNotReady`）。
 
 **約束條件**：
 
@@ -306,9 +306,15 @@ depends_on_domains: [workspace, schema, corpus, observability]
   - 問題的比對鍵為驗證器回報的識別值（UC 編號等）加出現次數，不用行號或路徑：改寫會使行號位移。
   - 每次寫入成功後，該次寫入後的問題集合成為下一次寫入的 baseline；放棄並重讀時重跑 baseline。
   - baseline 為 `unavailable` 時，該次編輯期間所有寫入的驗證結果皆為 `unavailable`。
+  - **baseline 與寫入的先後**（執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`））：
+    - 寫入的 rename 之前 baseline 量測尚未完成時，丟棄這份 baseline；之後才完成的量測結果不採用。該次寫入的驗證結果為 `unavailable(baselineNotReady)`。
+    - 該次寫入後取得的問題集合，成為下一次寫入的 baseline。
+    - 寫入後的驗證為 `unavailable` 時，保留原 baseline，不以該次寫入取代。
+    - baseline 因前一點被丟棄、且尚未取得任何寫入後問題集合時（例如該次寫入的驗證也是 `unavailable`），寫入的驗證為 `unavailable(baselineNotReady)`；第一個取得的寫入後問題集合，成為下一次寫入的 baseline。baseline 量測完成但結果為 `unavailable` 時，依上一條「baseline 為 `unavailable`」處理，不適用本點。
+    - 理由：寫入後才完成的 baseline 量到的是已改寫的內容，差集會漏掉新問題而誤報 `passed`。丟棄它不阻擋輸入（NFR-01），也不誤報。
   - 理由：`uc verify` 分不出提及與使用（上游 tarrragon/claude#98），寫入檔本身的提及會讓每次寫入都報錯。上游修正後 baseline 不再含這類誤報，差集判定照樣成立，條文不需改。
 - **CLI 結束碼對應**：0 為無問題；1 為有問題，解析輸出取得問題集合；2 為驗證器無法定位或解析目標文件。結束碼 2 同樣套用 baseline：baseline 不是 2、寫入後才出現 2，判為 `failed`；baseline 已是 2 時，寫入後的 2 屬既有問題，不判 `failed`。理由：寫入已通過 Corpus 的隔離檢查，驗證器卻變得無法解析，代表兩套解析不一致，正是要浮上來的索引不同步；而驗證器原本就無法解析的檔案，若每次寫入都判 `failed`，就與「baseline 已有的問題不算驗證失敗」矛盾。
-- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill，原因 `executableMissing`）、結束碼不在上述三值（`unexpectedExitCode`）、輸出無法解析（`unparsableOutput`），或驗證子行程逾時（`timedOut`）。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
+- **`unavailable` 的情況**：`uv` 或 doc CLI 無法執行（含 shim 找不到 skill，原因 `executableMissing`）、結束碼不在上述三值（`unexpectedExitCode`）、輸出無法解析（`unparsableOutput`）、驗證子行程逾時（`timedOut`），或 baseline 尚未完成即寫入（`baselineNotReady`，見〈baseline 與寫入的先後〉）。不得視為 `passed`（系統層 §4.4：系統內建 python3 執行 doc CLI 會 `TypeError`）。
 - **驗證子行程逾時 30 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：baseline 與寫入後驗證的每一個 CLI 子行程（`doc validate`、`doc uc verify`）各自計時，自子行程啟動起算，超過 30 秒即終止該子行程，該次驗證為 `unavailable(timedOut)`。baseline 逾時時依上一條「baseline 為 `unavailable`」規則，該次編輯期間的驗證皆為 `unavailable`；放棄並重讀時重跑 baseline。
   - 理由：CLI 本身約 0.35＋0.52 秒（NFR-01），經 `uv run` 另加行程啟動，`uv` 第一次執行可能要先建立環境，可達數秒以上。驗證不阻擋輸入（NFR-01），逾時設長的成本低；設短則第一次執行就可能誤報無法驗證，而 baseline 誤報會使整次編輯的驗證皆無法判定。
   - 驗證逾時不影響寫入結果：寫入已受理為 `written`，檔案不回滾（同驗證失敗）。
@@ -322,6 +328,8 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] baseline 結束碼為 2 時，寫入後結束碼仍為 2 不判 `failed`；baseline 結束碼非 2、寫入後為 2 時判 `failed`
 - [ ] 驗證器無法執行、或 baseline 為 `unavailable` 時為 `unavailable`
 - [ ] 驗證子行程超過 30 秒（以注入模擬）時，子行程被終止，驗證狀態為 `unavailable(timedOut)`，寫入結果仍為 `written`、檔案未回滾
+- [ ] baseline 量測完成前寫入時，該次驗證為 `unavailable(baselineNotReady)`、不為 `passed`；之後才完成的 baseline 不被採用，下一次寫入以該次寫入後的問題集合為 baseline（v1.7）
+- [ ] 寫入後驗證為 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次寫入的 baseline（v1.7）
 
 ---
 
@@ -594,3 +602,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.4 | 2026-11-11 | `1.0.0-W3-686`。依用戶裁定 2026-11-11；Q1–Q3 由主控依該裁定推導。<br>**FR-03**<br>- 新增〈清空〉：清空就是把值的位元組範圍改寫為 `null`，不寫空字串，也不移除鍵。<br>- 寫明兩道隔離檢查對 `null` 的判定，以及移除鍵為何回傳 `rewriteNotIsolated`。<br>- 寫明驗證器不區分三種寫法（fixture 實測）。<br>- 驗收補一條：清空 target_version。<br>**FR-09**<br>- 新增〈可否清空〉，把 1.0 可編輯欄位分成三類：可清空（寫 `null`）、必填空白擋下（提示 `fieldRequiredEmpty`）、元件無清空途徑。<br>- 草稿 trim 後為空即視為空白；非空的值不修剪。<br>- SPEC domain 不可清空。 |
 | 1.5 | 2026-11-12 | `1.0.0-W3-553.10`。執行期澄清，用戶裁定（2026-11-12，經主控 AUQ）。<br>**FR-03**<br>- 新增〈非 UTF-8 內容〉：檔案內容不是合法 UTF-8 時，一律回傳 `blocked(rewriteNotIsolated)`，不寫入。理由是解析層以嚴格 UTF-8 解碼整檔，改寫前就沒有可用的解析結果。<br>- 驗收補第 8 條：內文含非法 UTF-8 位元組的檔案，修正欄位時回傳 `rewriteNotIsolated` 且目標檔不變。<br>- 實作行為不變（553.10 已是此行為），本版只把它寫進規格。 |
 | 1.6 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波）。用戶裁定 2026-11-12（經主控 AUQ）：1.1 改寫 `source_proposal` 時，同批改寫 PROP `outputs.spec_refs`（選項 A）。<br>**FR-03**<br>- 新增〈多檔寫入（1.1）〉，內容包括：適用範圍（文件節點只有 provenance）、寫入集合、反向檔的允許變更集合與 M、閘門整批判定、`rename` 順序、中途失敗的回復、寫入後驗證只套正向檔。<br>- 驗收補 8 條。<br>**FR-05**<br>- `WriteResult` 新增 `partiallyWritten`，並寫明多檔寫入時各結果攜帶的內容。<br>**FR-07**<br>- 新增 `writeRolledBack`、`writePartiallyWritten`，並寫明兩種結局的記錄方式。<br>**FR-09**<br>- `source_proposal` 列註明多檔寫入；PROP `outputs` 列註明 `spec_refs` 值改寫提前到 1.1，只作為反向檔。 |
+| 1.7 | 2026-11-12 | 執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`）。<br>**FR-05**<br>- 新增〈baseline 與寫入的先後〉，內容包括：寫入 rename 前 baseline 尚未完成時丟棄該 baseline；新原因值 `baselineNotReady`；該次寫入後的問題集合接替成為 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline。<br>- `ValidationStatus` 的 `unavailable` 原因與〈`unavailable` 的情況〉補 `baselineNotReady`。<br>- 驗收補 2 條。 |

@@ -4,7 +4,7 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.5"
+spec_version: "1.7"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
 updated: "2026-11-12"
@@ -177,11 +177,16 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 ### 2.6 IT-E6 真實驗證器（FR-05，PROP-005 §1.0 整合測試）
 
-**測試檔**：`integration_test/edit_validation_real_cli_test.dart`。需要 `uv` 與 doc CLI；找不到時以說明訊息判為失敗，不跳過（同 SPEC-010-test-design §6 對 fvm 的處置）。
+**測試檔**：`integration_test/edit_validation_real_cli_test.dart`。
+
+**前置條件**（v0.5，缺任一項時以說明訊息判為失敗，不跳過，同 SPEC-010-test-design §6 對 fvm 的處置）：
+- PATH 上有 `doc` 與 `uv`。
+- fixture repo 內有指向 `.claude/skills/doc` 的符號連結，以及只登記基準文件 UC 編號的 UC 白名單。
+- 基準文件為 UC 型（如 `UC-900-*.md`），不是 SPEC 型：`doc validate` 依檔名前綴取 ID。
 
 | # | fixture | When | Then | 對應驗收 |
 |---|---|---|---|---|
-| IT-E6-1 | R0，基準文件為 UC 型，內文不含 UC 提及 | 修正 `primary_actor`，值含 `unregisteredUc2` | `written`；驗證狀態為 `failed`，新增問題數 1；目標檔內容含新值（未被改回） | FR-05 #2 |
+| IT-E6-1 | R0，基準文件為 UC 型，內文不含 UC 提及 | 等 baseline 量測完成後，修正 `primary_actor`，值含 `unregisteredUc2` | `written`；驗證狀態為 `failed`，新增問題數 1；目標檔內容含新值（未被改回）。先等 baseline 完成，本案才是在測差集判定，而不是 V-19 的競態（v0.5） | FR-05 #2 |
 | IT-E6-2 | R0，內文已含兩次未登記的 UC 提及 | 修正 `title`（不含 UC 提及） | 驗證狀態為 `passed` | FR-05 #3 |
 | IT-E6-3（正向對照） | IT-E6-1 的 fixture | 修正 `title`（值不含 UC 提及） | 驗證狀態為 `passed`，證明 IT-E6-1 的 `failed` 來自新值 | — |
 
@@ -275,7 +280,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 ### V 寫入結果、三個可觀測時刻與驗證狀態（FR-05）
 
-**測試檔**：`test/unit/edit/write_result_test.dart`（V-1～V-3）、`test/unit/edit/validation_baseline_test.dart`（V-4～V-14）
+**測試檔**：`test/unit/edit/write_result_test.dart`（V-1～V-3）、`test/unit/edit/validation_baseline_test.dart`（V-4～V-14、V-19～V-21）
 
 `doc uc verify` 的 stdout 樣本形式為逐行 `<路徑>:<行號>:<UC 編號>`，結束碼 1 表示有違規（2026-11-10 以 doc CLI 實測取得）。`doc validate` 失敗輸出的樣本由承接票以真實 CLI 取得，並標註實測日期（test-assertion-design D5）。
 
@@ -299,6 +304,9 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | V-16 | baseline 的 `doc uc verify` 設為永不完成 | 虛擬時間推進 30 秒後寫入兩次；之後 `discardAndReload` 並讓驗證器正常回應 | 兩次寫入的驗證都是 `unavailable`；`discardAndReload` 後重跑 baseline，下一次寫入的驗證可為 `passed` |
 | V-17（對照） | 寫入後的 `doc validate` 於虛擬時間 29.9 秒完成、結束碼 0 | 驗證 | 子行程未被終止；`passed` |
 | V-18 | 寫入後的 `doc validate` 於 20 秒完成、`doc uc verify` 於其後 20 秒完成，皆結束碼 0 | 驗證 | `passed`：逾時對每個子行程各自計時，合計 40 秒不構成逾時 |
+| V-19（守衛） | baseline 的 `doc uc verify` 設為延遲完成（尚未完成），完成時回報零個問題；寫入後的 `doc uc verify` 回報 `unregisteredUc` 一次 | 在 baseline 完成前修正並寫入；讓延遲的 baseline 在第一次寫入的驗證完成後、第二次寫入前完成；之後再修正 `title` 一次（寫入後問題集合不變） | 第一次：`written`；驗證為 `unavailable(baselineNotReady)`，不是 `passed`。延遲的 baseline 完成後不改變 baseline。第二次：以第一次寫入後的問題集合為 baseline，驗證為 `passed`（新增 0）。若延遲的 baseline（零個問題）被錯誤採用，第二次會是 `failed`、新增 1，本案因此能分辨 baseline 是否被丟棄（SPEC-009 v1.7 FR-05〈baseline 與寫入的先後〉；正向對照：V-14 的 baseline 已完成時同一新值得 `failed`） |
+| V-20 | baseline 已完成，`unregisteredUc` 零次；第一次寫入後的 `doc validate` 逾時（`unavailable(timedOut)`） | 第二次修正，寫入後 `doc uc verify` 回報 `unregisteredUc` 一次 | 第二次驗證為 `failed`、新增 1：第一次驗證 `unavailable` 時保留原 baseline，不以該次寫入取代（SPEC-009 v1.7 FR-05） |
+| V-21 | baseline 延遲完成（尚未完成），在第二次寫入前完成並回報零個問題；第一次寫入後的 `doc validate` 逾時；第二次寫入後的 `doc uc verify` 回報 `unregisteredUc` 一次 | 在 baseline 完成前寫入第一次；之後寫入第二次與第三次（第三次修正 `title`，問題集合不變） | 第一次：`unavailable(baselineNotReady)`（沒有可用 baseline，也沒有可保留的舊 baseline）。第二次：仍沒有可用 baseline，驗證為 `unavailable(baselineNotReady)`。第三次：以第二次寫入後取得的問題集合為 baseline，驗證為 `passed`（新增 0）（SPEC-009 v1.7 FR-05〈沒有可用 baseline 時〉） |
 
 FR-05 驗收第 1 條由 V-1～V-3 涵蓋；第 2 條由 V-5、V-12 與 IT-E6-1 涵蓋；第 3 條由 V-4 與 IT-E6-2 涵蓋；第 4 條由 V-6 涵蓋；第 5 條由 V-7、V-8 涵蓋；第 6 條由 V-9、V-10、V-16 涵蓋；第 7 條（驗證子行程逾時，v1.2）由 V-15、V-17、V-18 涵蓋。
 
@@ -433,6 +441,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-04 | #4 目標不存在、父目錄存在可建構 | P-2 | domain unit |
 | FR-04 | #5 寫入函式不收 `String` | P-9 | 契約（靜態） |
 | FR-05 | #1～#7（#7 為 v1.2 驗證逾時） | 見 V 群組末段 | domain unit；integration |
+| FR-05 | 〈baseline 與寫入的先後〉：baseline 未完成即寫入 → `unavailable(baselineNotReady)`，該次寫入後的問題集合成為下一次 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時以第一個取得的寫入後問題集合為下一次 baseline（v1.7） | V-19、V-20、V-21；IT-E6-1 改為先等 baseline | domain unit；integration |
 | FR-06 | #1 EVT-CORPUS-001 到達、重讀內容與 M 不同 → 外部已改預警（含重讀得 `notFound`，v1.3） | X-1、X-8、X-9 | domain unit（application 層） |
 | FR-06 | #2 EVT-CORPUS-001 到達、內容與 M 相同時狀態不變（v1.3） | X-2 | domain unit（application 層） |
 | FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
@@ -521,3 +530,4 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 0.2 | 2026-11-11 | `1.0.0-W3-684`，對應 SPEC-009 v1.3：G 組新增 G-19～G-21（FR-01〈M 的更新〉，驗收 #7）；X 組觸發來源由監看事件改為 EVT-CORPUS-001 並重讀比較，改寫 X-1、X-2、X-4、X-5，新增 X-8（重讀得 `notFound`）、X-9（判定不讀負載）、X-10（預警期間再收事件）；§1.2 Mock 策略與 §1.4 新增 `FakeCorpusParsedSource`，不再沿用 `fake_watch_source.dart`；§4.2 補 FR-01 #7、FR-06 改為三條；§4.3 補兩個守衛；§5 預警列前置更新。同票併入 v1.2 逾時規定（主控裁定）：G-22、G-23，S-6、S-7，V-15～V-18，L-11、L-12，L-5 改為三者恰一；§1.4 FakeEditGitPort、FakeValidatorPort 補永不完成與終止記錄，新增逾時計時器列；§4.2 補 FR-01 逾時約束、FR-02 #5 #6、FR-05 #7、FR-07 `timedOut`；§4.3 補快照逾時、驗證逾時兩個守衛 |
 | 0.3 | 2026-11-11 | `1.0.0-W3-553.7`，對應 SPEC-009 v1.4（`1.0.0-W3-686`）：<br>- §1.6 `doc_plain` 加 `target_version`。<br>- R 組新增 R-13（清空寫 `null`，FR-03 驗收 #7）、R-14（守衛：清空不得移除鍵）。<br>- F 組新增 F-5（可清空欄位空白寫 `null`、非空不修剪）、F-6（守衛：必填欄位空白擋下）、F-7（守衛：必填集合讀 `completeness_fields`，fake 少一鍵即改判）。<br>- §4.2 補 FR-03 #7 與 FR-09〈可否清空〉約束；§4.3 補三個守衛；§5 兩列同步。 |
 | 0.4 | 2026-11-12 | `1.0.0-W3-553.10`，對應 SPEC-009 v1.5（執行期澄清，用戶裁定 2026-11-12）：<br>- G 組新增 G-24：真實流程下非 UTF-8 檔案在第 2 步回傳 `rewriteNotIsolated`、目標檔不變（FR-03 驗收 #8）。G-6 維持以替身改寫器驗第 1 步逐位元組比較。<br>- IT-E2-1 修訂：stash、reflog、log 逐字相同；status 只斷言目標檔一列、只有工作區欄已修改、無 staged 項目。原「四者逐字相同」在 R0（寫入前乾淨）下不可能成立。<br>- §1.6 `doc_nonutf8` 用途補 G-24；§4.2 補 FR-03 #8。 |
+| 0.5 | 2026-11-12 | `1.0.0-W3-553.11.1`，對應 SPEC-009 v1.7（執行期澄清，用戶裁定 2026-11-12，經主控 AUQ）：<br>- V 組新增 V-19（守衛：baseline 未完成即寫入 → `unavailable(baselineNotReady)`，丟棄延遲的 baseline，該次寫入後的問題集合成為下一次 baseline）、V-20（寫入後驗證 `unavailable` 時保留原 baseline）、V-21（沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline）。V-19 的延遲 baseline 在兩次寫入之間完成並回報零個問題，用以分辨它是否被丟棄。<br>- IT-E6-1 改為先等 baseline 完成再寫入。<br>- §2.6 補真實 CLI 測試的前置條件（PATH 上的 `doc` 與 `uv`、doc 符號連結、UC 白名單），基準文件改為 UC 型（`doc validate` 依檔名取 ID）。<br>- §4.2 補 FR-05〈baseline 與寫入的先後〉。<br>- 原因值名稱 `baselineNotReady`（L56 提案，主控審查通過）。 |
