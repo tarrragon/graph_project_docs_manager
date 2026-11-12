@@ -263,6 +263,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchPlaceholder => 'Search';
 
   @override
+  String get fieldEmptyValue => 'Not set';
+
+  @override
   String get searchClearAction => 'Clear search';
 
   @override

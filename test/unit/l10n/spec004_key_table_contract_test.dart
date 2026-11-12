@@ -23,7 +23,6 @@ const Set<String> pendingAdditionExemptions = <String>{
   'fieldBlockedSnapshotFailed',
   'fieldDraftUnsentHint',
   'fieldDraftUnsentHintMultiLine',
-  'fieldEmptyValue',
   'fieldIoFailed',
   'fieldNotEditableHint',
   'fieldRequiredEmpty',

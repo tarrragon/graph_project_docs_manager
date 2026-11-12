@@ -74,6 +74,7 @@
   "sourceFileUnparsableMessage": "File exists but cannot be parsed; see the gap report",
   "expanderLabel": "Expand or collapse",
   "searchPlaceholder": "Search",
+  "fieldEmptyValue": "Not set",
   "searchClearAction": "Clear search",
   "filterAllOption": "All",
   "filterA11yLabel": "{label} filter, current: {value}",

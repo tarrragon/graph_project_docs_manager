@@ -254,6 +254,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchPlaceholder => '搜尋';
 
   @override
+  String get fieldEmptyValue => '未填';
+
+  @override
   String get searchClearAction => '清除搜尋';
 
   @override
