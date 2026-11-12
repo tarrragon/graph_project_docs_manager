@@ -1152,4 +1152,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get nodeDetailBodyUnavailableMessage =>
       'Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan';
+
+  @override
+  String fieldValueOutOfDomain(String value) {
+    return 'Current value \"$value\" is not an allowed value';
+  }
+
+  @override
+  String get radioYes => 'Yes';
+
+  @override
+  String get radioNo => 'No';
 }
