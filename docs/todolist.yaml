@@ -867,6 +867,16 @@ versions:
       7 張關閉、36 張移到 1.1.0 候選池、1 張排 1.5（遷移 commit 3f5f05d56b）。1.0.0 不再兼作停放區：
       依框架 v3.0.0 版本規則，之後的改善與技術債進下一個 minor 的候選池。現況範圍見 W1-110 Solution。
 
+  - version: "1.0.1"
+    codename: "Edit patch"
+    description: "1.0 承諾未達成的修補：1.0 規格寫了但沒做到的行為、資料錯誤、跑不起來的問題"
+    status: "planned"    # 2026-11-12 登記：凍結閘門第一次把票擋向本版（SPEC-004 4.51 可點路徑截斷方向，用戶裁定經主控 AUQ，1.0.0-W1-100）
+    worklog: "docs/work-logs/v1/v1.0/v1.0.1/"
+    notes: |
+      範圍 = 凍結閘門路由至此的票；整合測試 = 上層 minor（1.0.0）的整合測試仍通過。
+      依 version-progression〈版本登記規則〉patch 列登記，不需要 PROP。
+      凍結前補上收斂承諾（逐條指名已發布規格條款而實作未達者）與缺陷清單。
+
   # 1.x minor 清單（2026-11-10 用戶裁決，1.0.0-W1-104；依對象風險遞進，見 PROP-007〈1.x minor 清單〉）
   - version: "1.1.0"
     codename: "Edges"
