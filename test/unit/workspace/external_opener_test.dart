@@ -227,7 +227,7 @@ void main() {
 
       final methodStart = source.indexOf('Future<ExternalOpenResult> open(');
       final entryLogIndex = source.indexOf(
-        "developer.log(line == null ? path : '\$path:\$line', name: _tag);",
+        'ExternalOpenerLogEvent.openRequested',
       );
       final precheckIndex = source.indexOf('FileSystemEntity.type(path)');
       final processRunIndex = source.indexOf(

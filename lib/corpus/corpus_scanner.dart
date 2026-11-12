@@ -8,12 +8,14 @@
 /// 面）。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/schema/carrier_path_lookup.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 
+import 'corpus_log_event.dart';
 import 'docs_file_system.dart';
 import 'frontmatter_classifier.dart';
 import 'node_typer.dart';
@@ -163,10 +165,10 @@ Future<CorpusScanResult> scanCorpus({
   required TypeTable builtinTable,
   void Function(int processedCount)? onProcessed,
 }) async {
-  developer.log(
-    'scanCorpus 開始：root=$_docsRoot', // i18n-exempt: 開發者 debug log
-    name: 'CorpusScanner',
-    level: 500,
+  corpusLogSink(
+    CorpusLogEvent.scanStarted,
+    LogFields.empty,
+    level: LogLevel.debug,
   );
 
   final listing = await _listMarkdownFiles(fileSystem, _docsRoot);
@@ -212,11 +214,7 @@ Future<CorpusScanResult> scanCorpus({
     topicFilesRead,
   );
 
-  developer.log(
-    _scanEndLogMessage(listing, result),
-    name: 'CorpusScanner',
-    level: 500,
-  );
+  corpusLogSink(CorpusLogEvent.scanCompleted, _scanEndFields(listing, result));
 
   return result;
 }
@@ -238,13 +236,13 @@ Future<NonDomainPathsReadResult> _readNonDomainPaths(
       projectTable: table,
       builtinTable: builtinTable,
     );
-  } catch (e, stackTrace) {
-    developer.log(
-      '非 domain 路徑清單檔讀取發生非預期例外，視同缺席', // i18n-exempt: 開發者 debug log
-      name: 'CorpusScanner',
-      level: 900,
+  } catch (e) {
+    corpusLogSink(
+      CorpusLogEvent.nonDomainPathsUnexpectedError,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.internal,
       error: e,
-      stackTrace: stackTrace,
     );
     return const NonDomainPathsReadAbsent();
   }
@@ -255,13 +253,13 @@ Future<NonDomainPathsReadResult> _readNonDomainPaths(
 Future<TopicFilesReadResult> _readTopicFiles(DocsFileSystem fileSystem) async {
   try {
     return await readTopicFiles(fileSystem: fileSystem);
-  } catch (e, stackTrace) {
-    developer.log(
-      '主題檔讀取發生非預期例外，視同缺席', // i18n-exempt: 開發者 debug log
-      name: 'CorpusScanner',
-      level: 900,
+  } catch (e) {
+    corpusLogSink(
+      CorpusLogEvent.topicFilesUnexpectedError,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.internal,
       error: e,
-      stackTrace: stackTrace,
     );
     return const TopicFilesReadResult.absent();
   }
@@ -278,26 +276,22 @@ Iterable<List<String>> _batches(List<String> items, int size) sync* {
   }
 }
 
-/// scanCorpus 結束日誌訊息組裝，抽出避免長字串拼接觸發格式檢查（開發者
-/// debug log，非 UI 顯示字串，可觀測性規則 4：關鍵流程起訖日誌）。
-String _scanEndLogMessage(
+/// scanCorpus 結束的聚合負載：一輪一筆（SPEC-010 FR-04，可觀測性規則 4：
+/// 關鍵流程起訖日誌），計數取代逐檔記錄。
+LogFields _scanEndFields(
   ({List<String> paths, List<String> unlistableDirectories}) listing,
   CorpusScanResult result,
-) {
-  final fileCount = listing.paths.length; // i18n-exempt: 開發者 debug log
-  final nodeCount = result.rawNodes.length; // i18n-exempt: 開發者 debug log
-  final failureCount = result.parseErrors.length; // i18n-exempt: 開發者 debug log
-  final unlistableCount =
-      listing.unlistableDirectories.length; // i18n-exempt: 開發者 debug log
-  final flowMalformedCount =
-      result.summary.flowBlockMalformedUcCount; // i18n-exempt: 開發者 debug log
-  // i18n-exempt: 開發者 debug log（以下三行字串）
-  return 'scanCorpus 結束：檔案數=$fileCount、節點數=$nodeCount、'
-      // i18n-exempt: 開發者 debug log
-      '失敗數=$failureCount、無法列出目錄數=$unlistableCount、'
-      // i18n-exempt: 開發者 debug log
-      'flow區塊解析失敗UC數=$flowMalformedCount';
-}
+) => LogFields({
+  CorpusLogKeys.fileCount: LogValue.integer(listing.paths.length),
+  CorpusLogKeys.nodeCount: LogValue.integer(result.rawNodes.length),
+  CorpusLogKeys.failureCount: LogValue.integer(result.parseErrors.length),
+  CorpusLogKeys.unlistableDirectoryCount: LogValue.integer(
+    listing.unlistableDirectories.length,
+  ),
+  CorpusLogKeys.flowMalformedUcCount: LogValue.integer(
+    result.summary.flowBlockMalformedUcCount,
+  ),
+});
 
 /// 需求：[SPEC-006 FR-01、FR-05、NFR-01] 讀取單一檔案並分類；讀取失敗直接
 /// 映射為「無法讀取」對應子原因，成功時交給 [classifyFrontmatter]。
@@ -322,10 +316,11 @@ Future<({ParseOutcome outcome, Uint8List? bytes})> _readAndClassify(
       ),
     };
   } catch (e) {
-    developer.log(
-      '讀取單檔時發生非預期例外，歸類為無法讀取：$path', // i18n-exempt: 開發者 debug log
-      name: 'CorpusScanner',
-      level: 900,
+    corpusLogSink(
+      CorpusLogEvent.fileReadUnexpectedError,
+      LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
       error: e,
     );
     return (
@@ -374,10 +369,11 @@ Future<List<DocsFileSystemEntry>> _listEntriesOrRecordFailure(
   try {
     return await fileSystem.listEntries(path);
   } catch (e) {
-    developer.log(
-      '目錄無法列出，記入無法列出清單並略過：$path', // i18n-exempt: 開發者 debug log
-      name: 'CorpusScanner',
-      level: 900,
+    corpusLogSink(
+      CorpusLogEvent.directoryUnlistable,
+      LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
       error: e,
     );
     unlistable.add(path);
@@ -456,10 +452,11 @@ class _ScanAccumulator {
     try {
       return _extractFlow(bytes, path);
     } catch (e) {
-      developer.log(
-        'UC flow 擷取發生非預期例外，該 UC 發 EVT-CORPUS-004：$path', // i18n-exempt: 開發者 debug log
-        name: 'CorpusScanner',
-        level: 900,
+      corpusLogSink(
+        CorpusLogEvent.flowExtractionUnexpectedError,
+        LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+        level: LogLevel.warning,
+        source: ErrorSource.internal,
         error: e,
       );
       return UcFlowExtraction(
@@ -487,11 +484,11 @@ class _ScanAccumulator {
       // 規則 3b (c)、3c：兩類來源共用「每 UC 一筆」上限；reason 以原因碼
       // 開頭，非 map 項目時另附註說明。
       final reason = _flowReason(flow);
-      developer.log(
-        // i18n-exempt: 開發者 debug log
-        '發出 EVT-CORPUS-004（$reason）：$path', // i18n-exempt: 開發者 debug log
-        name: 'CorpusScanner',
-        level: 900,
+      corpusLogSink(
+        CorpusLogEvent.flowParseFailedEmitted,
+        LogFields({CorpusLogKeys.path: corpusPathValue(path)}),
+        level: LogLevel.warning,
+        source: ErrorSource.parse,
       );
       flowParseFailedEvents.add(
         FlowParseFailedEvent(path: path, reason: reason),

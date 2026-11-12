@@ -4,16 +4,15 @@
 /// 設定，與 workspace 偏好共用 `shared_preferences`，鍵名見
 /// [editorPreferenceKey]；不隨專案切換改變（SPEC-001 §9）。
 ///
-/// 可觀測性（observability 規則 5）：讀寫的失敗皆以 `developer.log` 記錄
-/// （開發者診斷字串，非使用者可見文字，不進 i18n）。
+/// 可觀測性（observability 規則 5）：讀寫的失敗皆經 `LogSink`
+/// （[EditorPreferenceLogEvent]）記錄。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_io_log_event.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-const String _tag = 'EditorPreference';
 
 /// 「系統預設（不定位）」的選定值，也是未曾選擇時的預設值。
 const String systemEditorId = 'system';
@@ -100,10 +99,12 @@ class SharedPreferencesEditorStore implements EditorPreferenceStore {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString(editorPreferenceKey) ?? systemEditorId;
     } on Object catch (error) {
-      developer.log(
-        '讀取編輯器偏好失敗（視為系統預設）：$error', // i18n-exempt: 開發者診斷字串
-        name: _tag,
-        level: 900,
+      editorPreferenceLogSink(
+        EditorPreferenceLogEvent.readFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+        error: error,
       );
       return systemEditorId;
     }
@@ -114,16 +115,21 @@ class SharedPreferencesEditorStore implements EditorPreferenceStore {
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = await prefs.setString(editorPreferenceKey, editorId);
-      developer.log(
-        '編輯器偏好寫入：$editorId saved=$saved', // i18n-exempt: 開發者診斷字串
-        name: _tag,
+      editorPreferenceLogSink(
+        EditorPreferenceLogEvent.written,
+        LogFields({
+          WorkspaceIoLogKeys.editorId: LogValue.fieldName(editorId),
+          WorkspaceIoLogKeys.saved: LogValue.boolean(saved),
+        }),
       );
       return saved;
     } on Object catch (error) {
-      developer.log(
-        '寫入編輯器偏好失敗：$editorId，$error', // i18n-exempt: 開發者診斷字串
-        name: _tag,
-        level: 900,
+      editorPreferenceLogSink(
+        EditorPreferenceLogEvent.writeFailed,
+        LogFields({WorkspaceIoLogKeys.editorId: LogValue.fieldName(editorId)}),
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+        error: error,
       );
       return false;
     }
