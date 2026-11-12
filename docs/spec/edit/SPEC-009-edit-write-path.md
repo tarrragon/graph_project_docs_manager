@@ -4,8 +4,8 @@ title: "編輯能力：寫入路徑、寫入前閘門與寫入結果"
 status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
-updated: "2026-11-12"
-version: "1.9"
+updated: "2026-11-13"
+version: "1.10"
 owner: L54-main
 has_functional_requirements: true
 
@@ -165,18 +165,55 @@ depends_on_domains: [workspace, schema, corpus, observability]
   - 驗證器不區分 `null`、空字串與缺鍵：`1.0.0-W3-686` 以 fixture 實測，`doc validate` 與 `doc uc verify` 對三者回傳相同結束碼。所以清空的合法性由本條與 FR-09 決定，不交給驗證器。
 - **1.0 一次寫入只寫一個檔**，不存在批次中途失敗。1.1 起，改寫有反向欄位的邊時，一次寫入會寫多個檔，規則見下方〈多檔寫入（1.1）〉。
 
+#### 多值欄位的加入與移除（1.1）
+
+`1.1.0-W1-111`（v1.10）。F1–F4 四項格式選擇由用戶裁定（2026-11-13，經主控 AUQ），紀錄見本節末〈裁定紀錄〉。
+
+**適用範圍**：FR-09 中元件為 chips 或核取清單、「自」為 1.1 的欄位（SPEC-004 4.52 `ReferenceChips`、4.53 `AppCheckboxGroup`）。provenance 的正向檔（SPEC `source_proposal`）也適用本節，其反向檔另依〈多檔寫入（1.1）〉。
+
+**操作單位**：一次寫入只做一個操作——加入一個值，或移除一個值。改成另一個值是兩次寫入（先移除、再加入，或反過來），各自經過閘門、各自成列（FR-08）。理由：畫面上的操作就是這兩種（SPEC-004 4.52、4.53），一次寫入對應一次操作，寫入清單的列與使用者的動作一一對應；多檔寫入的寫入集合也因此最多兩個檔（正向檔與一個反向檔）。
+
+**語料現況**（2026-11-13 查證，`docs/` 下各型別 frontmatter）：多值欄位皆寫成 flow 序列（`[a, b]`）或空序列（`[]`），沒有 block 序列；`source_proposal` 有純量、flow 序列與 `null` 三種寫法。`tracking_schema` 的 `forward_cardinality` 註記：many 的欄位寫成純量時，消費端視為只有一項的清單。
+
+**值的改寫規則**：只改寫目標欄位值的位元組範圍，隔離檢查照〈約束條件〉兩道。
+
+| 改寫前的值 | 加入 v | 移除 v |
+|---|---|---|
+| flow 序列 `[a, b]` | `[a, b, v]`：附加於末尾，項間分隔沿用 `, ` | 刪除 v 及其分隔；結果見下方「剩一項」「剩零項」兩列 |
+| 空序列 `[]` | `[v]` | 不會發生（畫面上沒有可移除的項） |
+| 純量 `a`（只有 `source_proposal`） | `[a, v]`：純量轉 flow 序列 | `a` 等於 v 時：結果見「剩零項」；`a` 不等於 v：不會發生（畫面只列現有的值） |
+| `null`（只有 `source_proposal`） | 純量 `v`（F1） | 不會發生 |
+| 移除後剩一項（`source_proposal`） | — | 純量 `a`（F2） |
+| 移除後剩一項（其他欄位） | — | `[a]` |
+| 移除後剩零項（`source_proposal`） | — | `null`（F3，同〈清空〉） |
+| 移除後剩零項（其他欄位） | — | `[]` |
+| block 序列、anchor、alias、跨多行的 flow 序列（含其中的註解）、項為非純量 | 不改寫，回傳 `blocked(rewriteNotIsolated)` | 同左 |
+
+- **加入的值已在清單中**：呼叫端不發出寫入，畫面的選項已排除已選的值（SPEC-004 4.52）。寫入層仍收到時視同無變更：不改檔案、不建快照、不成列（FR-08）。
+- **正向檔的重複值**（F4）：移除 v 時刪除 v 的全部出現。理由同〈多檔寫入（1.1）〉〈寫入集合〉的 Q1：只刪一筆時剩下的那筆仍讓邊存在，畫面上卻少了一個 chip，使用者以為已移除。
+- **flow 序列的項**：以純量寫入，不加引號；值含 YAML 需要引號的字元時（`,`、`[`、`]`、`:`、`#` 與前後空白），回傳 `blocked(rewriteNotIsolated)`。節點 ID 受 `id_pattern` 約束，domain 名受 domain 名稱權威寫法約束，兩者都不含這些字元。
+
+**裁定紀錄**（用戶裁定 2026-11-13，經主控 AUQ；F1–F3 以單一問題裁定為「跟現有資料一致」）：
+
+| 項 | 裁定 | 未採用的選項 | 理由 |
+|---|---|---|---|
+| F1 `source_proposal` 由 `null` 加入 | 純量 `v` | `[v]` | 語料中單一來源皆寫純量；`tracking_schema` 視純量為單項清單，兩者語意相同，取改動最少者 |
+| F2 `source_proposal` 移除後剩一項 | 純量 `a` | `[a]` | 同 F1：單值純量、多值清單，與語料一致 |
+| F3 `source_proposal` 移除後剩零項 | `null` | `[]` | 同〈清空〉：鍵存在、值為 `null` 代表明確沒有值；語料中無來源的 SPEC 寫 `null` |
+| F4 正向檔重複值的移除 | 刪除全部出現 | 只刪一筆 | 見上方〈正向檔的重複值〉 |
+
 #### 多檔寫入（1.1）
 
 用戶裁定 2026-11-12（`1.1.0-W1-111`，選項 A）。
 
 **適用範圍**：文件節點的邊中，只有 provenance 有反向欄位：SPEC 的 `source_proposal`（正向）對應 PROP 的 `outputs.spec_refs`（反向）。blood、spawn 也有反向欄位，但兩者都是 ticket 欄位，屬於 1.2，經 ticket CLI 寫入，不走本節。其餘 1.1 邊欄位沒有反向欄位，照單檔寫入處理。
 
-**寫入集合**：改寫 SPEC `source_proposal` 的一次寫入，寫入集合包含：
+**寫入集合**：對 SPEC `source_proposal` 加入或移除一個 PROP 的一次寫入（操作單位見〈多值欄位的加入與移除（1.1）〉，v1.10），寫入集合包含：
 
-- SPEC 本身（正向檔）。
-- 每一個 `outputs.spec_refs` 成員資格因這次改寫而變動的 PROP（反向檔）：移出時從清單刪除該 SPEC id 的全部出現，加入時把該 SPEC id 附加到清單末尾。
+- SPEC 本身（正向檔），值依〈多值欄位的加入與移除（1.1）〉改寫。
+- 被加入或被移除的那一個 PROP（反向檔）：移除時從其 `outputs.spec_refs` 刪除該 SPEC id 的全部出現，加入時把該 SPEC id 附加到清單末尾。
 
-例如：把單值從 PROP-A 改成 PROP-B，寫入集合是 SPEC、PROP-A、PROP-B 三個檔；從空值改成 PROP-B，寫入集合是兩個檔。反向檔的清單如果本來就和改寫後的正向值一致，該檔不列入寫入集合：加入端已含該 SPEC id（不論出現幾次），或移出端完全不含該 SPEC id。移出端含該 id 時一律移除全部出現，理由是只移除一筆時，剩下的那筆仍指向已不再指向它的 SPEC，正反向不一致會殘留下來（Q1，PM 依規格內部一致性定案，`1.1.0-W1-111`）。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+例如：加入 PROP-B，寫入集合是 SPEC、PROP-B 兩個檔；移除 PROP-A，寫入集合是 SPEC、PROP-A 兩個檔。把 PROP-A 改成 PROP-B 是兩次寫入，各自兩個檔（v1.9 以前把它寫成一次三個檔的寫入，v1.10 改為兩次，理由是畫面上沒有「取代」這個操作，SPEC-004 4.52）。反向檔的清單如果本來就和改寫後的正向值一致，該檔不列入寫入集合，寫入集合只剩正向檔，照單檔寫入處理：加入端已含該 SPEC id（不論出現幾次），或移出端完全不含該 SPEC id。移出端含該 id 時一律移除全部出現，理由是只移除一筆時，剩下的那筆仍指向已不再指向它的 SPEC，正反向不一致會殘留下來（Q1，PM 依規格內部一致性定案，`1.1.0-W1-111`）。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
 
 **反向檔的允許變更集合**：`outputs.spec_refs` 與 `updated` 兩個鍵（`updated` 規則同上方〈允許變更集合〉）。
 
@@ -225,7 +262,15 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 寫入後目標檔的權限位元與寫入前相同
 - [ ] 清空 PROP target_version 後，該鍵仍存在且值為 `null`；檔案除該值與 `updated` 外逐位元組相同
 - [ ] 內文含非法 UTF-8 位元組的檔案，修正任一欄位時回傳 `rewriteNotIsolated` 且目標檔不變（v1.5）
-- [ ] 多檔寫入（v1.6）：把 SPEC `source_proposal` 由 PROP-A 改為 PROP-B 後，PROP-A 的 `outputs.spec_refs` 不含該 SPEC、PROP-B 的含該 SPEC，三個檔除各自允許變更集合外逐位元組相同
+- [ ] 多檔寫入（v1.10）：對 SPEC `source_proposal` 移除 PROP-A 後，PROP-A 的 `outputs.spec_refs` 不含該 SPEC；再加入 PROP-B 後，PROP-B 的含該 SPEC。每次寫入的兩個檔除各自允許變更集合外逐位元組相同
+- [ ] 多值欄位（v1.10）：flow 序列加入附加於末尾、移除只刪該項與其分隔；`[]` 加入得 `[v]`；其他欄位移除到零項得 `[]`；檔案除該值與 `updated` 外逐位元組相同
+- [ ] 多值欄位（v1.10）：`source_proposal` 為純量 `a` 時加入 v 得 `[a, v]`
+- [ ] 多值欄位（v1.10，F1）：`source_proposal` 為 `null` 時加入 v 得純量 `v`
+- [ ] 多值欄位（v1.10，F2）：`source_proposal` 為 `[a, v]` 時移除 v 得純量 `a`
+- [ ] 多值欄位（v1.10，F3）：`source_proposal` 為純量 v 時移除 v 得 `null`，鍵仍存在
+- [ ] 多值欄位（v1.10，F4）：正向檔 `[a, v, v]` 移除 v 得純量 `a`（`source_proposal`）；其他欄位 `[a, v, v]` 移除 v 得 `[a]`
+- [ ] 多值欄位（v1.10）：值為 block 序列或跨多行的 flow 序列時，回傳 `rewriteNotIsolated`，目標檔不變
+- [ ] 多值欄位（v1.10）：加入已在清單中的值時不改檔案、不成列
 - [ ] 多檔寫入（v1.6）：反向檔缺 `outputs.spec_refs` 鍵時，整批回傳 `rewriteNotIsolated`，所有檔不變
 - [ ] 多檔寫入（v1.6）：任一檔在步驟 1～4 不通過時，所有目標檔不變，同目錄不殘留暫存檔
 - [ ] 多檔寫入（v1.6）：第 2 個檔 `rename` 失敗（以注入模擬）且還原成功時，回傳原失敗結果，已 `rename` 的檔還原為寫入前的位元組
@@ -494,7 +539,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | SPEC | domain | 可搜尋下拉（已宣告 domain） | 可搜尋下拉 | 1.0 |
 | SPEC | subdomain、owner | 單行 | 單行 | 1.0 |
 | SPEC | has_functional_requirements | 單選鈕組（是／否） | 單選鈕組 | 1.0 |
-| SPEC | source_proposal | 依邊的 forward_cardinality：one 為可搜尋下拉、many 為 chips | — | 1.1（多檔寫入，同批改寫 PROP `outputs.spec_refs`，FR-03〈多檔寫入（1.1）〉） |
+| SPEC | source_proposal | chips 加搜尋（provenance 的 forward_cardinality 為 many，`tracking_schema`；加入與移除依 FR-03〈多值欄位的加入與移除（1.1）〉） | — | 1.1（多檔寫入，同批改寫 PROP `outputs.spec_refs`，FR-03〈多檔寫入（1.1）〉） |
 | SPEC | related_usecases、related_specs、implements_requirements | chips 加搜尋 | — | 1.1 |
 | SPEC | depends_on_domains | 核取清單 | — | 1.1 |
 | UC | primary_actor | 單行 | 單行 | 1.0 |
@@ -607,3 +652,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.7 | 2026-11-12 | 執行期澄清，用戶裁定 2026-11-12，經主控 AUQ（`1.0.0-W3-553.11.1`）。<br>**FR-05**<br>- 新增〈baseline 與寫入的先後〉，內容包括：寫入 rename 前 baseline 尚未完成時丟棄該 baseline；新原因值 `baselineNotReady`；該次寫入後的問題集合接替成為 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline。<br>- `ValidationStatus` 的 `unavailable` 原因與〈`unavailable` 的情況〉補 `baselineNotReady`。<br>- 驗收補 2 條。 |
 | 1.8 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 2.5）：FR-03〈多檔寫入（1.1）〉〈寫入集合〉用詞修正，「在圖上查不到」改為「在 Corpus 的原始節點中查不到」。理由：Graph 與 Edit 同在 L3，讀 Graph 會新增同層依賴；Corpus 已在 Edit 的依賴內（`docs/spec/edit/domain-map.md` §3） |
 | 1.9 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 3 的 Q1、Q2）。<br>**FR-03**<br>- Q1（PM 依規格內部一致性定案）：〈寫入集合〉移出時移除該 SPEC id 的全部出現；加入端已含該 id（不論出現幾次）就不列入寫入集合。<br>**FR-08**<br>- Q2（用戶裁定 2026-11-12，經主控 AUQ）：新增〈多檔寫入的列法（1.1）〉。整批一列，列內附各檔路徑與取回說明，驗證狀態只顯示正向檔的；`partiallyWritten` 時附未還原的檔。畫面形式由 SPEC-004 4.51 承接 |
+| 1.10 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 前置，主控審 SPEC-004 1.148 時指出的跨規格缺口）。<br>**FR-03**<br>- 新增〈多值欄位的加入與移除（1.1）〉：操作單位為一次加入或一次移除；值的改寫規則表（flow 序列附加與刪除、純量轉清單、移除到剩一項或零項）；加入已存在的值不寫入；不支援的寫法回傳 `rewriteNotIsolated`。F1–F4 四項格式選擇由用戶裁定（2026-11-13，經主控 AUQ）：F1 `null` 加入寫純量、F2 剩一項寫回純量、F3 剩零項寫 `null`、F4 正向檔重複值移除全部出現。<br>- 〈多檔寫入（1.1）〉〈寫入集合〉改為「加入、移除各一次」：寫入集合最多兩個檔；A 改 B 為兩次寫入。<br>- 驗收：原「由 PROP-A 改為 PROP-B」一條改寫，另補多值欄位各條（含 F1–F4 各一條的具體值）。<br>**FR-09**<br>- `source_proposal` 列改為 chips 加搜尋（`forward_cardinality` 為 many） |
