@@ -1176,6 +1176,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan';
 
   @override
+  String get editFieldsAction => 'Edit fields';
+
+  @override
+  String get nodeDetailEditReadFailedMessage =>
+      'Could not read this file, so editing did not start. Try again later';
+
+  @override
   String fieldValueOutOfDomain(String value) {
     return 'Current value \"$value\" is not an allowed value';
   }

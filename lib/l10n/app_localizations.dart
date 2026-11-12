@@ -1903,6 +1903,18 @@ abstract class AppLocalizations {
   /// **'無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新'**
   String get nodeDetailBodyUnavailableMessage;
 
+  /// SPEC-003 §3.6 action-nodeDetail-edit 的標籤
+  ///
+  /// In zh, this message translates to:
+  /// **'編輯欄位'**
+  String get editFieldsAction;
+
+  /// SPEC-003 §3.6 badge-nodeDetail-edit-read-failed：開始編輯讀取失敗（notFound 以外）的說明
+  ///
+  /// In zh, this message translates to:
+  /// **'無法讀取這個檔案，沒有進入編輯。請稍後再試'**
+  String get nodeDetailEditReadFailedMessage;
+
   /// SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）
   ///
   /// In zh, this message translates to:

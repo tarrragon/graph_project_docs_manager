@@ -31,6 +31,10 @@ import '../../workspace/external_opener.dart';
 import '../../workspace/open_path_resolver.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/stale_open_result.dart';
+import '../../corpus/node_type_names.dart' show ticketTypeName;
+import 'node_detail_edit_notifier.dart'
+    show nodeDetailEditProvider, nodeDetailAcceptedValuesProvider;
+import 'node_detail_edit_view.dart';
 import 'node_detail_fixtures.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';
@@ -156,32 +160,43 @@ Widget _bodyOrUnavailable(BuildContext context, String? body) {
 
 /// 正常／部分損壞共用：`TwoColumnLayout`[主欄「meta + 標題 + 徽章 + 分隔線
 /// + 內文」、右欄「關聯分節」]（SPEC-004 §3.6 §6「正常」列）。
-class _ReadyView extends ConsumerWidget {
+class _ReadyView extends ConsumerStatefulWidget {
   const _ReadyView({required this.nodeId});
 
   final String nodeId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReadyView> createState() => _ReadyViewState();
+}
+
+class _ReadyViewState extends ConsumerState<_ReadyView> {
+  /// 版面以 GlobalKey 固定身分：狀態錨點（`state-nodeDetail-*`）隨編輯子
+  /// 狀態改變，換錨點時版面內的草稿與焦點不可重建。
+  final GlobalKey _layoutKey = GlobalKey();
+
+  String get nodeId => widget.nodeId;
+
+  @override
+  Widget build(BuildContext context) {
     final node = ref.watch(nodeDetailNodesProvider)[nodeId];
     if (node == null) return const _UnsetView();
+    final editing = ref.watch(nodeDetailEditProvider);
+    final isEditing = editing != null && editing.nodeId == nodeId;
+    final body = _bodyOrUnavailable(
+      context,
+      ref.watch(nodeDetailBodyProvider(nodeId)),
+    );
     // 部分損壞分支（state-nodeDetail-partial）在 0.x 不可達而退場，
     // 恢復條件見 1.1.0-W3-656。
     final main = Panel.scrollable(
       scrollKey: const Key('scroll-nodeDetail-content'),
-      children: [
-        ListRow.meta(
-          leading: Badge.type(label: node.type),
-          primary: AppText.singleLine(
-            node.filePath,
-            variant: AppTextVariant.mono,
-          ),
-        ),
-        AppText.singleLine(node.title, variant: AppTextVariant.title),
-        BadgeRow(children: [Badge.status(label: node.status)]),
-        const Divider(),
-        _bodyOrUnavailable(context, ref.watch(nodeDetailBodyProvider(nodeId))),
-      ],
+      children: isEditing
+          ? [
+              NodeDetailEditFieldList(edit: editing, filePath: node.filePath),
+              const Divider(),
+              body,
+            ]
+          : [..._normalHeader(ref, node), const Divider(), body],
     );
 
     final detail = Panel.scrollable(
@@ -210,11 +225,41 @@ class _ReadyView extends ConsumerWidget {
       ],
     );
 
-    return TwoColumnLayout(
-      key: const Key('state-nodeDetail-normal'),
-      main: main,
-      detail: detail,
+    return KeyedSubtree(
+      key: Key(
+        isEditing ? _editStateKey(editing.phase) : 'state-nodeDetail-normal',
+      ),
+      child: TwoColumnLayout(key: _layoutKey, main: main, detail: detail),
     );
+  }
+
+  static String _editStateKey(NodeDetailEditPhase phase) => switch (phase) {
+    NodeDetailEditPhase.editing => 'state-nodeDetail-editing',
+    NodeDetailEditPhase.warning => 'state-nodeDetail-edit-warning',
+    NodeDetailEditPhase.blocked => 'state-nodeDetail-edit-blocked',
+  };
+
+  /// 正常態分隔線以上：meta 列、標題、狀態徽章、「編輯欄位」鈕（Ticket 不渲染）。
+  /// 完成後、下一輪掃描前以受理值覆蓋標題與狀態（SPEC-003 §3.6〈完成〉）。
+  List<Widget> _normalHeader(WidgetRef ref, NodeDetailFixture node) {
+    final accepted = ref.watch(nodeDetailAcceptedValuesProvider)[nodeId];
+    return [
+      ListRow.meta(
+        leading: Badge.type(label: node.type),
+        primary: AppText.singleLine(
+          node.filePath,
+          variant: AppTextVariant.mono,
+        ),
+      ),
+      AppText.singleLine(
+        accepted?['title'] ?? node.title,
+        variant: AppTextVariant.title,
+      ),
+      BadgeRow(
+        children: [Badge.status(label: accepted?['status'] ?? node.status)],
+      ),
+      if (node.type != ticketTypeName) NodeDetailEditEntry(node: node),
+    ];
   }
 }
 

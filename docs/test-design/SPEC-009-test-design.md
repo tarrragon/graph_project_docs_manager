@@ -366,7 +366,7 @@ FR-08 驗收第 1 條由 C-5 與 IT-E2-1、IT-E2-2 涵蓋；第 2 條由 C-2 與
 
 ### F 逐欄位輸入元件（FR-09）
 
-**測試檔**：`test/unit/screens/edit/field_input_mapping_test.dart`（落點以畫面票為準）
+**測試檔**：`test/unit/screens/node_detail/field_input_mapping_test.dart`（落點以畫面票為準）
 
 | # | Given | When | Then |
 |---|---|---|---|
@@ -449,7 +449,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration |
 | FR-09 | #1 1.0 欄位都有元件與值域來源 | F-1 | 畫面狀態層 unit |
 | FR-09 | #2 無機器定義的列舉以單行呈現 | F-2、F-3 | 畫面狀態層 unit |
-| FR-09 | 約束：〈可否清空〉三類、trim 判定、非空不修剪、必填集合讀 `completeness_fields`（v1.4，非驗收條目） | F-5、F-6、F-7 | 畫面狀態層 unit |
+| FR-09 | 約束：〈可否清空〉三類、trim 判定、非空不修剪、必填集合讀 `completeness_fields`（v1.4，非驗收條目） | F-5、F-6、F-7 | 畫面狀態層 unit；F-5、F-6 的畫面承載另有 widget 案例（`test/unit/screens/node_detail/node_detail_edit_test.dart`：非必填空白寫 `null`、必填空白不發出寫入且提示格為 `fieldRequiredEmpty`） |
 | NFR-01 | 驗證不阻擋下一次編輯 | N-1、N-2 | domain unit |
 
 ### 4.3 守衛類驗收的正向對照

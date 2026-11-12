@@ -1978,6 +1978,14 @@
   "@nodeDetailBodyUnavailableMessage": {
     "description": "SPEC-004 §4.0.6 1.141：節點詳情本文讀取或切分失敗時的替代說明"
   },
+  "editFieldsAction": "編輯欄位",
+  "@editFieldsAction": {
+    "description": "SPEC-003 §3.6 action-nodeDetail-edit 的標籤"
+  },
+  "nodeDetailEditReadFailedMessage": "無法讀取這個檔案，沒有進入編輯。請稍後再試",
+  "@nodeDetailEditReadFailedMessage": {
+    "description": "SPEC-003 §3.6 badge-nodeDetail-edit-read-failed：開始編輯讀取失敗（notFound 以外）的說明"
+  },
   "fieldValueOutOfDomain": "目前值「{value}」不在可選值內",
   "@fieldValueOutOfDomain": {
     "description": "SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）",
