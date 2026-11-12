@@ -681,8 +681,7 @@ void main() {
       }
     });
 
-    // 暫時性：組裝層尚傳 2 項，此案由 1.0.0-W3-553.17 刪除。
-    test('暫時：傳 2 項不觸發 assert', () {
+    test('bottomItems 不接受 2 項（0 或恰 3，SPEC-004 4.27）', () {
       expect(
         () => AppShell(
           switcherEntry: _buildSwitcherEntry(),
@@ -690,7 +689,7 @@ void main() {
           bottomItems: _buildBottomItems().take(2).toList(),
           pages: _buildPages(),
         ),
-        returnsNormally,
+        throwsAssertionError,
       );
     });
 

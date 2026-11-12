@@ -33,6 +33,7 @@ import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
 import 'package:graph_project_docs_manager/main.dart';
 
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
+import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 
@@ -109,7 +110,13 @@ Future<void> pumpApp(
     ProviderScope(
       // Riverpod 3 禁止同一容器重複 override 同一 provider：預設在前、
       // 呼叫端在後，同一 provider 保留最後一個（維持 2.x 的後者取代語意）。
-      overrides: lastWinsByProvider([_readyDomainOverride(), ...overrides]),
+      overrides: lastWinsByProvider([
+        _readyDomainOverride(),
+        // 殼讀寫入清單（1.0.0-W3-553.17）會間接 watch editWorkspaceProvider；
+        // 預設不開真實 git 探測，需要寫入清單資料的測試自行覆寫。
+        editWorkspaceProvider.overrideWith((ref) async => null),
+        ...overrides,
+      ]),
       child: DocsManagerApp(locale: locale),
     ),
   );

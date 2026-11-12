@@ -2053,6 +2053,12 @@ abstract class AppLocalizations {
   /// **'檔案已在 App 外被修改，這次寫入沒有執行'**
   String get writeResultExternallyModified;
 
+  /// SPEC-001 §12 無寫入狀態說明
+  ///
+  /// In zh, this message translates to:
+  /// **'本次開啟 App 之後尚未在 App 內寫入任何檔案'**
+  String get writeLogEmptyMessage;
+
   /// SPEC-004 4.51 朗讀欄名
   ///
   /// In zh, this message translates to:
