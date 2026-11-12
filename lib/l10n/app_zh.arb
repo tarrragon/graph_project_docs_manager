@@ -2063,5 +2063,84 @@
   "radioNo": "否",
   "@radioNo": {
     "description": "SPEC-004 4.47 布林欄位選項"
+  },
+  "writeResultWritten": "已寫入",
+  "@writeResultWritten": {
+    "description": "SPEC-004 4.51 寫入結果徽章"
+  },
+  "writeResultBlocked": "未寫入",
+  "@writeResultBlocked": {
+    "description": "SPEC-004 4.51 寫入結果徽章（三種 blocked 共用）"
+  },
+  "writeResultIoFailed": "讀寫失敗",
+  "@writeResultIoFailed": {
+    "description": "SPEC-004 4.51 寫入結果徽章"
+  },
+  "writeResultExternallyModified": "檔案已在 App 外被修改，這次寫入沒有執行",
+  "@writeResultExternallyModified": {
+    "description": "SPEC-004 4.51 寫入結果說明（blocked(externallyModified)）"
+  },
+  "writeLogColumnPath": "路徑",
+  "@writeLogColumnPath": {
+    "description": "SPEC-004 4.51 朗讀欄名"
+  },
+  "writeLogColumnField": "欄位",
+  "@writeLogColumnField": {
+    "description": "SPEC-004 4.51 朗讀欄名"
+  },
+  "writeLogColumnResult": "寫入結果",
+  "@writeLogColumnResult": {
+    "description": "SPEC-004 4.51 朗讀欄名"
+  },
+  "writeLogColumnValidation": "驗證",
+  "@writeLogColumnValidation": {
+    "description": "SPEC-004 4.51 朗讀欄名"
+  },
+  "writeLogColumnRestore": "取回方式",
+  "@writeLogColumnRestore": {
+    "description": "SPEC-004 4.51 取回說明小標與朗讀"
+  },
+  "writeLogProjectLabel": "專案：{project}",
+  "@writeLogProjectLabel": {
+    "description": "SPEC-004 4.51 所屬專案",
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "writeLogSnapshotExpiryNote": "快照由 git 保留約兩週（gc.pruneExpire），之後可能被清除",
+  "@writeLogSnapshotExpiryNote": {
+    "description": "SPEC-004 4.51 快照期限說明"
+  },
+  "writeLogRowA11yLabel": "{pathLabel} {path}，{fieldLabel} {field}，{resultLabel} {result}，{validationLabel} {validation}",
+  "@writeLogRowA11yLabel": {
+    "description": "SPEC-004 4.51 列朗讀",
+    "placeholders": {
+      "pathLabel": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      },
+      "fieldLabel": {
+        "type": "String"
+      },
+      "field": {
+        "type": "String"
+      },
+      "resultLabel": {
+        "type": "String"
+      },
+      "result": {
+        "type": "String"
+      },
+      "validationLabel": {
+        "type": "String"
+      },
+      "validation": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -2016,6 +2016,87 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'否'**
   String get radioNo;
+
+  /// SPEC-004 4.51 寫入結果徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'已寫入'**
+  String get writeResultWritten;
+
+  /// SPEC-004 4.51 寫入結果徽章（三種 blocked 共用）
+  ///
+  /// In zh, this message translates to:
+  /// **'未寫入'**
+  String get writeResultBlocked;
+
+  /// SPEC-004 4.51 寫入結果徽章
+  ///
+  /// In zh, this message translates to:
+  /// **'讀寫失敗'**
+  String get writeResultIoFailed;
+
+  /// SPEC-004 4.51 寫入結果說明（blocked(externallyModified)）
+  ///
+  /// In zh, this message translates to:
+  /// **'檔案已在 App 外被修改，這次寫入沒有執行'**
+  String get writeResultExternallyModified;
+
+  /// SPEC-004 4.51 朗讀欄名
+  ///
+  /// In zh, this message translates to:
+  /// **'路徑'**
+  String get writeLogColumnPath;
+
+  /// SPEC-004 4.51 朗讀欄名
+  ///
+  /// In zh, this message translates to:
+  /// **'欄位'**
+  String get writeLogColumnField;
+
+  /// SPEC-004 4.51 朗讀欄名
+  ///
+  /// In zh, this message translates to:
+  /// **'寫入結果'**
+  String get writeLogColumnResult;
+
+  /// SPEC-004 4.51 朗讀欄名
+  ///
+  /// In zh, this message translates to:
+  /// **'驗證'**
+  String get writeLogColumnValidation;
+
+  /// SPEC-004 4.51 取回說明小標與朗讀
+  ///
+  /// In zh, this message translates to:
+  /// **'取回方式'**
+  String get writeLogColumnRestore;
+
+  /// SPEC-004 4.51 所屬專案
+  ///
+  /// In zh, this message translates to:
+  /// **'專案：{project}'**
+  String writeLogProjectLabel(String project);
+
+  /// SPEC-004 4.51 快照期限說明
+  ///
+  /// In zh, this message translates to:
+  /// **'快照由 git 保留約兩週（gc.pruneExpire），之後可能被清除'**
+  String get writeLogSnapshotExpiryNote;
+
+  /// SPEC-004 4.51 列朗讀
+  ///
+  /// In zh, this message translates to:
+  /// **'{pathLabel} {path}，{fieldLabel} {field}，{resultLabel} {result}，{validationLabel} {validation}'**
+  String writeLogRowA11yLabel(
+    String pathLabel,
+    String path,
+    String fieldLabel,
+    String field,
+    String resultLabel,
+    String result,
+    String validationLabel,
+    String validation,
+  );
 }
 
 class _AppLocalizationsDelegate

@@ -328,5 +328,17 @@
   "validationUnavailableUnparsableOutput": "The validator's output could not be parsed",
   "validationUnavailableTimedOut": "Validation took longer than 30 seconds and was stopped",
   "radioYes": "Yes",
-  "radioNo": "No"
+  "radioNo": "No",
+  "writeResultWritten": "Written",
+  "writeResultBlocked": "Not written",
+  "writeResultIoFailed": "Read or write failed",
+  "writeResultExternallyModified": "The file was changed outside the app, so this write was not performed",
+  "writeLogColumnPath": "Path",
+  "writeLogColumnField": "Field",
+  "writeLogColumnResult": "Write result",
+  "writeLogColumnValidation": "Validation",
+  "writeLogColumnRestore": "How to restore",
+  "writeLogProjectLabel": "Project: {project}",
+  "writeLogSnapshotExpiryNote": "git keeps the snapshot for about two weeks (gc.pruneExpire); it may be removed after that",
+  "writeLogRowA11yLabel": "{pathLabel} {path}, {fieldLabel} {field}, {resultLabel} {result}, {validationLabel} {validation}"
 }
