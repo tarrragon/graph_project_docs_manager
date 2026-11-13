@@ -229,6 +229,8 @@ const _frozenGraph = [
   'flowUnavailable',
   'bundleOrderUnavailable',
   'domainUcRelationUnavailable',
+  'requiredEdgeSkipped',
+  'closedBySkipped',
 ];
 
 const _frozenHistory = [
