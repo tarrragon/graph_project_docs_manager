@@ -21,6 +21,15 @@ final RegExp _logSinkTypedef = RegExp(
 int countLogSinkTypedefs(String source) =>
     _logSinkTypedef.allMatches(source).length;
 
+/// O4-2：只計實際呼叫；整行註解（`//`、`///`）不是呼叫點，故排除。
+final RegExp _devLogCall = RegExp(
+  r'^(?!\s*//).*\bdeveloper\.log\(',
+  multiLine: true,
+);
+
+int countDeveloperLogCalls(String source) =>
+    _devLogCall.allMatches(source).length;
+
 const String _fixtureDir = 'test/fixtures/observability/whitelist';
 const String _scratchDir = '.dart_tool/observability_whitelist_guard';
 const String _negativeMarker = 'NEGATIVE-LINE';
@@ -47,7 +56,26 @@ typedef WorkspaceLogSink = void Function(String message);
     });
   });
 
-  group('O4-3 既有事件 enum 值名稱凍結（test-design §7）', () {
+  group('O4-2 developer.log 單一出口', () {
+    test('掃描函式對直接呼叫樣本判紅、對註解樣本放行（正向對照）', () {
+      expect(countDeveloperLogCalls("  developer.log('x', name: 'a');"), 1);
+      expect(countDeveloperLogCalls('/// 不得直接 developer.log(x)'), 0);
+      expect(countDeveloperLogCalls('// developer.log( 註解'), 0);
+    });
+
+    test('lib/ 實掃：developer.log 呼叫只在共用 writer', () {
+      final hits = <String>[
+        for (final entity in Directory('lib').listSync(recursive: true))
+          if (entity is File &&
+              entity.path.endsWith('.dart') &&
+              countDeveloperLogCalls(entity.readAsStringSync()) > 0)
+            entity.path,
+      ];
+      expect(hits, ['lib/observability/log_writer.dart']);
+    });
+  });
+
+  group('O4-3既有事件 enum 值名稱凍結（test-design §7）', () {
     List<String> names(List<Enum> values) => [for (final v in values) v.name];
 
     test('WorkspaceLogEvent', () {

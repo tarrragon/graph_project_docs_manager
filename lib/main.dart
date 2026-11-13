@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:ui';
 
@@ -13,6 +12,7 @@ import 'components/components.dart' show BlockedState;
 import 'l10n/app_localizations.dart';
 import 'observability/log_enums.dart';
 import 'observability/log_file_port.dart';
+import 'observability/log_sink.dart';
 import 'observability/log_values.dart';
 import 'observability/log_writer.dart';
 import 'tokens/tokens.dart';
@@ -57,7 +57,7 @@ enum FatalInterceptor { framework, platform, zone }
 const String _presentationDomain = 'presentation';
 const String _interceptorField = 'interceptor';
 
-LogWriter _createDefaultFatalLogWriter() {
+LogWriter _createDefaultLogWriter() {
   final bundleId = resolveBundleIdFromExecutable(Platform.resolvedExecutable);
   final home = Platform.environment['HOME'];
   if (bundleId == null || home == null) return LogWriter(port: null);
@@ -65,11 +65,12 @@ LogWriter _createDefaultFatalLogWriter() {
   return LogWriter(port: IoLogFilePort(directory));
 }
 
-/// 全域攔截出口寫 structured log 所用的 writer。
+/// 生產啟動接線：把 [sharedLogWriter] 接上 [IoLogFilePort] 落檔。
 ///
-/// 標記 [visibleForTesting]：測試注入記憶體 port 的 writer 以斷言記錄內容。
-@visibleForTesting
-LogWriter fatalLogWriter = _createDefaultFatalLogWriter();
+/// 全 App（含全域攔截出口）共用 [sharedLogWriter] 這一個注入點，不另建全域。
+void installDefaultLogWriter() {
+  sharedLogWriter = _createDefaultLogWriter();
+}
 
 FatalInterceptor _interceptorOf(String source) => switch (source) {
   'FlutterError' => FatalInterceptor.framework,
@@ -86,21 +87,14 @@ FatalInterceptor _interceptorOf(String source) => switch (source) {
 /// Widget 拋錯或啟動整個 App。
 @visibleForTesting
 void reportFatalError(String source, Object error, StackTrace stack) {
-  developer.log(
-    '未攔截例外（$source）', // i18n-exempt: 開發者 debug log，非使用者可見文字
-    name: 'main',
-    level: 900,
-    error: error,
-    stackTrace: stack,
-  );
-  _writeFatalRecord(source, error);
+  _writeFatalRecord(source, error, stack);
   fatalErrorNotifier.value = error;
 }
 
 /// 寫 FR-07 記錄；任何失敗只輸出 stderr，不得影響畫面通知。
-void _writeFatalRecord(String source, Object error) {
+void _writeFatalRecord(String source, Object error, StackTrace stack) {
   try {
-    fatalLogWriter.log(
+    sharedLogWriter.log(
       _presentationDomain,
       FatalLogEvent.fatalUncaught,
       LogFields({
@@ -109,6 +103,7 @@ void _writeFatalRecord(String source, Object error) {
       level: LogLevel.error,
       source: ErrorSource.internal,
       error: error,
+      stackTrace: stack,
     );
   } on Object catch (e) {
     // i18n-exempt: 開發者 stderr 診斷，非使用者可見文字
@@ -147,6 +142,7 @@ void installGlobalErrorHandlers() {
 Duration? _noAutomaticRetry(int retryCount, Object error) => null;
 
 void main() {
+  installDefaultLogWriter();
   installGlobalErrorHandlers();
   // 非同步層：runApp 之外、未被上兩層捕捉到的 Future/Stream 例外
   // （例如未 await 的非同步呼叫）。
