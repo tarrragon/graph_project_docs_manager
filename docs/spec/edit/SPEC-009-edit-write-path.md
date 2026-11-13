@@ -4,8 +4,8 @@ title: "編輯能力：寫入路徑、寫入前閘門與寫入結果"
 status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
-updated: "2026-11-13"
-version: "1.13"
+updated: "2026-11-14"
+version: "1.14"
 owner: L54-main
 has_functional_requirements: true
 
@@ -77,7 +77,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - 比較用位元組內容本身，不用雜湊（〈2026-09-10〉A-2：單檔 KB 級、短生命週期比對）。
 - H 以 `git -C <工作區根> show HEAD:./<工作區相對路徑>` 取得。`./` 前綴使路徑相對於 `-C` 指定的目錄解析，工作區可以是 repo 的子目錄。stdout 以位元組讀取，不經字元解碼。結束碼 0 為 H 存在；結束碼 128 且 stderr 指出路徑不在 HEAD 中，為 H 不存在；其他情況為 H 無法判定。後兩者都走快照分支。
 - App 發出的 `git` 呼叫一律在環境中設 `LC_ALL=C`（比照 SPEC-008 FR-01 規則 1）。理由：上一條以 stderr 內容區分「H 不存在」與「H 無法判定」，而 `git` 的 stderr 會依 `LANG`／`LC_MESSAGES` 翻譯，不固定語系時判定結果會隨使用者的語系設定改變。
-- **`git` 子行程逾時 5 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：本規格發出的 `git` 子行程（步驟 3 的 `git show`、FR-02 的 `hash-object`）各自計時，自子行程啟動起算，超過 5 秒即終止該子行程。逾時歸入既有結果，不新增 `WriteResult` 型別：`git show` 逾時視同 H 無法判定，走快照分支；`hash-object` 逾時歸 `blocked(snapshotFailed)`（FR-02）。
+- **`git` 子行程逾時 5 秒**（用戶裁定 2026-11-11，`1.0.0-W3-676`）：本規格發出的 `git` 子行程（步驟 3 的 `git show`、FR-02 的 `hash-object`，以及工作區開啟時判定編輯模式的 `git rev-parse`）各自計時，自子行程啟動起算，超過 5 秒即終止該子行程。逾時歸入既有結果，不新增 `WriteResult` 型別：`git show` 逾時視同 H 無法判定，走快照分支；`hash-object` 逾時歸 `blocked(snapshotFailed)`（FR-02）；`git rev-parse` 逾時視同 `git` 無法執行，工作區進入唯讀降級（見下方〈唯讀降級不進本閘門〉）。
   - 理由：兩者都在步驟 4 之前，逾時時目標檔與暫存檔都還沒動，「`blocked` 時檔案未動」的保證不變。步驟 6 的 `rename` 一旦執行就無法撤回，逾時若落在其後，回報「檔案未動」就是錯的，因此不對整次寫入計時。
   - 5 秒的依據：兩個呼叫只讀 HEAD 或寫一個 blob，正常為毫秒級；與 SPEC-006 FR-11 規則 10 監看就緒逾時同值（同屬外部程序可能卡住）。誤判的代價是一次 `snapshotFailed`，使用者重送即可。
 - **本地檔案 IO 不設逾時**：步驟 1、4、5、6 與開始編輯時的讀取為本地檔案操作，不設逾時。比照 SPEC-005 §2.5（`dart:io` 無取消介面）與 SPEC-003 §3.6（重新整理不存在逾時結果）。檔案系統卡住時寫入停在「發出」之後、沒有受理，此為已知限制。
@@ -481,15 +481,30 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | `writeAccepted` | info | — | 路徑（多檔寫入時為路徑清單，1.1）、欄位名 |
 | `snapshotTaken` | info | — | 路徑、`blob_sha` |
 | `writeBlocked`（原因 `externallyModified`、`rewriteNotIsolated`） | warning | `gate_blocked` | 路徑、原因 |
-| `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼／`executableMissing`／`timedOut` 三擇一 |
-| `readIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
-| `writeIoFailed` | error | `platform_io` | 路徑、`osError.errorCode` |
+| `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼／`executableMissing`／`timedOut` 三擇一（判定見約束條件〈`snapshotFailed` 的三擇一〉） |
+| `readIoFailed` | error | `platform_io` | 路徑、操作、`osError.errorCode` |
+| `writeIoFailed` | error | `platform_io` | 路徑、操作、`osError.errorCode` |
 | `writeRolledBack`（1.1） | warning | — | 觸發失敗的路徑、已還原的路徑數 |
 | `writePartiallyWritten`（1.1） | error | `platform_io` | 觸發失敗的路徑、未還原的路徑清單、還原失敗的 `osError.errorCode` |
-| `validationCompleted` | `passed` 為 info；`failed`、`unavailable` 為 warning | `unavailable` 為 `external_process`；其餘無 | 路徑、節點 ID、狀態；`failed` 加新增問題數；`unavailable` 加 CLI 結束碼或原因 enum（FR-05，含 `timedOut`）二擇一 |
+| `validationCompleted` | `passed` 為 info；`failed`、`unavailable` 為 warning | 只有寫入後量測本身失敗的 `unavailable` 為 `external_process`；其餘無（見約束條件） | 路徑、節點 ID、狀態；`failed` 加新增問題數；`unavailable` 加 CLI 結束碼或原因 enum（FR-05，含 `timedOut`）二擇一 |
+| `editModeDetermined` | info | — | 編輯模式；唯讀時加唯讀原因：`notGit` 對應 FR-01「工作區不是 git repo」，`gitMissing` 對應 FR-01「`git` 無法執行」 |
+| `baselineMeasured` | `ready` 為 info；`unavailable` 為 warning | `unavailable` 為 `external_process`；`ready` 無 | 路徑、量測結果；`unavailable` 加 CLI 結束碼或原因 enum 二擇一 |
+| `baselineFailed` | warning | `internal` | 路徑 |
+| `validationJobFailed` | warning | `internal` | 路徑 |
+| `tempDeleteFailed` | warning | `platform_io` | 目標檔路徑、`osError.errorCode` |
 
 **約束條件**：
 
+- **由語意層記錄，下層不重記**（v1.14，主控依規格內部一致性定案）：`git` 子行程、驗證器子行程、檔案操作這些下層的失敗，不由下層各自記事件。下層把失敗細節（結束碼、`executableMissing`、`timedOut`、原因 enum、`osError.errorCode`）交回呼叫端，由上表的語意層事件放進 `fields`，一次失敗記一筆。理由：SPEC-010 FR-02 規定一次失敗只歸一類、只記一筆；上表已把下層細節放進語意層事件的欄位。下層失敗不屬於任何語意層事件時（例如暫存檔刪除失敗），由它自己記一筆，事件須列在上表。
+  - 判定編輯模式時的 `git rev-parse` 失敗（無法啟動、逾時、執行期例外），由 `editModeDetermined` 的唯讀原因 `gitMissing`（對應 FR-01「`git` 無法執行」）表達，不另記失敗事件。`rev-parse` 逾時的歸屬見 FR-01〈`git` 子行程逾時 5 秒〉。
+  - `git show HEAD` 失敗會走快照分支（FR-02），不記失敗事件；之後的 `hash-object` 若失敗，記 `writeBlocked(snapshotFailed)`。
+- **`snapshotFailed` 的三擇一**：`hash-object` 無法啟動記 `executableMissing`；逾時記 `timedOut`；行程已結束但結束碼非 0，或結束碼為 0 而輸出不是 40 字元小寫十六進位，記結束碼；等待結果時拋出執行期例外，記 `executableMissing`（與驗證器執行期例外歸入 `executableMissing` 一致）。
+- **readIoFailed 與 writeIoFailed 的分界**：讀取目標檔（開始編輯時，以及 rename 前重讀）記 `readIoFailed`；寫暫存檔、fsync、設定權限、rename 記 `writeIoFailed`。「操作」欄記 FR-05 `IoFailure` 的操作 enum，用來區分同一事件內的步驟，不承載內容。
+- **驗證的 `unavailable` 何時帶 `error_source`**：只有寫入後量測本身失敗時，`validationCompleted(unavailable)` 才帶 `external_process`。以下兩種情形不帶：
+  - baseline 為 `unavailable`，寫入後直接沿用 baseline 的原因、不再量測：這次失敗已由 `baselineMeasured(unavailable)` 記過一筆。
+  - 原因為 `baselineNotReady`：這是寫入與 baseline 的先後條件（FR-05），不是外部程序失敗。
+- `tempDeleteFailed` 發生在主要失敗之後，是另一個獨立失敗（會留下暫存殘檔），不是同一次失敗的第二筆記錄，所以由它自己記一筆。
+- `baselineFailed`、`validationJobFailed` 是 App 自身的未預期例外，歸 `internal`。
 - `rewriteNotIsolated` 歸 `gate_blocked`：它是本 domain 的前置閘門依規則拒絕繼續，不是未預期例外。
 - `failed` 不帶 `error_source`：驗證失敗是驗證器的判定結果，不是 App 的失敗。
 - 多檔寫入中途失敗（1.1）的記錄方式依結局分兩種，維持一次失敗只記一筆：
@@ -689,7 +704,7 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 讀取或寫入 IO 失敗 | `ioFailed` | 目標檔維持原內容，暫存檔已刪除 | 說明寫入失敗、檔案未改 |
 | 驗證失敗 | `written`＋`failed` | 不回滾 | 驗證狀態顯示新增問題數與取回說明（FR-02） |
 | 驗證器無法執行 | `written`＋`unavailable` | 不回滾 | 驗證狀態顯示無法驗證 |
-| `git` 子行程逾時（5 秒） | `git show`：無（走快照分支）；`hash-object`：`blocked(snapshotFailed)` | 終止子行程；`hash-object` 逾時時不寫入 | 同快照失敗 |
+| `git` 子行程逾時（5 秒） | `git show`：無（走快照分支）；`hash-object`：`blocked(snapshotFailed)`；`git rev-parse`：無（不進編輯） | 終止子行程；`hash-object` 逾時時不寫入；`git rev-parse` 逾時時工作區開啟即唯讀降級 | `hash-object` 同快照失敗；`git rev-parse` 為常駐降級徽章 |
 | 驗證子行程逾時（30 秒） | `written`＋`unavailable(timedOut)` | 終止子行程，不回滾 | 驗證狀態顯示無法驗證 |
 
 ## 設計約束
@@ -721,3 +736,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.11 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 第 3 項衍生）。主控查證 FR-09 漏列：8 份 UC 與 12 份 EVT 都帶 `source_proposal`，FR-09 只列了 SPEC。用戶裁定（2026-11-13，經主控 AUQ）UC、EVT 的 `source_proposal` 都在 1.1 開放，兩者都比照 SPEC 做多檔寫入。EVT 原裁為單檔寫入，前提是「PROP 沒有 EVT 的反向清單」；查證後 4 份 PROP 帶 `outputs.event_refs`，主控向用戶更正後重問，改裁為多檔寫入。<br>**FR-03**<br>- 〈多值欄位的加入與移除〉適用範圍補 UC、EVT。<br>- 〈多檔寫入〉適用範圍改為一般化寫法（正向 `source_proposal`、反向 `outputs` 子鍵，依 SPEC-007 FR-03 子鍵不列舉）。<br>- 新增〈反向清單鍵〉表：SPEC→`spec_refs`、UC→`usecase_refs`、EVT→`event_refs`。註明是依語料慣例的寫入對照，不是型別表資料（主控判定不構成 schema 副本）。<br>- **改變 v1.6 起的既有寫法**（主控依 Q1 與 SPEC-007 D6 推導）：移除時，從 `outputs` 所有清單子鍵刪除該 id 的全部出現，不再只刪 `spec_refs`；加入時只寫依型別決定的子鍵，任一子鍵已含該 id 就不列入寫入集合。理由：任何子鍵的清單項都建反向邊，只刪一處時邊仍存在。寫入集合仍最多兩個檔（仍是同一份 PROP）。<br>- 反向檔允許變更集合改為「`updated` 加上該次改寫的子鍵」；缺鍵保護只適用加入。<br>- 新增〈反向檔子鍵值的形狀〉表：清單、block 或跨多行、`null`、純量四種形狀各自算不算「含該 id」，以及移除、加入時怎麼處理；加入時目標子鍵為 `null` 或純量時回傳 `rewriteNotIsolated`。形狀表前寫明判定順序：先依〈寫入集合〉判定 PROP 列不列入，已列入才套形狀表的移除與加入欄。第 2 列直接引用值改寫規則表的「不改寫」列，不另列較窄清單。新增〈`outputs` 本身不是 map〉表（清單、純量字串、`null` 或缺鍵、數字或布林）。〈寫入集合〉的「含該 id」改依兩張表的「算不算含」欄判定，判定順序第 1 步同時指向兩張表，`outputs` 不是 map 時不以「沒有子鍵」推得不含。驗收補子鍵形狀與 `outputs` 非 map 的情形，各附 E2 對照。<br>- 新增〈已知後果〉：PROP-001、006、007 沒有 `event_refs`，EVT 加入這三份時回傳 `rewriteNotIsolated`。<br>- 〈寫入後驗證〉理由句改為依允許變更集合描述。<br>- 驗收補 UC、EVT 的寫入，以及跨子鍵移除、跨子鍵已含的情形；v1.6 的 `danglingRef` 修正驗收依 v1.10 操作單位改寫為先移除、再加入。<br>**FR-09**<br>- 補 UC、EVT 的 `source_proposal` 列。<br>- PROP `outputs` 列改寫：加入限三個子鍵、移除涵蓋任一子鍵；目標元件改為「每個子鍵一列」，不寫死清單數 |
 | 1.12 | 2026-11-13 | `1.0.0-W3-553.17.1`（執行期澄清，主控審）。553.17 實作時發現 SessionWriteList 只記錄 `written`，與 SPEC-001 §12「列出所有發出過的寫入，不只 `written`」不一致；用戶裁定 2026-11-13（經主控 AUQ）1.0 本版修，以 §12 為準。<br>**FR-08**<br>- 〈正常流程中的即時確認〉載體由「本 session 寫過的檔案與欄位清單」改為「本 session 發出過的所有寫入」：發出即成列（寫入中），結局（`written`、`blocked` 三種原因、`ioFailed`）回來時更新同一列；每列附所屬專案；驗證狀態只附在被受理的寫入上。補理由：退出編輯模式後未受理的失敗只在清單上看得到；清單屬 session，切換專案後保留。<br>- 驗收補兩條：各結局成列（含「未發出不成列」的對照）、列附所屬專案且切換專案後保留 |
 | 1.13 | 2026-11-13 | `1.1.0-W1-111.1`（1.1 規劃波 Step 5 測試設計回報的缺口，主控依規格內部一致性定案，不經用戶）。原文「寫入層仍收到時視同無變更」沒有寫回傳哪個 `WriteResult`，也沒有寫是否記 FR-07 事件。<br>**FR-03**<br>- 〈多值欄位的加入與移除（1.1）〉的「加入的值已在清單中」：判定點定在呼叫端，發出寫入之前，比照必填欄位送出空白。不發出寫入，所以沒有 `WriteResult`、不成列、不記 FR-07 事件。寫入層把「加入的值不在清單中」當作前置條件，debug 期以 assert 檢查，不新增 `WriteResult`。理由：FR-08 驗收已把這種情形歸為「呼叫端未發出的寫入」；FR-07 事件表本來就沒有必填空白的事件。<br>**FR-07**<br>- 約束條件補多檔寫入的記法（主控裁定）：`writeIssued` 時點沿用 1.0，路徑只記正向檔，整批被閘門擋下時不記；`writeAccepted` 整批一筆，路徑為清單；`snapshotTaken` 逐檔記；路徑清單用 SPEC-010 v1.2 新增的「工作區相對路徑清單」；已知限制：反向檔改了哪個子鍵不記錄。<br>- FR-03 該段補〈已知限制〉：release build 中 assert 不生效，寫入層被直接呼叫時會寫出重複值並成列，接受為殘餘風險（主控裁定） |
+| 1.14 | 2026-11-14 | `1.0.0-W3-553.12`（執行期澄清，主控依規格內部一致性定案，不經用戶）。553.12 派發前比對發現，553.2.3.4.1 遷移日誌時新增的 14 個 `EditLogEvent` 值不在本表上，其中幾個與本表事件語意重疊，會造成一次失敗記兩筆。主控裁定：(a) L-1 維持事件集合與本表相等，以補表處理；(b) 一次失敗由語意層記錄，下層不重記。<br>**FR-01**<br>- 〈`git` 子行程逾時 5 秒〉補 `git rev-parse`：逾時視同 `git` 無法執行，工作區進入唯讀降級。這是對齊現況的澄清，`edit_git_runner` 對 `rev-parse` 本來就套用同一個 5 秒逾時，原文漏列。<br>**FR-07**<br>- 事件表新增 `editModeDetermined`、`baselineMeasured`、`baselineFailed`、`validationJobFailed`、`tempDeleteFailed` 五列；`editModeDetermined` 的唯讀原因 `notGit`、`gitMissing` 分別對應 FR-01 的「工作區不是 git repo」「`git` 無法執行」。<br>- `readIoFailed`、`writeIoFailed` 的 fields 補「操作」（FR-05 `IoFailure` 的操作 enum）。<br>- `validationCompleted(unavailable)` 只在寫入後量測本身失敗時帶 `external_process`；沿用 baseline 原因與 `baselineNotReady` 不帶。<br>- 約束條件新增：由語意層記錄、下層不重記（含 `rev-parse` 與 `git show` 失敗的記法）；`snapshotFailed` 三擇一的判定（結束碼 0 但輸出不合法記結束碼，執行期例外記 `executableMissing`）；`readIoFailed` 與 `writeIoFailed` 的分界；`tempDeleteFailed` 是獨立失敗；`baselineFailed`、`validationJobFailed` 歸 `internal`。<br>- 下層事件 `gitLaunchFailed`、`gitTimedOut`、`gitRunFailed`、`validatorLaunchFailed`、`validatorTimedOut`、`validatorRunFailed` 移除；`ioFailed` 拆為 `readIoFailed`、`writeIoFailed`；`beginEditingReadFailed` 併入 `readIoFailed`；`rewriteNotIsolated` 事件改為 `writeBlocked(rewriteNotIsolated)`（warning） |

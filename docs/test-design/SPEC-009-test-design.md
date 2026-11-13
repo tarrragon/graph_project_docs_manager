@@ -4,10 +4,10 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.13"
+spec_version: "1.14"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
-updated: "2026-11-13"
+updated: "2026-11-14"
 ---
 
 # SPEC-009 Phase 2 紅燈測試規格
@@ -379,14 +379,14 @@ FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）
 
 | # | Given | When | Then |
 |---|---|---|---|
-| L-1 | `EditLogEvent` 的全部值 | 列出值名稱 | 集合恰等於 SPEC-009 FR-07 事件表的成員；表增減成員時本案紅燈 |
+| L-1 | `EditLogEvent` 的全部值 | 列出值名稱 | 集合恰等於 SPEC-009 FR-07 事件表中未標（1.1）的成員；表增減成員時本案紅燈。1.1 build 由 L-15 接手，比對全表 |
 | L-2 | W = M = H | 修正 | 依序記 `writeIssued`、`writeAccepted`，皆 info、無 `error_source`，fields 為路徑與欄位名 |
 | L-3 | W ≠ H | 修正 | 另記 `snapshotTaken`（info），`blob_sha` 為 40 字元小寫十六進位 |
 | L-4 | 外部已改；改寫不隔離 | 修正 | 各記一筆 `writeBlocked`，warning、`gate_blocked`，fields 帶原因 |
 | L-5 | `hash-object` 回傳 128；另一案無法啟動 | 修正 | 各記一筆 `writeBlocked`，error、`external_process`；前者帶結束碼 128、不帶 `executableMissing`，後者相反（結束碼、`executableMissing`、`timedOut` 三者恰一，`timedOut` 見 L-11）；沒有另外的失敗事件（一次失敗一筆） |
-| L-6 | 讀取失敗、寫入失敗各一，`osError.errorCode` 13 | 修正 | `readIoFailed` 或 `writeIoFailed`，error、`platform_io`，帶 errorCode 13 |
+| L-6 | 讀取失敗、寫入失敗各一，`osError.errorCode` 13 | 修正 | `readIoFailed` 或 `writeIoFailed`，error、`platform_io`，帶 errorCode 13 與操作 enum；rename 前重讀失敗記 `readIoFailed`，rename 失敗記 `writeIoFailed`（FR-07〈readIoFailed 與 writeIoFailed 的分界〉） |
 | L-7 | 寫入失敗且 `osError` 為 null | 修正 | `writeIoFailed` 不含 errorCode 欄位 |
-| L-8 | 驗證為 `passed`、`failed`（新增 1）、`unavailable`（結束碼 3） | 驗證完成 | `validationCompleted`：`passed` 為 info；`failed` 為 warning、無 `error_source`、帶新增問題數；`unavailable` 為 warning、`external_process`、帶結束碼 |
+| L-8 | 驗證為 `passed`、`failed`（新增 1）、`unavailable`（結束碼 3） | 驗證完成 | `validationCompleted`：`passed` 為 info；`failed` 為 warning、無 `error_source`、帶新增問題數；`unavailable` 為 warning、`external_process`、帶結束碼；沒有驗證器層的另一筆失敗事件（一次失敗一筆） |
 | L-9（守衛，C-2） | 欄位新值含 `secretMarker`；依序讓寫入以 `externallyModified`、`rewriteNotIsolated`、`snapshotFailed`、`ioFailed` 失敗 | 每案修正 | `RecordingEditLogSink` 的序列化文字、`WriteResult` 的 `toString()`、`blocked` 原因與 IO 失敗分類的 `toString()`，都不含 `secretMarker`。**正向對照**：同一新值寫入成功時，`FakeEditFilePort` 中目標檔內容含 `secretMarker`，證明標記確實送進了寫入層 |
 | L-10（守衛，C-2） | 讀取失敗的例外訊息含 `secretMarker` | 修正 | 日誌序列化文字與 `ioFailed` 的 `toString()` 不含標記 |
 | L-11 | `hash-object` 逾時（同 S-6） | 修正 | 一筆 `writeBlocked`，error、`external_process`，fields 帶 `timedOut`，不帶結束碼與 `executableMissing`；`show` 逾時（同 G-22）不記失敗事件，因為它走快照分支而非失敗 |
@@ -397,8 +397,15 @@ FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）
 | L-16（1.1） | `spec_sp_scalar` 與 `prop_std`；W ≠ H 的只有 PROP-A | 移除 PROP-A 得 `written` | 一筆 `writeAccepted`；一筆 `snapshotTaken`，路徑為 PROP-A、`blob_sha` 等於 `written` 中 PROP-A 的 SHA；SPEC-900 沒有 `snapshotTaken` |
 | L-17（1.1） | 同 W-20（加入 PROP-B，兩檔） | 修正得 `written` | `writeIssued` 恰一筆，路徑只記正向檔 SPEC-900；`writeAccepted` 恰一筆（不是兩筆），路徑欄為清單，列出 SPEC-900 與 PROP-B 兩個路徑。對照：單檔寫入（L-2）的 `writeAccepted` 路徑只有一個（SPEC-009 FR-07 多檔寫入整批記一筆） |
 | L-18（1.1，守衛） | 同 W-21 (b)（PROP-B 改寫不隔離，整批被閘門擋下） | 修正得 `blocked(rewriteNotIsolated)` | 恰一筆 `writeBlocked`（帶 PROP-B 路徑）；沒有 `writeIssued`、沒有 `writeAccepted`（整批被閘門擋下時不記 `writeIssued`，SPEC-009 FR-07）。正向對照：L-17 閘門通過時有一筆 `writeIssued` |
+| L-19 | 開啟工作區：可寫；`git` 無法啟動；`rev-parse` 逾時 | 判定模式 | 各一筆 `editModeDetermined`，info、無 `error_source`；可寫帶 `writable`，後兩案帶唯讀原因 `gitMissing`；三案都沒有 `git` 層的失敗事件 |
+| L-20 | baseline 量測：兩個驗證器皆可判定；`doc validate` 結束碼 3 | 開始編輯 | 前者 `baselineMeasured`（`ready`，info，無 `error_source`）；後者 `baselineMeasured`（`unavailable`，warning，`external_process`，帶結束碼 3），沒有驗證器層的另一筆失敗事件 |
+| L-21（守衛） | baseline 為 `unavailable`（結束碼 3）後寫入成功 | 驗證完成 | `validationCompleted(unavailable)` 不帶 `error_source`；整個流程帶 `external_process` 的事件恰一筆（L-20 那筆）。正向對照：baseline 為 `ready`、寫入後量測結束碼 3（L-8）時，`validationCompleted` 帶 `external_process` |
+| L-22 | baseline 未完成即寫入（同 V-19） | 驗證完成 | `validationCompleted(unavailable)`，原因 `baselineNotReady`，不帶 `error_source` |
+| L-23 | baseline 量測拋出未預期例外；另一案，驗證佇列工作拋出未預期例外 | 開始編輯／驗證完成 | 前者一筆 `baselineFailed`、後者一筆 `validationJobFailed`，皆 warning、`internal`，fields 為路徑 |
+| L-24 | rename 失敗後刪除暫存檔也失敗（`osError.errorCode` 13） | 修正 | 一筆 `writeIoFailed`（rename）與一筆 `tempDeleteFailed`（warning、`platform_io`、目標檔路徑、errorCode 13）。正向對照：暫存檔刪除成功時只有 `writeIoFailed` |
+| L-25 | `hash-object` 結束碼 0 但輸出不是合法 SHA；另一案，等待結果時拋出執行期例外 | 修正 | 各一筆 `writeBlocked(snapshotFailed)`：前者帶結束碼 0，後者帶 `executableMissing`（FR-07〈`snapshotFailed` 的三擇一〉） |
 
-FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。1.1 的多檔失敗記錄方式由 L-13、L-14 涵蓋，事件集合由 L-15 涵蓋，整批一筆由 L-16、L-17 涵蓋，整批被擋時不記 `writeIssued` 由 L-18 涵蓋；L-13～L-18 的測試檔為 `test/unit/edit/multi_file_write_log_test.dart`。
+FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。1.1 的多檔失敗記錄方式由 L-13、L-14 涵蓋，事件集合由 L-15 涵蓋，整批一筆由 L-16、L-17 涵蓋，整批被擋時不記 `writeIssued` 由 L-18 涵蓋；L-13～L-18 的測試檔為 `test/unit/edit/multi_file_write_log_test.dart`。SPEC-009 v1.14 新增的五個事件與「由語意層記錄、下層不重記」由 L-19～L-25 涵蓋，測試檔同 L-1～L-12。
 
 ### C session 寫入清單與事後追溯（FR-08）
 
@@ -742,3 +749,4 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 0.8 | 2026-11-13 | `1.1.0-W1-111.1`，對應 SPEC-009 v1.13（主控審查 0.7 回報的 NeedsContext 後裁定）：<br>- M-12 改為呼叫端案例：加入已在清單中的值時不發出寫入，沒有 `WriteResult`、零事件、不成列；新增 M-12b（守衛：寫入層直接收到時 debug assert 失敗，正向對照 M-1）。C-11、§4.2 FR-03 #17、§4.3 同步。<br>- 改寫既有案例（主控准許）：L-1 改為引用 FR-07 事件表、不寫數量，理由是成員數會隨 FR-07 增減，寫死的數字在 v1.6 已失效；F-4 改為「晚於當前 build 所屬 minor」，理由是原寫法「1.1 以後」在 1.1 build 與 F-8 矛盾，F-10 改標為其 1.1 實例。<br>- §6 第 7～9 項改為已解決 |
 | 0.9 | 2026-11-13 | `1.1.0-W1-111.1` 第一輪審查修正（主控清單第 1～12、20～23 項，追加 N-1～N-3、N-5）：<br>- W-12 依〈`outputs` 本身不是 map〉表改正加入案（含的變體不列入、`written`），新增 `[SPEC-1]` 變體；新增 W-3b（SPEC 缺 `spec_refs`，FR-03 #18）；W-6 改用 `prop_design_only`；W-4 補其他子鍵不變；W-21(d) 改注入後處理的檔；W-28 注入位置對齊 FR-03 步驟、計入無注入那次、補暫存檔斷言；IT-E7-1 正向對照補 `source_proposal: null`。<br>- M 群組前言分開寫移除與加入的設定；M-11 補後置空白；M-12 補呼叫端正向對照，與 C-11 一起移到畫面狀態層；M-12b 補純量樣本。<br>- E-DEP-2 補 history 樣本；L-15 刪數字括號；新增 L-17（多檔整批各一筆 `writeIssued`、`writeAccepted`）、V-3b（封閉型別含 `partiallyWritten`）。<br>- FR-08 驗收編號對齊 v1.12 條目順序；§4.4 改引用 domain-map §3，不寫條數；§6 第 7 項不留事件數字；§1.6.1 用途欄對齊案例。 |
 | 0.10 | 2026-11-13 | `1.1.0-W1-111.1` 第二輪審查修正：V-3b 改為引用 FR-05 `WriteResult` 表（規則 10）；W-21(d) 注入點改為 W-20 序列中步驟 4 較晚的檔，不寫死檔名；§1.4 多檔注入補步驟 1 讀取與還原時的 fsync；§1.6.1 用途欄補齊；§5 將 M-12、C-11 改歸畫面狀態層；M-12b 純量樣本的正向對照寫明 M-5；L-17 對齊 FR-07（`writeIssued` 只記正向檔、`writeAccepted` 路徑為清單），新增 L-18（整批被擋時無 `writeIssued`、只有 `writeBlocked`）。 |
+| 0.11 | 2026-11-14 | `1.0.0-W3-553.12`，對應 SPEC-009 v1.14（主控依規格內部一致性定案）：<br>- L-1 判準不改（集合相等），寫明比對對象是 FR-07 表中未標（1.1）的成員，1.1 build 由 L-15 接手；理由是 FR-07 表含 1.1 列，1.0 build 不含這些值。<br>- L-6 補操作 enum 與 rename 前重讀、rename 兩步的分界；L-8 補「沒有驗證器層的另一筆失敗事件」。<br>- 新增 L-19～L-25：`editModeDetermined`（含 `rev-parse` 失敗不另記）、`baselineMeasured`、baseline 失敗不在寫入後重記（守衛，附正向對照）、`baselineNotReady` 不帶 `error_source`、`baselineFailed` 與 `validationJobFailed`、`tempDeleteFailed`、`snapshotFailed` 三擇一的邊界。 |
