@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-13"
-version: "1.10"
+version: "1.11"
 owner: L54-main
 has_functional_requirements: true
 
@@ -169,7 +169,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 
 `1.1.0-W1-111`（v1.10）。F1–F4 四項格式選擇由用戶裁定（2026-11-13，經主控 AUQ），紀錄見本節末〈裁定紀錄〉。
 
-**適用範圍**：FR-09 中元件為 chips 或核取清單、「自」為 1.1 的欄位（SPEC-004 4.52 `ReferenceChips`、4.53 `AppCheckboxGroup`）。provenance 的正向檔（SPEC `source_proposal`）也適用本節，其反向檔另依〈多檔寫入（1.1）〉。
+**適用範圍**：FR-09 中元件為 chips 或核取清單、「自」為 1.1 的欄位（SPEC-004 4.52 `ReferenceChips`、4.53 `AppCheckboxGroup`）。provenance 的正向欄位（SPEC、UC、EVT 的 `source_proposal`，v1.11）也適用本節，其反向檔另依〈多檔寫入（1.1）〉。
 
 **操作單位**：一次寫入只做一個操作——加入一個值，或移除一個值。改成另一個值是兩次寫入（先移除、再加入，或反過來），各自經過閘門、各自成列（FR-08）。理由：畫面上的操作就是這兩種（SPEC-004 4.52、4.53），一次寫入對應一次操作，寫入清單的列與使用者的動作一一對應；多檔寫入的寫入集合也因此最多兩個檔（正向檔與一個反向檔）。
 
@@ -206,20 +206,64 @@ depends_on_domains: [workspace, schema, corpus, observability]
 
 用戶裁定 2026-11-12（`1.1.0-W1-111`，選項 A）。
 
-**適用範圍**：文件節點的邊中，只有 provenance 有反向欄位：SPEC 的 `source_proposal`（正向）對應 PROP 的 `outputs.spec_refs`（反向）。blood、spawn 也有反向欄位，但兩者都是 ticket 欄位，屬於 1.2，經 ticket CLI 寫入，不走本節。其餘 1.1 邊欄位沒有反向欄位，照單檔寫入處理。
+**適用範圍**：文件節點的邊中，只有 provenance 有反向欄位：正向欄位是 `source_proposal`，反向欄位是 PROP 的 `outputs`（型別表 `forward_field`／`reverse_field`）。`outputs` 是 map，每個子鍵的清單項都是反向引用值（SPEC-007 FR-03，子鍵不列舉）。blood、spawn 也有反向欄位，但兩者都是 ticket 欄位，屬於 1.2，經 ticket CLI 寫入，不走本節。其餘 1.1 邊欄位沒有反向欄位，照單檔寫入處理。
 
-**寫入集合**：對 SPEC `source_proposal` 加入或移除一個 PROP 的一次寫入（操作單位見〈多值欄位的加入與移除（1.1）〉，v1.10），寫入集合包含：
+**反向清單鍵**（v1.11）：寫入時改寫 `outputs` 的哪一個子鍵，依正向檔的型別決定：
 
-- SPEC 本身（正向檔），值依〈多值欄位的加入與移除（1.1）〉改寫。
-- 被加入或被移除的那一個 PROP（反向檔）：移除時從其 `outputs.spec_refs` 刪除該 SPEC id 的全部出現，加入時把該 SPEC id 附加到清單末尾。
+| 正向檔型別 | 反向清單鍵 | 寫入方式 |
+|---|---|---|
+| SPEC | `outputs.spec_refs` | 多檔寫入（v1.6） |
+| UC | `outputs.usecase_refs` | 多檔寫入（v1.11，用戶裁定 2026-11-13，經主控 AUQ） |
+| EVT | `outputs.event_refs` | 多檔寫入（v1.11，用戶裁定 2026-11-13，經主控 AUQ；前提更正後重問的裁定） |
 
-例如：加入 PROP-B，寫入集合是 SPEC、PROP-B 兩個檔；移除 PROP-A，寫入集合是 SPEC、PROP-A 兩個檔。把 PROP-A 改成 PROP-B 是兩次寫入，各自兩個檔（v1.9 以前把它寫成一次三個檔的寫入，v1.10 改為兩次，理由是畫面上沒有「取代」這個操作，SPEC-004 4.52）。反向檔的清單如果本來就和改寫後的正向值一致，該檔不列入寫入集合，寫入集合只剩正向檔，照單檔寫入處理：加入端已含該 SPEC id（不論出現幾次），或移出端完全不含該 SPEC id。移出端含該 id 時一律移除全部出現，理由是只移除一筆時，剩下的那筆仍指向已不再指向它的 SPEC，正反向不一致會殘留下來（Q1，PM 依規格內部一致性定案，`1.1.0-W1-111`）。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+型別表沒有列舉 `outputs` 的子鍵，本表是依語料慣例寫的寫入對照，不是型別表資料（主控判定不構成 CLAUDE.md §7 的 schema 副本，2026-11-13）。本表只決定加入時寫進哪一個子鍵；邊是否存在仍由 SPEC-007 依全部子鍵判定，所以移除時不限本表的子鍵，見下方〈寫入集合〉。加入時反向檔沒有對應子鍵，不新增鍵，見下方〈反向檔的允許變更集合〉。
 
-**反向檔的允許變更集合**：`outputs.spec_refs` 與 `updated` 兩個鍵（`updated` 規則同上方〈允許變更集合〉）。
+**寫入集合**：對正向檔的 `source_proposal` 加入或移除一個 PROP 的一次寫入（操作單位見〈多值欄位的加入與移除（1.1）〉，v1.10），寫入集合包含：
 
-- 只改寫清單的值範圍。`outputs` 或 `spec_refs` 鍵不存在時不新增鍵，整批回傳 `blocked(rewriteNotIsolated)`，理由同「`updated` 缺席時不新增」。
-- 兩道改寫隔離檢查對反向檔同樣適用。
-- PROP `outputs` 其他兩個清單（`usecase_refs`、`ticket_refs`）與表格列編輯仍自 1.4 起開放（FR-09）。
+- 正向檔本身，值依〈多值欄位的加入與移除（1.1）〉改寫。
+- 被加入或被移除的那一個 PROP（反向檔）：
+  - 移除時，從 `outputs` 每一個值為清單的子鍵刪除正向檔 id 的全部出現，不限〈反向清單鍵〉表的子鍵（v1.11）。理由：依 SPEC-007 FR-03 與 D6，任何子鍵的清單項都會建出反向邊（例：`design_refs`）；只刪一個子鍵時，邊仍由其他子鍵保留，正反向不一致殘留，與 Q1 同理。值不是清單的子鍵不建邊（SPEC-007 歸 `malformedRef`），不改寫。
+  - 加入時，只把正向檔 id 附加到〈反向清單鍵〉表該型別的子鍵末尾。
+  - 以上兩條以 `outputs` 是 map 為前提；`outputs` 不是 map 時，見下方〈`outputs` 本身不是 map〉。
+
+一次寫入仍只動一個 PROP，所以寫入集合最多兩個檔；移除時改寫多個子鍵，都在同一個反向檔內。
+
+**反向檔子鍵值的形狀**（v1.11）：「含該 id」與改寫都依子鍵值的形狀判定，與 SPEC-007 FR-03 是否建邊一致。
+
+**判定順序**：
+1. 先依〈寫入集合〉判定這份 PROP 列不列入。「含該 id」依 `outputs` 的形狀查表：`outputs` 是 map 時依下表第二欄逐子鍵判定；不是 map 時依下方〈`outputs` 本身不是 map〉表的第二欄。
+2. PROP 已列入時，才依 `outputs` 的形狀查表改寫：是 map 時依下表的「移除時」「加入時」欄；不是 map 時依〈`outputs` 本身不是 map〉表的同名欄。
+
+例：加入時目標子鍵是 block 序列且已含該 id，依第 1 步不列入，只寫正向檔，不會走到「加入時」欄的擋下。
+
+| 子鍵值 | 算不算「含該 id」 | 移除時（PROP 已列入） | 加入時（PROP 已列入；該子鍵是〈反向清單鍵〉表的子鍵） |
+|---|---|---|---|
+| flow 序列、空序列（不屬下一列） | 清單項等於該 id 即算 | 依〈多值欄位的加入與移除（1.1）〉「其他欄位」列改寫（剩零項得 `[]`） | 附加於末尾 |
+| 值改寫規則表「不改寫」列的形狀（〈多值欄位的加入與移除（1.1）〉，含 block 序列、anchor、alias、跨多行的 flow 序列、項為非純量） | 解析結果中有清單項等於該 id 即算 | 含該 id 的子鍵屬此列時，整批回傳 `blocked(rewriteNotIsolated)` | 整批回傳 `blocked(rewriteNotIsolated)` |
+| `null` | 不算：沒有項 | 不改 | 整批回傳 `blocked(rewriteNotIsolated)` |
+| 純量（含等於該 id 的字串） | 不算：SPEC-007 把非清單子鍵歸 `malformedRef`，不建邊 | 不改 | 整批回傳 `blocked(rewriteNotIsolated)` |
+
+加入時目標子鍵的值是 `null` 或純量時不改寫。理由：F1–F3 的純量與 `null` 寫法只裁定了正向欄位 `source_proposal`，反向清單的寫法沒有裁定，所以不自行把它轉成清單。
+
+**`outputs` 本身不是 map**（語料目前沒有這種寫法，2026-11-13 查證）。依 SPEC-007 FR-03〈抽取〉判定建不建邊：
+
+| `outputs` 的值 | 算不算「含該 id」 | 移除時（PROP 已列入） | 加入時（PROP 已列入） |
+|---|---|---|---|
+| 清單（例 `[SPEC-1]`） | 清單項等於該 id 即算：每一項都是反向引用值，會建邊 | 整批回傳 `blocked(rewriteNotIsolated)`：本規格只改寫 map 的子鍵，不改寫 `outputs` 本身 | 整批回傳 `blocked(rewriteNotIsolated)`：沒有子鍵可寫 |
+| 純量字串 | 等於該 id 即算：純量欄位是一個引用值 | 同上 | 同上 |
+| `null`、缺鍵 | 不算 | 不列入（〈寫入集合〉移出端不含） | 整批回傳 `blocked(rewriteNotIsolated)`：不新增鍵 |
+| 數字、布林 | 不算：SPEC-007 歸形狀不合法，不建邊 | 不列入 | 整批回傳 `blocked(rewriteNotIsolated)`：沒有子鍵可寫 |
+
+**已知後果**：PROP-001、PROP-006、PROP-007 沒有 `outputs.event_refs`（2026-11-13 查證）。對 EVT 加入這三份 PROP 時，整批回傳 `blocked(rewriteNotIsolated)`，使用者需先以外部編輯器在該 PROP 補上 `event_refs: []`。UC、SPEC 對缺 `usecase_refs`、`spec_refs` 的 PROP 同理。
+
+以下例子以 SPEC 為正向檔，UC、EVT 相同，只把加入時的子鍵換成 `usecase_refs`、`event_refs`。例如：加入 PROP-B，寫入集合是 SPEC、PROP-B 兩個檔；移除 PROP-A，寫入集合是 SPEC、PROP-A 兩個檔。把 PROP-A 改成 PROP-B 是兩次寫入，各自兩個檔（v1.9 以前把它寫成一次三個檔的寫入，v1.10 改為兩次，理由是畫面上沒有「取代」這個操作，SPEC-004 4.52）。反向檔的清單如果本來就和改寫後的正向值一致，該檔不列入寫入集合，寫入集合只剩正向檔，照單檔寫入處理：加入端的 `outputs` 已含該 SPEC id，或移出端的 `outputs` 不含該 SPEC id（不論出現幾次、在哪個子鍵，v1.11）。「含」依下方〈反向檔子鍵值的形狀〉與〈`outputs` 本身不是 map〉兩張表的「算不算含該 id」欄判定，不只看子鍵：例如 `outputs: [<該 SPEC>]` 沒有子鍵，但算含。移出端含該 id 時一律移除全部出現，理由是只移除一筆時，剩下的那筆仍指向已不再指向它的 SPEC，正反向不一致會殘留下來（Q1，PM 依規格內部一致性定案，`1.1.0-W1-111`）。反向檔的 id 在 Corpus 的原始節點中查不到對應檔案時，依方向處理：移出端查不到就略過，因為沒有反向清單可改，這正是修正 `danglingRef` 的情況；加入端查不到則整批回傳 `blocked(rewriteNotIsolated)`，因為新的正向值會成為斷邊。
+
+**反向檔的允許變更集合**：`updated`（規則同上方〈允許變更集合〉），加上該次改寫的 `outputs` 子鍵——加入時是〈反向清單鍵〉表的那一個子鍵，移除時是含正向檔 id 的每一個子鍵（v1.11）。
+
+- 只改寫各清單的值範圍。加入時 `outputs` 或該反向清單鍵不存在，不新增鍵，整批回傳 `blocked(rewriteNotIsolated)`，理由同「`updated` 缺席時不新增」。移除時只改寫含該 id 的子鍵，不會遇到缺鍵。
+- 要改寫的子鍵值落在〈多值欄位的加入與移除（1.1）〉值改寫規則表的不改寫列（block 序列、跨多行等）時，整批回傳 `blocked(rewriteNotIsolated)`。
+- 兩道改寫隔離檢查對反向檔同樣適用；位元組層比對的範圍是全部被改寫子鍵的值範圍與 `updated`。
+- 除了上述移除，`outputs` 其餘子鍵（如 `ticket_refs`）的改寫，以及 `outputs` 的表格列編輯，仍自 1.4 起開放（FR-09）。
 
 **反向檔的 M**：使用者只對正向檔開始編輯，反向檔沒有「開始編輯」時點。反向檔的 M 取送出當下、步驟 1 讀到的內容。
 
@@ -247,7 +291,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 **寫入後驗證**：FR-05 的驗證範圍與 baseline 只套用正向檔。反向檔不跑 baseline，也不跑寫入後驗證。
 
 - 理由：baseline 必須在寫入前對該檔跑完，對反向檔跑 baseline 等於讓每次邊寫入都多等一輪 CLI（每個檔最長 30 秒）。
-- 反向檔的改寫由兩道隔離檢查把關，只動一個清單值與 `updated`。
+- 反向檔的改寫由兩道隔離檢查把關，只動〈反向檔的允許變更集合〉內的子鍵值與 `updated`：加入時是一個子鍵，移除時是含該 id 的每一個子鍵（v1.11）。
 - 正反向一致由整批判定與回復保證，不靠驗證器：`doc validate` 不檢查 provenance 的反向一致性（`.claude/skills/doc/doc_system/commands/validate.py` 不讀 `outputs`、`source_proposal`，2026-11-12 查證）。整批寫入只會有三種結局：全部落檔、全部未動、`partiallyWritten`。前兩種正反向一致，第三種以結果型別呈現，所以不一致不會只寫進日誌。
 
 **M 的更新**：受理為 `written` 時，正向檔的 M 依 FR-01 更新。反向檔不在編輯中，沒有 M 可更新。
@@ -271,14 +315,24 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 多值欄位（v1.10，F4）：正向檔 `[a, v, v]` 移除 v 得純量 `a`（`source_proposal`）；其他欄位 `[a, v, v]` 移除 v 得 `[a]`
 - [ ] 多值欄位（v1.10）：值為 block 序列或跨多行的 flow 序列時，回傳 `rewriteNotIsolated`，目標檔不變
 - [ ] 多值欄位（v1.10）：加入已在清單中的值時不改檔案、不成列
-- [ ] 多檔寫入（v1.6）：反向檔缺 `outputs.spec_refs` 鍵時，整批回傳 `rewriteNotIsolated`，所有檔不變
+- [ ] 多檔寫入（v1.6；v1.11 限加入）：加入時反向檔缺 `outputs.spec_refs` 鍵，整批回傳 `rewriteNotIsolated`，所有檔不變
 - [ ] 多檔寫入（v1.6）：任一檔在步驟 1～4 不通過時，所有目標檔不變，同目錄不殘留暫存檔
 - [ ] 多檔寫入（v1.6）：第 2 個檔 `rename` 失敗（以注入模擬）且還原成功時，回傳原失敗結果，已 `rename` 的檔還原為寫入前的位元組
 - [ ] 多檔寫入（v1.6）：還原也失敗（以注入模擬）時，回傳 `partiallyWritten`，攜帶未還原的路徑清單與各檔的取回說明
 - [ ] 多檔寫入（v1.6）：`rename` 順序為反向檔在前、正向檔最後
-- [ ] 多檔寫入（v1.6）：修正 `danglingRef` 的 `source_proposal`（舊值指向不存在的 PROP）時，只寫 SPEC 與新 PROP 兩個檔
+- [ ] 多檔寫入（v1.6；v1.11 依 v1.10 操作單位改寫）：修正 `danglingRef` 的 `source_proposal`（舊值指向不存在的 PROP）分兩次寫入。先移除舊值：移出端查不到，只寫 SPEC 一個檔。再加入新 PROP：寫 SPEC 與新 PROP 兩個檔
 - [ ] 多檔寫入（v1.6）：新值指向不存在的 PROP 時，整批回傳 `rewriteNotIsolated`，所有檔不變
-
+- [ ] 多檔寫入（v1.11）：對 UC `source_proposal` 加入 PROP-B 後，PROP-B 的 `outputs.usecase_refs` 含該 UC，`outputs.spec_refs` 與其他子鍵逐位元組不變；移除 PROP-A 後，PROP-A 的 `outputs.usecase_refs` 不含該 UC
+- [ ] 多檔寫入（v1.11）：UC 加入時反向檔缺 `outputs.usecase_refs` 鍵，整批回傳 `rewriteNotIsolated`，所有檔不變（E2 對照：同一 PROP 有 `spec_refs` 不影響判定）
+- [ ] 多檔寫入（v1.11）：EVT `source_proposal` 加入 PROP-B 後，PROP-B 的 `outputs.event_refs` 含該 EVT；PROP-B 缺 `event_refs` 鍵時整批回傳 `rewriteNotIsolated`
+- [ ] 多檔寫入（v1.11）：移除 PROP-A 時，PROP-A 的 `outputs.spec_refs` 與 `outputs.design_refs` 都列出該 SPEC，寫入後兩個子鍵都不含該 SPEC；寫入集合仍為 SPEC、PROP-A 兩個檔；重建圖後 SPEC→PROP-A 邊不存在（E2 對照：只刪 `spec_refs` 時邊仍存在）
+- [ ] 多檔寫入（v1.11）：加入 PROP-B 時，PROP-B 的 `outputs.design_refs` 已列出該 SPEC，PROP-B 不列入寫入集合，只寫 SPEC 一個檔，`spec_refs` 不變
+- [ ] 子鍵形狀（v1.11）：加入 PROP-B 時，PROP-B 的 `outputs.spec_refs` 為 `null`，整批回傳 `rewriteNotIsolated`；為純量 `SPEC-X`（不等於該 SPEC）時同樣回傳 `rewriteNotIsolated`。所有檔不變（E2 對照：`spec_refs: []` 時加入成功，得 `[<該 SPEC>]`）
+- [ ] 子鍵形狀（v1.11）：PROP-A 的 `outputs.spec_refs` 為純量、且等於該 SPEC id，其他子鍵不含該 id。移除 PROP-A 時，PROP-A 不列入寫入集合，只寫 SPEC；加入 PROP-A 時，因目標子鍵是純量，整批回傳 `rewriteNotIsolated`（E2 對照：`spec_refs: [<該 SPEC>]` 時，移除會列入並改寫為 `[]`）
+- [ ] 子鍵形狀（v1.11）：移除 PROP-A 時，含該 id 的子鍵是 block 序列，整批回傳 `rewriteNotIsolated`，所有檔不變（E2 對照：同一內容改寫為 flow 序列時移除成功）
+- [ ] 子鍵形狀（v1.11）：加入 PROP-B 時，目標子鍵是 block 序列且不含該 SPEC，PROP-B 列入，整批回傳 `rewriteNotIsolated`，所有檔不變（E2 對照：已含該 SPEC 時不列入，只寫 SPEC，見下一條）
+- [ ] 子鍵形狀（v1.11）：加入 PROP-B 時，目標子鍵是 block 序列且已含該 SPEC，PROP-B 不列入，只寫 SPEC（判定順序：先〈寫入集合〉、後形狀表）
+- [ ] `outputs` 非 map（v1.11）：PROP-A 的 `outputs` 為清單 `[<該 SPEC>]` 時，移除 PROP-A 回傳 `rewriteNotIsolated`；`outputs: null` 時，移除只寫 SPEC，加入回傳 `rewriteNotIsolated`
 ---
 
 ### FR-04: 路徑界內型別
@@ -533,7 +587,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | PROP | target_version | 可搜尋下拉（todolist 版本） | 可搜尋下拉 | 1.0 |
 | PROP | proposed_by | 單行 | 單行 | 1.0 |
 | PROP | proposed_date、confirmed_date | 唯讀（status 轉 confirmed 不連動填寫：一次寫入只改目標欄位，FR-03） | 唯讀 | — |
-| PROP | outputs | 表格列編輯（三個清單各為 chips） | — | 1.4；其中 `spec_refs` 的值改寫提前到 1.1，只作為 SPEC `source_proposal` 多檔寫入的反向檔（FR-03〈多檔寫入（1.1）〉），不提供直接編輯 |
+| PROP | outputs | 表格列編輯（每個子鍵一列，各為 chips；子鍵不列舉，SPEC-007 FR-03，語料有 `spec_refs`、`usecase_refs`、`event_refs`、`ticket_refs`） | — | 1.4；其中 `spec_refs`、`usecase_refs`、`event_refs`（後兩者 v1.11）的加入，以及任一子鍵中正向檔 id 的移除，提前到 1.1，只作為 SPEC、UC、EVT `source_proposal` 多檔寫入的反向檔（FR-03〈多檔寫入（1.1）〉〈反向清單鍵〉），不提供直接編輯 |
 | PROP | related_proposals | chips 加搜尋 | — | 1.1 |
 | PROP | supersedes | 可搜尋下拉（可空） | — | 1.1 |
 | SPEC | domain | 可搜尋下拉（已宣告 domain） | 可搜尋下拉 | 1.0 |
@@ -545,6 +599,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | UC | primary_actor | 單行 | 單行 | 1.0 |
 | UC | secondary_actors | 字串清單 | — | 1.4 |
 | UC | platform、extension_status、runtime_surface | 單選鈕組 | 單行 | 1.0 |
+| UC | source_proposal | chips 加搜尋（同 SPEC 列） | — | 1.1（v1.11 補列；多檔寫入，同批改寫 PROP `outputs.usecase_refs`，FR-03〈多檔寫入（1.1）〉；用戶裁定 2026-11-13，經主控 AUQ） |
 | UC | related_specs、related_usecases、ticket_refs | chips 加搜尋 | — | 1.1 |
 | UC | flow 區塊 | 表格列編輯 | — | 1.4 |
 | DomainBundle | domain | 唯讀（改名屬檔案層級操作） | 唯讀 | 1.5 起經更名 |
@@ -552,6 +607,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | DomainBundle | path_patterns | 字串清單 | — | 1.4 |
 | EVT | name、canonical_name | 單行 | 單行 | 1.0 |
 | EVT | category | 單選鈕組 | 單選鈕組 | 1.0 |
+| EVT | source_proposal | chips 加搜尋（同 SPEC 列） | — | 1.1（v1.11 補列；多檔寫入，同批改寫 PROP `outputs.event_refs`，FR-03〈多檔寫入（1.1）〉；用戶裁定 2026-11-13，經主控 AUQ） |
 | EVT | producers、consumers | 核取清單 | — | 1.1 |
 | EVT | payload | 多行 | 多行 | 1.0 |
 
@@ -653,3 +709,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.8 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 2.5）：FR-03〈多檔寫入（1.1）〉〈寫入集合〉用詞修正，「在圖上查不到」改為「在 Corpus 的原始節點中查不到」。理由：Graph 與 Edit 同在 L3，讀 Graph 會新增同層依賴；Corpus 已在 Edit 的依賴內（`docs/spec/edit/domain-map.md` §3） |
 | 1.9 | 2026-11-12 | `1.1.0-W1-111`（1.1 規劃波 Step 3 的 Q1、Q2）。<br>**FR-03**<br>- Q1（PM 依規格內部一致性定案）：〈寫入集合〉移出時移除該 SPEC id 的全部出現；加入端已含該 id（不論出現幾次）就不列入寫入集合。<br>**FR-08**<br>- Q2（用戶裁定 2026-11-12，經主控 AUQ）：新增〈多檔寫入的列法（1.1）〉。整批一列，列內附各檔路徑與取回說明，驗證狀態只顯示正向檔的；`partiallyWritten` 時附未還原的檔。畫面形式由 SPEC-004 4.51 承接 |
 | 1.10 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 前置，主控審 SPEC-004 1.148 時指出的跨規格缺口）。<br>**FR-03**<br>- 新增〈多值欄位的加入與移除（1.1）〉：操作單位為一次加入或一次移除；值的改寫規則表（flow 序列附加與刪除、純量轉清單、移除到剩一項或零項）；加入已存在的值不寫入；不支援的寫法回傳 `rewriteNotIsolated`。F1–F4 四項格式選擇由用戶裁定（2026-11-13，經主控 AUQ）：F1 `null` 加入寫純量、F2 剩一項寫回純量、F3 剩零項寫 `null`、F4 正向檔重複值移除全部出現。<br>- 〈多檔寫入（1.1）〉〈寫入集合〉改為「加入、移除各一次」：寫入集合最多兩個檔；A 改 B 為兩次寫入。<br>- 驗收：原「由 PROP-A 改為 PROP-B」一條改寫，另補多值欄位各條（含 F1–F4 各一條的具體值）。<br>**FR-09**<br>- `source_proposal` 列改為 chips 加搜尋（`forward_cardinality` 為 many） |
+| 1.11 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 第 3 項衍生）。主控查證 FR-09 漏列：8 份 UC 與 12 份 EVT 都帶 `source_proposal`，FR-09 只列了 SPEC。用戶裁定（2026-11-13，經主控 AUQ）UC、EVT 的 `source_proposal` 都在 1.1 開放，兩者都比照 SPEC 做多檔寫入。EVT 原裁為單檔寫入，前提是「PROP 沒有 EVT 的反向清單」；查證後 4 份 PROP 帶 `outputs.event_refs`，主控向用戶更正後重問，改裁為多檔寫入。<br>**FR-03**<br>- 〈多值欄位的加入與移除〉適用範圍補 UC、EVT。<br>- 〈多檔寫入〉適用範圍改為一般化寫法（正向 `source_proposal`、反向 `outputs` 子鍵，依 SPEC-007 FR-03 子鍵不列舉）。<br>- 新增〈反向清單鍵〉表：SPEC→`spec_refs`、UC→`usecase_refs`、EVT→`event_refs`。註明是依語料慣例的寫入對照，不是型別表資料（主控判定不構成 schema 副本）。<br>- **改變 v1.6 起的既有寫法**（主控依 Q1 與 SPEC-007 D6 推導）：移除時，從 `outputs` 所有清單子鍵刪除該 id 的全部出現，不再只刪 `spec_refs`；加入時只寫依型別決定的子鍵，任一子鍵已含該 id 就不列入寫入集合。理由：任何子鍵的清單項都建反向邊，只刪一處時邊仍存在。寫入集合仍最多兩個檔（仍是同一份 PROP）。<br>- 反向檔允許變更集合改為「`updated` 加上該次改寫的子鍵」；缺鍵保護只適用加入。<br>- 新增〈反向檔子鍵值的形狀〉表：清單、block 或跨多行、`null`、純量四種形狀各自算不算「含該 id」，以及移除、加入時怎麼處理；加入時目標子鍵為 `null` 或純量時回傳 `rewriteNotIsolated`。形狀表前寫明判定順序：先依〈寫入集合〉判定 PROP 列不列入，已列入才套形狀表的移除與加入欄。第 2 列直接引用值改寫規則表的「不改寫」列，不另列較窄清單。新增〈`outputs` 本身不是 map〉表（清單、純量字串、`null` 或缺鍵、數字或布林）。〈寫入集合〉的「含該 id」改依兩張表的「算不算含」欄判定，判定順序第 1 步同時指向兩張表，`outputs` 不是 map 時不以「沒有子鍵」推得不含。驗收補子鍵形狀與 `outputs` 非 map 的情形，各附 E2 對照。<br>- 新增〈已知後果〉：PROP-001、006、007 沒有 `event_refs`，EVT 加入這三份時回傳 `rewriteNotIsolated`。<br>- 〈寫入後驗證〉理由句改為依允許變更集合描述。<br>- 驗收補 UC、EVT 的寫入，以及跨子鍵移除、跨子鍵已含的情形；v1.6 的 `danglingRef` 修正驗收依 v1.10 操作單位改寫為先移除、再加入。<br>**FR-09**<br>- 補 UC、EVT 的 `source_proposal` 列。<br>- PROP `outputs` 列改寫：加入限三個子鍵、移除涵蓋任一子鍵；目標元件改為「每個子鍵一列」，不寫死清單數 |

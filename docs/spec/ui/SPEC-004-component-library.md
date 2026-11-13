@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-02"
 updated: "2026-11-13"
-version: "1.149"
+version: "1.150"
 owner: lavender-interface-designer
 
 domain: "ui"
@@ -20,7 +20,7 @@ depends_on_domains: [layout]
 
 # 元件庫規格（L3 元件庫章節）
 
-**版本**: 1.149（1.149 依 `1.1.0-W1-111`：4.48 新增「部分寫入」狀態，4.51 新增〈同批檔案〉與部分寫入的呈現，4.52 待決解除，§4.0.6 六個 key，§4.0.9 寫回；1.148 依 `1.1.0-W1-111`：新增 4.52 `ReferenceChips`（5.20）、4.53 `AppCheckboxGroup`（5.21），4.43 `AppCheckbox` 增 `locked`／`enabled`，4.48 值格清單與提示優先序、§6 兩列、§4.0.6 五個 key、§4.0.9 寫回；1.147 依 `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉；1.146 依 `1.0.0-W3-553.6`：4.46 重驗通過，§4.0.9 寫回，4.48 補「必填空白」的測試點與狀態邊；1.145 依 `1.0.0-W3-686`：4.46 `allowEmpty` 定案、4.44 空白送出、4.48 新增「必填空白」狀態，見變更歷史；1.144 依 `1.0.0-W3-553.6`：編輯相關條目重驗〈契約齊全的定義〉，§4.0.9 寫回結果，4.48–4.51 補齊重驗缺口，見變更歷史；1.143 依 `1.0.0-W3-553.3.1`：新增 4.49 `NoticeBanner`、4.50 `FieldList`、4.51 `WriteLogRow`，4.44–4.48 回填編輯狀態，側欄底部改為三項，見變更歷史；1.142 依 `1.0.0-W3-676`：4.48 `FieldBlock` 回饋契約〈等待與結果〉的逾時段與時間門檻回填（SPEC-009 v1.2），§4.0.9 封鎖項移除逾時段；1.141 依 `1.0.0-W3-673.1`：4.20 `DocumentBody` 的 `markdown` 來源改為 frontmatter 之後的本文並補〈本文來源的界線〉，§3.6 §6 正常列同步，§4.0.6 登記 `nodeDetailBodyUnavailableMessage`；1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
+**版本**: 1.150（1.150 依 `1.1.0-W1-111`：破洞報告的編輯入口，4.40 `item` trailing 接受 `ButtonRow`、4.34 新增 `wrap` 參數、5.14 新增〈可修正破洞項的寬度核對〉、§4.0.9 寫回 4.40 與 4.34 重驗，4.52 使用處補 UC、EVT `source_proposal`；1.149 依 `1.1.0-W1-111`：4.48 新增「部分寫入」狀態，4.51 新增〈同批檔案〉與部分寫入的呈現，4.52 待決解除，§4.0.6 六個 key，§4.0.9 寫回；1.148 依 `1.1.0-W1-111`：新增 4.52 `ReferenceChips`（5.20）、4.53 `AppCheckboxGroup`（5.21），4.43 `AppCheckbox` 增 `locked`／`enabled`，4.48 值格清單與提示優先序、§6 兩列、§4.0.6 五個 key、§4.0.9 寫回；1.147 依 `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉；1.146 依 `1.0.0-W3-553.6`：4.46 重驗通過，§4.0.9 寫回，4.48 補「必填空白」的測試點與狀態邊；1.145 依 `1.0.0-W3-686`：4.46 `allowEmpty` 定案、4.44 空白送出、4.48 新增「必填空白」狀態，見變更歷史；1.144 依 `1.0.0-W3-553.6`：編輯相關條目重驗〈契約齊全的定義〉，§4.0.9 寫回結果，4.48–4.51 補齊重驗缺口，見變更歷史；1.143 依 `1.0.0-W3-553.3.1`：新增 4.49 `NoticeBanner`、4.50 `FieldList`、4.51 `WriteLogRow`，4.44–4.48 回填編輯狀態，側欄底部改為三項，見變更歷史；1.142 依 `1.0.0-W3-676`：4.48 `FieldBlock` 回饋契約〈等待與結果〉的逾時段與時間門檻回填（SPEC-009 v1.2），§4.0.9 封鎖項移除逾時段；1.141 依 `1.0.0-W3-673.1`：4.20 `DocumentBody` 的 `markdown` 來源改為 frontmatter 之後的本文並補〈本文來源的界線〉，§3.6 §6 正常列同步，§4.0.6 登記 `nodeDetailBodyUnavailableMessage`；1.140 依 `1.0.0-W3-553.6`：新增編輯用表單元件 4.44 `AppTextInput`、4.45 `AppDropdown`、4.46 `ReferencePicker`、4.47 `AppRadioGroup` 與容器 4.48／5.17 `FieldBlock`（提案，依賴編輯狀態者待決 1.0.0-W3-553.3）；1.139 依 `1.0.0-W3-553.1`：§2 樂觀更新政策列改為指名 SPEC-009 FR-05；1.138 依 `1.0.0-W1-110`：4.6 `IssueMarker` default 列的恢復條件票 ID 改為遷移後的 `1.1.0-W3-656`；1.137 依 `1.0.0-W3-553`：§2 樂觀更新政策列改為 0.x 與 1.0 皆不允許，1.0 寫入等落檔才顯示、CLI 驗證另以狀態呈現且失敗不自動回滾，刪除原重評條件；1.136 依 `0.7.0-W1-007.6`：4.30 `Panel.scrollable` 新增 optional `footer`〈固定底部 slot〉，偏好設定與鍵盤快捷鍵面板的關閉鈕移入；4.4 `AppButton` 新增 `autofocus`；4.7 `NavItem` 新增 `focusNode`；1.135 依 `0.7.0-W1-012.18`：4.10 尺寸契約分清段高與元件固有高，4.32 `history` 子件列高與框體高、5.6 `history` 空間不足策略改為期間選擇有界寬與段 label 截斷；1.134：4.39 `Tree` 新增 `sourceChain` 變體；1.133 依 `0.7.0-W1-007.1`：4.27 `AppShell` 新增〈側欄底部 slot〉（設定、鍵盤快捷鍵兩項），4.7 `NavItem` 增 `action` 變體，4.40 `ListRow` 增 `shortcut` 變體，§3.6 補 SPEC-001 §11 一列，§4.0.6 登記鍵盤快捷鍵面板與側欄底部項的 key；1.132 依 `0.7.0-W1-009.1`：§4.0.6 登記 `preferencesEditorAppliedMessage`、`preferencesEditorSaveFailedMessage`，4.26 `message` 呼叫端清單補兩 key；1.131 依 `0.7.0-W1-012.2`：補齊第七畫面變更記錄（SPEC-001 §10）的元件——新增 4.43 `AppCheckbox`，`SegmentedControl` 段數放寬為 2–3，`TableRow` 增 `historyEvent`、`Toolbar` 增 `history` 變體，§3.6 補八列，§4.0.6 登記新 key，側欄與 `AppShell` 改為七項；1.130 依 `0.7.0-W1-012.1`：4.27 state-change 列對 SPEC-003 §2.8 建構時機錨點的逐字引用改為「七頁建構時機」；1.129 依 `0.7.0-W1-008.1`：4.10、4.13、4.14、4.15、4.40 新增〈套用時點〉子節；1.128 依 `0.6.0-W1-202`：4.15、4.27、4.42 與 §2 改為元件傳值、訂閱在上層；1.127 依 `0.6.0-W1-193.1`：§2 刪除容器例外，4.36–4.39 改為傳值；1.126 依 `0.6.0-W1-191.2`：19 處「provider 尚未建立」補為實際 provider、§6 執法現況；1.125 依 `0.6.0-W1-191.1`：§4.0.6 等處時效型進度註記改為現況；1.124 依 `0.6.0-W1-086.1`：三處依賴型票號引用改寫為定案內容；1.123 依 `0.6.0-W1-075.2`：§4.0.6 登記 `pathDeclarationBundlesMalformed`；1.122 依 `0.6.0-W1-070.2`：§3.6 補 SPEC-001 §9 兩列、§4.0.6 登記偏好設定面板與 `openedWithoutEditor` 的四個 key；1.121 依 `0.6.0-W1-152.1`：§4.0.6 與 ARB 四個 key 文案同步並補登三個 key；1.120 依 `0.6.0-W1-019.1`：4.9 disabled 列拆分探測逾時與非逾時失敗的原因來源，逾時值引 SPEC-005 §2.5；歷次見〈變更歷史〉）
 **來源**: PROP-004
 **依賴**: SPEC-002（token 來源，`lib/tokens/`）、SPEC-003（互動反應來源）、SPEC-001（狀態表，元件候選的書面來源）
 
@@ -172,13 +172,13 @@ depends_on_domains: [layout]
 | `TwoColumnLayout`（主副雙欄） | 容器 | L3 | 主欄 `Panel`（填滿）+ 右欄 `Panel.scrollable`（固定寬 `LayoutSize.detailPaneWidth`）水平並排，間距 `Space.md`；兩欄各自獨立捲動（SPEC-003 FR-10、§1.1 連動禁令） | §1（正常·矩陣、已選格）、§2（尚未選定 UC、flow 未結構化、正常：右欄為 UC 選擇清單，§3.6）、§6（正常、部分損壞） | `default`（§3.7 第 16、21 項） |
 | `Toolbar`（工具列） | 容器 | L2 | `SearchField`（填滿）+ `FilterDropdown` × N + `IssueMarker.damagedDetail`（可點錨點 `badge-tickets-corrupted`，§3.7 第 14 項）水平，底邊框；變更記錄篩選列：`SegmentedControl`（期間）+ `AppCheckbox`（包含 ticket 建檔）水平 | §4、§10 | `default` / `history`（1.131） |
 | `BadgeRow`（徽章列） | 容器 | L2 | `Badge` × N 水平、間距 `Space.xs`，空間不足換行；承載節點詳情標籤列、矩陣與泳道圖例列、事件標籤 | §1、§2、§6 | `default` / `legend`（頂邊框，面板底部；間距同 `Space.xs`，§3.7 第 12 項） |
-| `ButtonRow`（按鈕列） | 容器 | L2 | `AppButton` × N 水平；承載狀態元件的動作區（開始載入；重新整理；開啟原始檔 + 檢視關聯）、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區 | §1–§6 | `default`；子件上限 3（0.1 最多三動作） |
+| `ButtonRow`（按鈕列） | 容器 | L2 | `AppButton` × N 水平；承載狀態元件的動作區（開始載入；重新整理；開啟原始檔 + 檢視關聯）、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區；可修正破洞項的 trailing（編輯欄位 + 開啟原始檔，`wrap: false`，1.150） | §1–§6 | `default`（`alignment`、`wrap` 參數，`wrap` 1.150）；子件上限 3（0.1 最多三動作） |
 | `TableRow`（表格列） | 容器 | L2 | 欄寬對齊表頭的水平格線列；子件 ∈ {`TableColumnHeader`, `AppText`, `Badge`, `StepNumber`, `BadgeRow`, `IssueMarker`, `RelationItem`（步驟列 domain 欄，可點）} | §2、§4 | `header`（`TableColumnHeader` × N）/ `ticket`（ID mono、標題、狀態徽章、優先、blockedBy、損壞標記；列表與主題模式共用同一欄序，§3.7 第 15 項；blockedBy 欄出處 SPEC-001 §4）/ `step`（序號、步驟名、domain 標籤、事件徽章列）/ `eventFlow`（事件 ID mono、發出、消費、孤立事件標記；非互動，可被定位；SPEC-001 §2〈事件流小表〉）/ `historyEvent`（變動、邊型、宣告端、對端、commit、日期、作者與訊息；列本體非互動，節點格可點；SPEC-001 §10，1.131） |
 | `DataTable`（資料表） | 容器 | L2（資料視圖） | `TableRow.header` + `TableRow` × N 垂直；Ticket 清單為虛擬捲動（`scroll-tickets-list`），UC Flow 為一般捲動（`scroll-ucFlow-steps`），變更記錄事件清單為虛擬捲動（`scroll-history-events`） | §2、§4、§10 | `virtual` / `plain` |
 | `MatrixGrid`（矩陣） | 容器 | L3（資料視圖） | domain × UC 二維格線：欄首 `TableColumnHeader.twoLine`、列首 `AppText`、格 `MatrixCell`、小計 `AppText.caption`；欄首與列首釘選、二維捲動（`scroll-domain-matrix`，委派 `two_dimensional_scrollables`） | §1 | `default` |
 | `SwimlaneGrid`（泳道） | 容器 | L3（資料視圖） | 泳道列（`AppText` 泳道名 + `SwimlaneNode` 置於步驟欄）× （DomainBundle 數＋1，有未定位步驟時＋2）垂直（「畫面」列 + 每個 DomainBundle 一列，有 `traverses` 異常步驟時於全部 DomainBundle 列之後加「未定位」列，本專案 9 列）、列間虛線；步驟間邊（直線／弧線）；底部步驟箭頭列；列序、欄序、邊形狀依 SPEC-001 §1〈泳道布局規則〉（「畫面」列 + 每個 DomainBundle 一列依 `bundle_dependency` 推導層序與同層字母序、主線清單順序與分支（含巢狀）插欄、前向直線與回指弧線；0.1 為假資料靜態排版，SPEC-001 設計約束），二維捲動 + 拖曳（`scroll-domain-swimlane`、`drag-domain-swimlane`） | §1 | `default` |
 | `Tree`（樹） | 容器 | L3（資料視圖） | `ListRow.tree` × N 垂直，依深度縮排；展開收合改變列集合（`scroll-traceability-tree`） | §3、§6（來源鏈） | `default` / `sourceChain`（節點詳情主欄內嵌來源鏈：全部展開、無展開器、不持有展開集合，4.39） |
-| `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption`，可選）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
+| `ListRow`（通用列） | 容器 | L2 | leading（`ExpanderIcon` / `AppIcon` / `Badge` / `StepNumber`，可選）+ 主文字 `AppText`（填滿）+ 次文字 `AppText.secondary`（可選，堆疊於主文字下）+ trailing（`Badge` / `AppIcon` / `AppText.caption` / `IssueMarker` / `AppButton.text` / `ButtonRow`，可選；後兩者限 `item`，`ButtonRow` 1.150）水平 | §1（詳情卡步驟）、§2（UC 選擇清單）、§3（樹節點）、§4（主題節首）、§5（分節首、破洞項）、§6（節點 meta 列） | `tree`（展開 + 標題 + 狀態徽章）/ `sectionHeader`（展開或類別徽章 + 名稱 + 計數）/ `item`（標題 + 說明 + trailing：有指向節點者為次要操作「開啟原始檔」按鈕，可修正的破洞項另加「編輯欄位」、兩鈕以 `ButtonRow`（`wrap: false`）承載（1.150），無指向者為外開箭頭）/ `option`（UC ID + 標題，可選取，selected 態；UC-03 步驟 1）/ `meta`（型別徽章 + 路徑 mono）/ `numbered`（序號 + 文字）；合併為提案（3.3 第 12 項） |
 | `Section`（分節） | 容器 | L2 | 節首 + 項目垂直堆疊：主題節（`ListRow.sectionHeader` + `TableRow.ticket` × N）、破洞類別節（`ListRow.sectionHeader` + `ListRow.item` × N）、關聯群（`AppText.caption` + `RelationItem` × N）、UC 選擇清單（`AppText.caption` + `ListRow.option` × N）、schema 詳情面板（`AppText.caption` + `AppText.mono`） | §1（詳情面板）、§2（UC 選擇清單）、§4、§5、§6 | `collapsible`（節首含 `ExpanderIcon`，`expander-*`）/ `static`；「未歸屬」節以頂部虛線分隔為修飾參數（§3.7 第 4 項核定 3.3 第 14 項） |
 | `FieldBlock`（表單欄位） | 容器 | L2 | label（`AppText`）+ 值格（`AppTextInput` / `AppDropdown` / `ReferencePicker` / `AppRadioGroup` / `ReferenceChips` / `AppCheckboxGroup`（後兩者 1.148），或唯讀 `AppText`）+ 提示格（`AppText.caption`，0..1）垂直；寫入結果與驗證狀態在此呈現（1.140 新增） | §6 編輯模式 | `editable` / `readOnly` |
 | `FieldList`（欄位清單） | 容器 | L3 | `NoticeBanner`（0..1）+ `FieldBlock` × N（SPEC-009 FR-09 表列序）+ 「完成」`AppButton.primary` 垂直；承載寫入期間的跨欄鎖定（1.143 新增，4.50） | §6 編輯模式（`panel-nodeDetail-field-list`） | 單一形態 |
@@ -377,7 +377,7 @@ depends_on_domains: [layout]
 | §5 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-gaps-goto-domain`） |
 | §5 | 掃描中 | 骨架 + 進度 + 取消 | `LoadingState.skeleton`（版位 `sections`） |
 | §5 | 無破洞 | 訊息 + 掃描範圍說明 + 重新掃描 | `EmptyState.page`（說明 slot；無動作）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項，`0.1.0-W3-335.37` R10） |
-| §5 | 有破洞 | 依類別分節，各項帶檔案與行號 + 重新掃描 | `Panel.scrollable`[`Section.collapsible`[`ListRow.sectionHeader`, `ListRow.item` × N] × N]；破洞項主操作依指向節點型別（SPEC-003 §3.5），有指向者 trailing 為次要操作 `AppButton.text`（開啟原始檔，`action-gaps-open-source-<itemId>`），無指向者 trailing 為 `AppIcon` 外開箭頭（見 4.40 `item`）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項） |
+| §5 | 有破洞 | 依類別分節，各項帶檔案與行號 + 重新掃描 | `Panel.scrollable`[`Section.collapsible`[`ListRow.sectionHeader`, `ListRow.item` × N] × N]；破洞項主操作依指向節點型別（SPEC-003 §3.5），有指向者 trailing 為次要操作 `AppButton.text`（開啟原始檔，`action-gaps-open-source-<itemId>`），無指向者 trailing 為 `AppIcon` 外開箭頭（見 4.40 `item`）；1.1 起可修正的破洞項 trailing 為 `ButtonRow`（`wrap: false`）[`AppButton.text`（`editFieldsAction`，`action-gaps-edit-<itemId>`）, 開啟原始檔]（SPEC-001 §5〈破洞報告的編輯入口〉）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項） |
 | §5 | 無法判定破洞 | 頁首標題 + 原因說明（三選一）+ 其餘類別分節（有項目時）+ 重新掃描 | `Panel.scrollable`[`Section.static`[`AppText.subtitle`（`gapsUndeterminableTitle`）, `AppText.body`（`gapsUndeterminableReasonVersionOutOfRange`、`gapsUndeterminableReasonNoPathPattern` 或 `gapsUndeterminableReasonScanFailed`）], 其餘類別同「有破洞」列的 `Section.collapsible` × N（解析失敗類別不渲染）]；**不使用 `EmptyState`**，與無破洞的 `EmptyState.page` 在元件層即不同（SPEC-001 §5〈無法判定破洞〉成列註記）；重新掃描 `AppButton.secondary` 於 `SplitRow.header` 右側 `ButtonRow`（§3.7 第 18 項）（`0.3.0-W1-082`） |
 | §6 | 專案未就緒 | 說明（依原因四選一）+ 前往 Domain 視圖 | `EmptyState.page`（動作 `AppButton.primary` 前往 Domain 視圖，`action-nodeDetail-goto-domain`；優先於「未選節點」，SPEC-003 §3.6 註記） |
 | §6 | 未選節點 | 空狀態元件 + 「尚未選取節點」 | `EmptyState.page`（動作前往追溯視圖） |
@@ -972,7 +972,7 @@ EVT-CORPUS-004 項目說明：
 
 | key | zh | en | placeholders | 使用處 |
 |-----|----|----|--------------|--------|
-| `editFieldsAction` | 編輯欄位 | Edit fields | — | §6 正常，`action-nodeDetail-edit`（4.4 `secondary`；唯讀降級時 disabled，`disabledReason` 為唯讀降級徽章文字） |
+| `editFieldsAction` | 編輯欄位 | Edit fields | — | §6 正常，`action-nodeDetail-edit`（4.4 `secondary`；唯讀降級時 disabled，`disabledReason` 為唯讀降級徽章文字）；1.1 起另用於 §5 破洞項的編輯入口，`action-gaps-edit-<itemId>`（4.4 `text`，4.40 `item` trailing） |
 | `editDoneAction` | 完成 | Done | — | 4.50 `doneButton`（`action-nodeDetail-edit-done`） |
 | `editDiscardAndReloadAction` | 放棄並重讀 | Discard and reload | — | 4.49 動作（`action-nodeDetail-edit-reload`） |
 | `nodeDetailEditReadFailedMessage` | 無法讀取這個檔案，未進入編輯 | Could not read this file, so editing did not start | — | §6 正常，「編輯欄位」鈕下方（`badge-nodeDetail-edit-read-failed`，`AppText.caption`） |
@@ -1093,6 +1093,14 @@ EVT-CORPUS-004 項目說明：
 | 4.52 `ReferenceChips`（5.20） | 1.148 的兩格待決已解除：正向檔多值寫法依 SPEC-009 v1.10（F1–F4 用戶裁定 2026-11-13），`partiallyWritten` 呈現落於 4.48「部分寫入」列。重驗第 1 條通過，六條通過 | 可 |
 | 4.48 `FieldBlock` 的「部分寫入」（1.149 修改） | 六條通過 | 可 |
 | 4.51 `WriteLogRow` 的〈同批檔案〉與部分寫入（1.149 修改） | 六條通過 | 可 |
+
+**1.150 的重驗結果**（`1.1.0-W1-111` Step 4.5 第 3 項，破洞報告的編輯入口）：
+
+| 條目 | 結果 | 可否被畫面票引用 |
+|------|------|----------------|
+| 4.40 `ListRow.item` 的 trailing 改為接受 `ButtonRow`（1.150 修改，元件契約變更） | 六條通過（條文依 `component-contract-design`〈契約齊全的定義：六條〉）。(1) 欄位表無空白、無佔位標記：變體、slot 契約、尺寸、i18n 朗讀、測試點都補了可修正破洞項的形態。(2) 破洞報告列內「列本體與兩個次要操作」的排列關係，只由 5.14 `ListRow` 承載，兩鈕之間的排列由 5.8 `ButtonRow` 承載，不分屬兩個容器。(3) 5.14 排列不變式三項齊全，此情形的空間不足策略非空（見〈可修正破洞項的寬度核對〉）。(4) 最長測試文案為具體 key：`editFieldsAction`、`openSourceFileAction`（en `Edit fields`、`Open Source File`）。(5) 無障礙：兩鈕各為一個按鈕節點，焦點路徑為列本體 → 編輯欄位 → 開啟原始檔。桌機操作機制與回饋契約由子件 4.4 承載。編輯欄位的按下確認在本地即時成立，等待與結果為 jump，屬本地即時類（成功為可見頁更換；失敗、逾時、服務不可用依兩軸判定不可能發生，同 `tree`）。開啟原始檔四段不變。(6) 關機判定一則：「不渲染入口」以缺席表示，不設 disabled 狀態，依據為 SPEC-001 §5「入口出現在修不好的項目上會誤導使用者」 | 可 |
+| 4.34 `ButtonRow` 新增 `wrap` 參數與 `ListRow.item` 用法（1.150 修改） | 六條通過。(1) 變體表、狀態矩陣來源欄、slot 契約（`wrap` 列；`alignment` 補 `ListRow.item` trailing 用 `end`）、尺寸契約（含父寬小於固有寬時維持一列，以 `RenderFlex` 的 debug 期溢位回報揭露、不另做自訂回報；release 不記）、組合規則（可放入的容器）、測試點（受限父格位下傳與不傳的 E1 對照）補 `wrap: false`，無佔位。(2) 用途與總表同步；`ListRow.item` trailing 內兩鈕的排列只由本容器承載。(3) 5.8 排列不變式三項齊全；子件上限 3，`wrap: false` 的空間不足策略為「不觸發，前提由宿主保證」，核對見 5.14。(4) 無自有文字，子件文案見 4.40 列。(5) 無自有互動；朗讀與焦點依子件閱讀順序。(6) 關機判定一則：`wrap: false` 不設截斷或換行退路，依據為 5.14「換行破壞 `item` 固有兩行高」，宿主寬不足屬契約互斥 | 可 |
+| 4.52 `ReferenceChips` 使用處補 UC、EVT 的 `source_proposal`（SPEC-009 v1.11） | 六條通過：兩欄位與 SPEC `source_proposal` 同為多檔寫入，回饋契約與 `partiallyWritten` 呈現沿用既有條文，不新增狀態 | 可 |
 
 #### 4.0.10 定位提示（locate）的容器執行約定（提案）
 
@@ -5291,7 +5299,7 @@ EVT-CORPUS-004 項目說明：
 
 ### 4.34 ButtonRow（容器）
 
-**用途**：`AppButton` × 1..3 水平；狀態元件動作區、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區。
+**用途**：`AppButton` × 1..3 水平；狀態元件動作區、頁首右側頁面級動作區（§3.7 第 17、18 項）、格詳情卡動作區；1.150 起另用於可修正破洞項 `ListRow.item` 的 trailing（`wrap: false`，SPEC-001 §5〈破洞報告的編輯入口〉）。
 **內容角色**：容器。
 **何時不用**：徽章列（`BadgeRow`）；單一 `AppButton.text` 於浮層末格（直接放入 `SwitcherOverlay`）。
 **出現畫面**：§1–§6、§10。
@@ -5301,13 +5309,13 @@ EVT-CORPUS-004 項目說明：
 
 | 變體 | 外觀差異 | 行為差異 | 何時選用 |
 |------|---------|---------|---------|
-| `default` | 單一變體；`alignment` 參數（`start` / `center` / `end`） | | |
+| `default` | 單一變體；`alignment` 參數（`start` / `center` / `end`）；`wrap` 參數（預設 `true`，1.150） | `wrap: false` 時不換行，子件恆在同一列 | `wrap: false` 只用於 `ListRow.item` trailing：列高須維持 `item` 的固有兩行高，換行會變成兩列按鈕；其餘使用處維持預設 |
 
 #### 狀態矩陣
 
 | 狀態 | 顯示 | 可用操作 | 進入條件 | 退出路徑 | 來源 | 同步策略 |
 |------|------|---------|---------|---------|------|---------|
-| default | 一列或換行的按鈕 | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`children` / `alignment` 由呼叫端傳值，本容器不 watch，§2） | 本地即時 |
+| default | 一列或換行的按鈕（`wrap: false` 時恆為一列） | 由子件承載 | 建構 | 不適用：容器無自身狀態集 | —（建構即渲染；`children` / `alignment` / `wrap` 由呼叫端傳值，本容器不 watch，§2） | 本地即時 |
 
 互動瞬態（hover / pressed / focused）由子件 4.4 `AppButton` 承載，本容器不另列。
 
@@ -5329,11 +5337,11 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 尺寸模式 | 固有尺寸（Σ 按鈕寬 + (N − 1) × `Space.sm`）；父格位寬不足時換行 |
-| 最小尺寸 | 寬：最寬單一按鈕的最小寬（`LayoutSize.hitTargetMin`）；高：`LayoutSize.hitTargetMin` |
+| 尺寸模式 | 固有尺寸（Σ 按鈕寬 + (N − 1) × `Space.sm`）；父格位寬不足時換行。`wrap: false`：不換行，固有寬即最小寬，由父格位保證不小於它（`ListRow.item` 的核對見 5.14〈可修正破洞項的寬度核對〉）。父格位寬小於固有寬時仍維持一列，不換行、不截斷 label，超出部分溢位（以一列的 `Row` 實作）。宿主違約的回報就是 `RenderFlex` 自身的溢位回報（debug 期經 `FlutterError.reportError`，不中斷 layout、不替換子樹），本元件不另做自訂回報。理由：溢位已由 `RenderFlex` 回報一次，再加自訂回報會變成兩筆，測試取回的是「Multiple exceptions」；沿用框架回報也不必處理寬度比較的浮點容差。release 下不回報、不記日誌。不用 `developer.log`：SPEC-010 FR-04 規定 writer 以外不得直接呼叫，且 layout 期會反覆觸發，屬高頻事件。debug 版 App 中，這筆回報經 `installGlobalErrorHandlers` 的 `FlutterError.onError` 進入 `reportFatalError`（`lib/main.dart`），畫面換成致命錯誤狀態，與現有其他 `RenderFlex` 溢位走同一條路；它在開發期就會被看見，不會靜默。實作現況：`lib/components/button_row.dart` 以 `Wrap` 實作，放在 `ListRow` 的 `Row` 內屬非 flex 子件、寬度無上限，所以預設的 `wrap: true` 在該處本來也不會換行；`wrap: false` 讓這個行為成為明文契約，並在受限父格位下以 debug 期回報揭露違約，而不是靜默換行 |
+| 最小尺寸 | 寬：最寬單一按鈕的最小寬（`LayoutSize.hitTargetMin`）；`wrap: false` 時為固有寬；高：`LayoutSize.hitTargetMin` |
 | 最小命中區 | 不適用（子件各自） |
-| 最大尺寸 | 寬：父格位寬；高：3 列 × `LayoutSize.hitTargetMin` + 2 × `Space.sm` |
-| `kMinWindowSize` 下的行為 | 維持（換行） |
+| 最大尺寸 | 寬：父格位寬（`wrap: false` 違約時例外：寬為固有寬，超出父格位的部分溢位，見尺寸模式）；高：3 列 × `LayoutSize.hitTargetMin` + 2 × `Space.sm`；`wrap: false` 時高固定為 `LayoutSize.hitTargetMin` |
+| `kMinWindowSize` 下的行為 | 維持（換行）；`wrap: false` 時維持一列（5.14 核對成立） |
 | `kDesignSize` 下的行為 | 維持 |
 
 #### 內容政策
@@ -5347,7 +5355,8 @@ EVT-CORPUS-004 項目說明：
 | slot | 接受型別 | 必填 | 文字來源 |
 |------|---------|------|---------|
 | `children` | `List<AppButton>` | 是（1..3；`primary` 至多 1 且置於首位） | 不適用 |
-| `alignment` | `start` / `center` / `end` | 否（預設 `start`；狀態元件內 `center`、頁首右格 `end`） | 不適用 |
+| `alignment` | `start` / `center` / `end` | 否（預設 `start`；狀態元件內 `center`、頁首右格 `end`、`ListRow.item` trailing `end`） | 不適用 |
+| `wrap` | `bool` | 否（預設 `true`；`false` 只限 `ListRow.item` 的 trailing，1.150） | 不適用 |
 
 #### 使用 design token
 
@@ -5369,7 +5378,7 @@ EVT-CORPUS-004 項目說明：
 
 | 項目 | 值 |
 |------|-----|
-| 可放入的容器 | `SplitRow.header`（右格）、`Panel.scrollable`（詳情卡末格）；作為 `EmptyState` / `BlockedState` / `LoadingState` / `LoadPrompt` / `MissingSourceState` 的內部動作區 |
+| 可放入的容器 | `SplitRow.header`（右格）、`Panel.scrollable`（詳情卡末格）；作為 `EmptyState` / `BlockedState` / `LoadingState` / `LoadPrompt` / `MissingSourceState` 的內部動作區；`ListRow.item` 的 trailing（限 `wrap: false`、恰兩個 `AppButton.text`，1.150） |
 | 不得放置的區域 | 依 §4.0.8 |
 | 對齊基準 | 依 `alignment`；子件垂直置中 |
 | 作為表格或列表的一欄時 | 不適用 |
@@ -5388,6 +5397,8 @@ EVT-CORPUS-004 項目說明：
 
 - [ ] 一支測試渲染 N = 1 / 2 / 3 × 三種 `alignment`
 - [ ] 兩種視窗尺寸下不溢位；父寬受限至單一按鈕寬時換為三列且子件兩兩不相交
+- [ ] `wrap: false`（1.150）的 E1 對照：同一組兩鈕，直接放進寬為「固有寬 − 1」的受限父格位（以 `SizedBox` 給有界寬，不經 `ListRow`，理由是 `ListRow` 的 `Row` 給 trailing 無上限寬，兩值都不換行，無鑑別力），各跑一次傳與不傳。不傳時為兩列（高 = 2 × `LayoutSize.hitTargetMin` + `Space.sm`），子件不相交；傳 `wrap: false` 時為一列（高 = `LayoutSize.hitTargetMin`），且 `tester.takeException()` 取回的是 `RenderFlex` 的溢位回報（訊息含 overflowed，只此一筆，不是「Multiple exceptions」）；不傳時 `takeException()` 為 `null`。兩者產物不同。`reportError` 不中斷 layout，所以「排成一列」與「有回報」可在同一次執行中一起斷言
+- [ ] `wrap: false`：父寬等於固有寬時兩鈕同列、不相交，高等於 `LayoutSize.hitTargetMin`，`tester.takeException()` 為 `null`
 - [ ] 無自有文字（本項不適用）
 - [ ] 子件最長測試文案下仍不相交
 - [ ] 間距引用 token 非硬編碼
@@ -6095,7 +6106,7 @@ EVT-CORPUS-004 項目說明：
 |------|---------|---------|---------|
 | `tree` | leading `ExpanderIcon`、主文字 `AppText.body`（PROP 層 `emphasis`）、trailing `Badge.status` 或 `IssueMarker.gap`；高 `LayoutSize.rowHeightDense` | 整列可點 → 節點詳情（`card-traceability-<nodeId>`）；缺口列（trailing `IssueMarker.gap`）整列不可點，見 4.39〈展開集合初始值與缺口列〉。於 `Tree.sourceChain` 內：leading 恆為 `ExpanderIcon.leaf`，非根列整列可點 → 主欄替換為該節點（`card-nodeDetail-chain-<nodeId>`），根列與缺上游列不可點，見 4.39〈`sourceChain` 變體〉 | 追溯樹列；節點詳情來源鏈列 |
 | `sectionHeader` | leading `ExpanderIcon` 或 `Badge.category`、主文字 `AppText.body`（`emphasis`，`accentStrong`）、trailing `AppText.caption`（計數 / 摘要）；高 `rowHeightDense` | 展開由 leading `ExpanderIcon` 承載；列本體不可點 | 主題節首、破洞類別節首 |
-| `item` | 主文字 `AppText.body` + 次文字 `AppText.caption`（檔案路徑；來源含行號時附行號，無行號者只顯示路徑，`0.1.0-W3-335.37` R11 修訂）堆疊；頂邊框；高固有（兩行）。項目沒有說明 key 時（例：事件類、0.1 起既有類別），路徑連同行號移到主文字，不渲染次文字，高為一行（PM 處置 2026-10-12，`0.5.0-W1-114.15`：`ListRow` 主文字必填、次文字可選的直接後果，路徑與行號維持在同一行）。trailing 依指向節點：有指向者 `AppButton.text`（leading 外開圖示 + `openSourceFileAction`，testKey `action-gaps-open-source-<itemId>`，次要操作）；無指向者 `AppIcon`（外開箭頭，`openExternallyA11yLabel`） | 整列可點（`card-gaps-<itemId>`），結果依指向節點型別（SPEC-003 §3.5 四列）：ticket → jump Ticket 清單並定位；其他圖節點 → jump 節點詳情；事件類 → 寫入選定 UC 後 jump UC Flow 並定位事件列；無指向 → 外部開啟。點 trailing 次要操作不觸發列 `onTap` | 破洞項 |
+| `item` | 主文字 `AppText.body` + 次文字 `AppText.caption`（檔案路徑；來源含行號時附行號，無行號者只顯示路徑，`0.1.0-W3-335.37` R11 修訂）堆疊；頂邊框；高固有（兩行）。項目沒有說明 key 時（例：事件類、0.1 起既有類別），路徑連同行號移到主文字，不渲染次文字，高為一行（PM 處置 2026-10-12，`0.5.0-W1-114.15`：`ListRow` 主文字必填、次文字可選的直接後果，路徑與行號維持在同一行）。trailing 依指向節點：有指向者 `AppButton.text`（leading 外開圖示 + `openSourceFileAction`，testKey `action-gaps-open-source-<itemId>`，次要操作）；無指向者 `AppIcon`（外開箭頭，`openExternallyA11yLabel`）。1.1 起，可修正的破洞項（SPEC-001 §5〈破洞報告的編輯入口〉）trailing 改為 `ButtonRow`（`alignment: end`、`wrap: false`）[`AppButton.text`（`editFieldsAction`，不帶 leading 圖示，testKey `action-gaps-edit-<itemId>`；唯讀降級時 disabled，`disabledReason` 為唯讀降級徽章文字）, 上述開啟原始檔的 `AppButton.text`]。編輯欄位不帶圖示，理由：外開圖示表示離開 App，編輯留在 App 內；且 `editFieldsAction` 在節點詳情也不帶圖示 | 整列可點（`card-gaps-<itemId>`），結果依指向節點型別（SPEC-003 §3.5 四列）：ticket → jump Ticket 清單並定位；其他圖節點 → jump 節點詳情；事件類 → 寫入選定 UC 後 jump UC Flow 並定位事件列；無指向 → 外部開啟。點 trailing 次要操作不觸發列 `onTap` | 破洞項 |
 | `option` | 主文字 `AppText.body`（UC ID + 空格 + 標題，單行截斷）；無 leading／trailing；高 `rowHeightDense`；`selected` 時底 `AppColors.surfaceIconTint`、主文字 `emphasis` | 整列可點 → 寫入選定 UC（`action-ucFlow-select-uc-<ucId>`，SPEC-003 §3.2「選擇 UC」列）；點已選定者為合法操作，值不變 | UC Flow 右欄〈UC 選擇入口〉（§3.6；UC-03 步驟 1） |
 | `meta` | leading `Badge.type`、主文字 `AppText.mono`（路徑）；高 `rowHeightDense` | 無 | 節點詳情 meta 列 |
 | `numbered` | leading `StepNumber`、主文字 `AppText.body`；高 `rowHeightDense` | 無 | 格詳情卡步驟清單 |
@@ -6170,7 +6181,7 @@ EVT-CORPUS-004 項目說明：
 | `leading` | `ExpanderIcon` \| `AppIcon` \| `Badge` \| `StepNumber` | 依變體（`tree` / `sectionHeader` / `meta` / `numbered` 必填） | 不適用 |
 | `primary` | `AppText`（`body` / `mono`） | 是（恰 1，填滿） | 文字由呼叫端 |
 | `secondary` | `AppText.caption` | `item` 必填，其餘不接受 | 文字由呼叫端（`item`：檔案路徑，來源含行號時附行號，`0.1.0-W3-335.37` R11 修訂；追修票核對組字 i18n key 是否以行號為必填佔位） |
-| `trailing` | `Badge` \| `AppIcon` \| `AppText.caption` \| `IssueMarker` \| `AppButton.text`（限 `item` 有指向節點者） | 否（恰 0..1；`option` 不接受） | 文字由呼叫端 |
+| `trailing` | `Badge` \| `AppIcon` \| `AppText.caption` \| `IssueMarker` \| `AppButton.text`（限 `item` 有指向節點者）\| `ButtonRow`（限 `item` 可修正的破洞項，恰兩個 `AppButton.text`：編輯欄位、開啟原始檔，1.1 起） | 否（恰 0..1；`option` 不接受） | 文字由呼叫端 |
 | `onTap` | `VoidCallback?`（`tree` / `item` / `option`） | 該三變體必填，唯 `tree` 缺口列為 null | 不適用 |
 | `testKey` | `Key`（`card-traceability-<nodeId>` / `card-nodeDetail-chain-<nodeId>` / `card-gaps-<itemId>` / `action-ucFlow-select-uc-<ucId>`） | 該三變體必填，唯 `tree` 缺口列、缺上游列與來源鏈根列不帶 | 不適用 |
 | `isSelected` | `bool`（`option`，預設 `false`） | 否（其餘變體不接受） | 不適用 |
@@ -6191,7 +6202,7 @@ EVT-CORPUS-004 項目說明：
 
 | 文字 | i18n key |
 |------|---------|
-| `item` trailing 朗讀 | 無指向：`openExternallyA11yLabel`；有指向：`openSourceFileAction`（既有，按鈕可見文字即朗讀） |
+| `item` trailing 朗讀 | 無指向：`openExternallyA11yLabel`；有指向：`openSourceFileAction`（既有，按鈕可見文字即朗讀）；可修正的破洞項（1.1 起）：`editFieldsAction`、`openSourceFileAction` 各為一個按鈕節點，Tab 順序依序為列本體、編輯欄位、開啟原始檔 |
 | `tree` 缺口列主文字 | `traceabilityNoDownstream`（呼叫端傳入） |
 | `tree` 缺上游列主文字（`Tree.sourceChain`） | `sourceChainNoUpstream`（呼叫端傳入） |
 | `sectionHeader` trailing | `topicSectionSummary` / `gapSectionCount`（呼叫端傳入） |
@@ -6217,10 +6228,12 @@ EVT-CORPUS-004 項目說明：
 
 #### 測試點（widget test）
 
-- [ ] 一支測試渲染全部變體 × leading / trailing 有無（`item` 含有指向（trailing `AppButton.text`）與無指向（trailing `AppIcon`）兩形態；`option` 含 selected / 非 selected；`tree` 含缺口列）
+- [ ] 一支測試渲染全部變體 × leading / trailing 有無（`item` 含有指向（trailing `AppButton.text`）、可修正破洞項（trailing `ButtonRow`，`wrap: false`，1.150）與無指向（trailing `AppIcon`）三形態；`option` 含 selected / 非 selected；`tree` 含缺口列）
 - [ ] 兩種視窗尺寸下不溢位；主文字截斷、兩端子件寬不變
+- [ ] 可修正破洞項（1.150）：以 en 最長文案（`Edit fields`、`Open Source File`）在列寬 439 渲染，兩鈕同列、互不相交、label 不截斷，列高等於只有一顆 trailing 按鈕時的列高；列寬 724（`kMinWindowSize` 下的破洞報告列寬）時同樣成立
 - [ ] 無自有文字（本項不適用）；子件以最長測試文案渲染
-- [ ] `tree` / `item` / `option` 列點選呼叫 `onTap` 恰一次；點 leading 展開器、`item` trailing 次要操作按鈕、缺口列 trailing `IssueMarker.gap` 皆不觸發列 `onTap`
+- [ ] `tree` / `item` / `option` 列點選呼叫 `onTap` 恰一次；點 leading 展開器、`item` trailing 次要操作按鈕（含可修正破洞項的兩鈕）、缺口列 trailing `IssueMarker.gap` 皆不觸發列 `onTap`
+- [ ] 可修正破洞項的 Tab 順序為列本體 → 編輯欄位 → 開啟原始檔；唯讀降級時編輯欄位 disabled，不進 Tab 順序
 - [ ] `option` 以 `isSelected: true` 渲染時整列底色等於 `surfaceIconTint` 且 `Semantics.selected` 為 `true`
 - [ ] `item` 以 `isLocated: true` 渲染時整列底色等於 `AppColors.surfaceIconTint`，`false` 時無底色（§4.0.10）
 - [ ] 子件兩兩邊界盒不相交
@@ -7815,7 +7828,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 **實作類別**：`ReferenceChips`（已選值的 chip 列 + 末端「加入」觸發器 + 覆蓋層；chip 與加入觸發器為元件自帶子件，不另匯出；頁面層禁直用 `Chip`／`InputChip`／`Wrap` 自組，§6）。
 
-**用途**：表單欄位的多值引用編輯（SPEC-009 FR-09「多值引用（節點 ID）：chips 加搜尋加入」）。1.1 使用處：PROP related_proposals；SPEC related_usecases、related_specs、implements_requirements、source_proposal（provenance 邊的 `forward_cardinality` 為 many，`tracking_schema`；多檔寫入，SPEC-009 FR-03〈多檔寫入（1.1）〉）；UC related_specs、related_usecases、ticket_refs；DomainBundle source_specs、related_usecases、depends_on_bundles。
+**用途**：表單欄位的多值引用編輯（SPEC-009 FR-09「多值引用（節點 ID）：chips 加搜尋加入」）。1.1 使用處：PROP related_proposals；SPEC related_usecases、related_specs、implements_requirements、source_proposal（provenance 邊的 `forward_cardinality` 為 many，`tracking_schema`；多檔寫入，SPEC-009 FR-03〈多檔寫入（1.1）〉）；UC source_proposal（多檔寫入，SPEC-009 v1.11）、related_specs、related_usecases、ticket_refs；EVT source_proposal（多檔寫入，SPEC-009 v1.11）；DomainBundle source_specs、related_usecases、depends_on_bundles。
 **新增元件而非併入 `ReferencePicker` 的理由**：值的形狀不同——本元件的值是有序清單，操作是「加入一項」與「移除一項」兩種，各為一次寫入；`ReferencePicker` 的值是單一引用，操作是「取代」。把兩者併成一個元件需要以參數切換值型別與 `onChanged` 簽名，兩種呼叫端互不相容。加入時的覆蓋層（過濾框 + 可捲動選項清單）與 4.46 同形，共用基底的抽取見 `1.1.0-W1-115`。
 **內容角色**：標題（每個 chip 為被引用節點的識別值）+ 動作（加入、移除）。
 **何時不用**：單一引用（`ReferencePicker`）；值為已宣告 domain 的多值欄位（`AppCheckboxGroup`，4.53）；字串清單（1.4）；跳轉到被引用的節點（`RelationItem`）。
@@ -8269,9 +8282,9 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 不變式 | 值 |
 |--------|-----|
-| 不重疊 | 同列水平互斥、列間垂直互斥；單一按鈕寬超過可用寬時自身截斷 label（4.4） |
+| 不重疊 | 同列水平互斥、列間垂直互斥；單一按鈕寬超過可用寬時自身截斷 label（4.4）。`wrap: false` 不適用截斷：label 不截斷，可用寬不足屬宿主違約，依 4.34 尺寸模式以 `RenderFlex` 的 debug 期溢位回報揭露 |
 | 最小間距 | `Space.sm`（水平與列間）；呼叫端不得覆寫 |
-| 空間不足策略 | 換行（wrap）；觸發條件：Σ 按鈕固有寬 + (n − 1) × `Space.sm` > 可用寬（右欄 `LayoutSize.detailPaneWidth` − 2 × `Space.md` 為最窄宿主，最長文案下兩顆可能觸發，故不採「不觸發」） |
+| 空間不足策略 | 換行（wrap）；觸發條件：Σ 按鈕固有寬 + (n − 1) × `Space.sm` > 可用寬（右欄 `LayoutSize.detailPaneWidth` − 2 × `Space.md` 為最窄宿主，最長文案下兩顆可能觸發，故不採「不觸發」）。`wrap: false`（1.150，只用於 `ListRow.item` trailing）：不換行、不觸發，前提是宿主列寬不小於固有寬，核對見 5.14〈可修正破洞項的寬度核對〉；宿主寬不足屬兩份契約互斥，不得以截斷或換行吸收 |
 
 ### 5.9 TableRow
 
@@ -8376,8 +8389,8 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 項目 | 值 |
 |------|-----|
-| 接受的子件類型 | leading：`ExpanderIcon` \| `AppIcon` \| `Badge` \| `StepNumber`；primary：`AppText`；secondary：`AppText.caption`；trailing：`Badge` \| `AppIcon` \| `AppText.caption` \| `IssueMarker` \| `AppButton.text`（限 `item`） |
-| 子件數量上限 | 4（leading 0..1 + primary 1 + secondary 0..1 + trailing 0..1） |
+| 接受的子件類型 | leading：`ExpanderIcon` \| `AppIcon` \| `Badge` \| `StepNumber`；primary：`AppText`；secondary：`AppText.caption`；trailing：`Badge` \| `AppIcon` \| `AppText.caption` \| `IssueMarker` \| `AppButton.text`（限 `item`）\| `ButtonRow`（限 `item` 可修正的破洞項，恰兩個 `AppButton.text`，1.150） |
+| 子件數量上限 | 4（leading 0..1 + primary 1 + secondary 0..1 + trailing 0..1；trailing 為 `ButtonRow` 時算一個子件） |
 
 #### 排列不變式
 
@@ -8385,7 +8398,33 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 |--------|-----|
 | 不重疊 | leading / 文字塊 / trailing 水平互斥，兩端固有寬、文字塊填滿並截斷；secondary 堆疊於 primary 下 |
 | 最小間距 | `Space.sm`；呼叫端不得覆寫 |
-| 空間不足策略 | 不觸發：上限 4；leading 固有寬 + trailing 固有寬 + 2 × `Space.sm` + primary 最小寬（一字元 + 省略號；一字元見 §4.0.3，取 `primary` slot 的 `AppFontSize.body`，同 4.40〈尺寸契約〉最小尺寸列）≤ 列寬；最窄宿主為 `Tree` 第四層（承 5.13 水平公式） |
+| 空間不足策略 | 不觸發：上限 4；leading 固有寬 + trailing 固有寬 + 2 × `Space.sm` + primary 最小寬（一字元 + 省略號；一字元見 §4.0.3，取 `primary` slot 的 `AppFontSize.body`，同 4.40〈尺寸契約〉最小尺寸列）≤ 列寬；最窄宿主為 `Tree` 第四層（承 5.13 水平公式）。trailing 為 `ButtonRow` 的 `item` 另見下方〈可修正破洞項的寬度核對〉 |
+
+**可修正破洞項的寬度核對**（1.150，`1.1.0-W1-111` Step 4.5 第 3 項）：trailing 是兩個 `AppButton.text`，是 `item` 最寬的 trailing。`AppButton` 固有寬 = label 寬 + 2 × `Space.md`，帶圖示另加 `LayoutSize.iconMd` + `Space.xs`（4.4）。label 字級為 `AppFontSize.body`（12）。Ahem 每字元（含空格）寬 1em。實機字型中，拉丁字母與空格的字寬小於 1em，所以 en 的 Ahem 欄是上界；CJK 字寬約等於 1em，zh 的實機值與 Ahem 值相近，不視為上界。
+
+| 子件 | 最小寬（token 式） | 實機字型代入 | 測試字型（Ahem）代入 |
+|------|-------------------|-------------|--------------------|
+| 編輯欄位（`editFieldsAction`，en `Edit fields` 11 字元，不帶圖示） | label + 2 × `Space.md` | < 156 | 132 + 24 = 156 |
+| 開啟原始檔（`openSourceFileAction`，en `Open Source File` 16 字元，帶外開圖示） | label + 2 × `Space.md` + `LayoutSize.iconMd` + `Space.xs` | < 235 | 192 + 24 + 15 + 4 = 235 |
+| trailing `ButtonRow`（`wrap: false`） | 兩鈕 + `Space.sm`（5.8） | < 399 | 156 + 8 + 235 = 399 |
+| primary（截斷） | 一字元 + 省略號 | ≤ 24 | 24 |
+| **列最小寬**（leading 寬計 0） | 依上方〈空間不足策略〉的通式：leading 寬 + trailing 寬 + 2 × `Space.sm` + primary | **< 439** | **439** |
+
+通式含 2 個 `Space.sm`；沒有 leading 時，實作只放 trailing 前的一個間距（`lib/components/list_row.dart`），實際為 431。本表取通式的 439，作為保守值。
+
+zh 文案較短（`編輯欄位` 4 字、`開啟原始檔` 5 字，Ahem 下兩鈕 72、103，列最小寬 24 + 16 + 183 = 223；CJK 實機值與此相近），所以以 en 為準。
+
+比較對象：破洞報告 `Panel.scrollable` 內寬 = 視窗寬 − `LayoutSize.sidebarWidth` − 2 × `Space.xl`（頁面內距，5.2）− 2 × `Space.md`（面板內距，4.30）。`Section` 與 `ListRow` 沒有水平內距。`kMinWindowSize`（寬 960）下 = 960 − 172 − 40 − 24 = 724；`kDesignSize`（寬 1280）下為 1044。
+
+| 比較 | 實機字型 | 測試字型（Ahem） |
+|------|---------|----------------|
+| 列最小寬 ≤ 列寬（`kMinWindowSize`） | < 439 ≤ 724，成立 | 439 ≤ 724，成立 |
+
+**空間不足策略**（此情形）：
+- 在 `kMinWindowSize` 以上不觸發。
+- 列寬介於列最小寬與「leading 寬 + trailing 寬 + 2 × `Space.sm` + primary 全文寬」（同上方通式，leading 寬計 0）之間時，trailing 維持固有寬、兩鈕不截斷，由 primary 與 secondary 吸收剩餘寬並以省略號截斷（4.40 內容政策）。
+- 在 `ListRow` 內，`ButtonRow` 一律以 `wrap: false` 建構（4.34、5.8）：換行會讓列高變成兩列按鈕，破壞 `item` 的固有兩行高。兩鈕必須在同一列。
+- 日後若把此 `item` 放進列寬小於 439 的宿主，屬兩份契約互斥，須改宿主寬或改 trailing 形式（例如收進溢出選單），不得以截斷按鈕或換行吸收。
 
 ### 5.15 Section
 
@@ -8666,6 +8705,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.150 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 3 項（破洞報告的編輯入口，對齊 SPEC-001 v1.93、SPEC-003 v1.97）：4.40 `item` 變體新增可修正破洞項的 trailing：`ButtonRow`（`end`）[`AppButton.text`（`editFieldsAction`，不帶圖示，`action-gaps-edit-<itemId>`，唯讀降級時 disabled）, 開啟原始檔]；slot 契約 `trailing` 接受型別補 `ButtonRow`（限此情形，恰兩鈕）；i18n 朗讀列補兩鈕的 Tab 順序；§3 對照表 §5「有破洞」列與 §4.0.6 `editFieldsAction` 使用處同步；5.14 子件契約補 `ButtonRow`，新增〈可修正破洞項的寬度核對〉（en 最長文案，依通式 Ahem 下列最小寬 439 ≤ `kMinWindowSize` 列寬 724；拉丁字母實機為上界，CJK 不視為上界）與此情形的空間不足策略（primary 截斷吸收、`ButtonRow` 在列內不換行）。4.34 `ButtonRow` 新增 `wrap` 參數（預設 `true`；`false` 只用於 `ListRow.item` trailing）。用途、變體、狀態矩陣來源欄、slot 契約（`wrap` 列，`alignment` 補 `end` 用處）、尺寸契約、組合規則、測試點同步。尺寸契約定義父寬小於固有寬時維持一列，宿主違約的回報直接沿用 `RenderFlex` 的 debug 期溢位回報，不另做自訂回報（避免兩筆回報），release 不記；debug 版 App 經 `installGlobalErrorHandlers` 轉為致命錯誤狀態；不用 `developer.log`，以符合 SPEC-010 FR-04。最大尺寸列排除這種違約情形；也記下實作現況：`Wrap` 在 `ListRow` 內寬度無上限。測試點改為受限父格位下傳與不傳的 E1 對照，以 `tester.takeException()` 取回回報。5.8 空間不足策略補 `wrap: false`，〈不重疊〉的截斷排除 `wrap: false`。5.14 空間不足策略第 2 條的上界改用兩個間距的通式。4.40 測試點補可修正破洞項的形態、寬度與 Tab 順序。§3.1 總表的 `ListRow`、`ButtonRow` 兩列同步。§4.0.9 補 1.150 重驗紀錄（4.40、4.34 依〈契約齊全的定義：六條〉逐條通過）；開頭〈版本〉行補 1.150 摘要。另對齊 SPEC-009 v1.11：4.52 使用處補 UC、EVT `source_proposal`。不新增 key、不新增元件 |
 | 1.149 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 2 項（`partiallyWritten` 的畫面呈現；以 SPEC-009 v1.10 的操作單位為前提，一次寫入最多兩個檔，部分寫入只會是「反向檔已落檔且還原失敗、正向檔未動」）。<br>- 4.48 新增「部分寫入」狀態：提示格依觸發原因取 `fieldPartiallyWritten`（`ioFailed`，再送一次即可補齊）或 `fieldPartiallyWrittenReloadFirst`（`externallyModified`，各值格 disabled，須先放棄並重讀），接 `fieldSeeWriteLogHint`、錯誤色，值不變；補齊依據是已落檔的反向檔不再列入寫入集合；觸發原因為 `externallyModified` 時另進入外部已改阻擋。提示優先序、等待與結果的失敗段、狀態邊、測試點同步。<br>- 4.51 新增 `batchFiles` slot 與〈同批檔案〉子件（`written` 列出同批寫入的檔，`partiallyWritten` 列出未還原的檔，各附取回指令），寫入結果徽章與說明增 `partiallyWritten`；內容政策、焦點順序、測試點同步。多檔寫入整批一列（SPEC-009 FR-08 Q2）。<br>- 4.52 兩格待決解除（SPEC-009 v1.10 F4：移除刪除全部出現，焦點落點依新清單計算）。<br>- §4.0.6 新增六個 key，帶規格先行標記（`1.1.0-W2-003`）；§4.0.9 寫回 |
 | 1.148 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 1 項（component-contract-design，起點判定為路徑 A：兩個新元件無實作與呼叫端，來源為 SPEC-009 FR-09 逐欄位表）。<br>- 新增 4.52 `ReferenceChips`（容器，5.20）：FR-09「多值引用（節點 ID）」；加入與移除各為一次立即提交（套用時點四問，與 `1.0.0-W3-675` 同一判法）；找不到的值為值對映參數，提示 `fieldReferenceNotFound`；重複值逐筆顯示，chip 與移除鈕的 key 依位置推導；正向檔多值的寫法待決（SPEC-009 v1.10），`partiallyWritten` 呈現待決（第 2 項）。<br>- 新增 4.53 `AppCheckboxGroup`（容器，5.21）：FR-09「多值引用（domain）」；一次切換為一次立即提交；值域外的值接在最後。<br>- 4.43 `AppCheckbox` 增 `locked`、`enabled`（僅在 4.53 內）。<br>- 4.48 值格清單、`editable`／`readOnly` 判定改為依 FR-09「自」與目前版本，提示格優先序補兩則；5.17 子件類型與最小寬表；4.46〈何時不用〉；§3 兩列；§6 `Chip`、`Checkbox` 兩列。<br>- §4.0.6 新增五個 key，帶規格先行標記（`1.1.0-W2-001`、`1.1.0-W2-002`）。<br>- §4.0.9 寫回重驗結果：4.52 待 SPEC-009 v1.10 與第 2 項。<br>- frontmatter 版號原停在 1.146（1.147 漏改），本版一併更正 |
 | 1.147 | 2026-11-12 | `1.1.0-W1-108`：§4.0.6 新增〈規格先行標記〉，定義標記格式與移除時點；讀本表的契約測試對帶標記的列跳過比對 |

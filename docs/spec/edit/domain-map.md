@@ -6,7 +6,7 @@ related_usecases: []
 depends_on_bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-observability]
 path_patterns: []               # lib/edit/ 由 1.0 實作票建立後補上（validate 要求路徑存在）
 created: "2026-11-10"
-updated: "2026-11-12"
+updated: "2026-11-13"
 ---
 
 # Domain Map — Edit
@@ -70,7 +70,7 @@ updated: "2026-11-12"
 | 開始編輯（`beginEditing`） | 記下目標檔此刻的內容 M，作為之後判定外部已改的基準；同時記下驗證 baseline | 1.0 | SPEC-009 FR-01、FR-05 |
 | 修正欄位值（`reviseFieldValue`） | 改寫一個文件節點的純量欄位，經閘門、必要時快照、原子寫入、寫入後驗證 | 1.0 | SPEC-009 FR-01～FR-05 |
 | 放棄並重讀（`discardAndReload`） | 外部已改時捨棄 App 內的未寫入值，以磁碟內容重新開始編輯 | 1.0 | SPEC-009 FR-06 |
-| 修正關係邊（`reviseRelation`） | 改寫一個文件節點的邊欄位。沒有反向欄位的邊走單檔寫入，與 `reviseFieldValue` 同一路徑。provenance 會同批改寫相關 PROP 的 `outputs.spec_refs`：整批閘門、依序 `rename`，中途失敗時還原 | 1.1 | SPEC-009 FR-03〈多檔寫入（1.1）〉、FR-05 |
+| 修正關係邊（`reviseRelation`） | 改寫一個文件節點的邊欄位。沒有反向欄位的邊走單檔寫入，與 `reviseFieldValue` 同一路徑。provenance（SPEC、UC、EVT 的 `source_proposal`）會同批改寫相關 PROP 的 `outputs`：加入時寫依型別決定的子鍵，移除時刪除所有子鍵中的該 id（SPEC-009 v1.11）；整批閘門、依序 `rename`，中途失敗時還原 | 1.1 | SPEC-009 FR-03〈多檔寫入（1.1）〉、FR-05 |
 
 ### Bundle 不變式清單
 
@@ -95,7 +95,7 @@ updated: "2026-11-12"
 | Edit | 多檔寫入：寫入集合任一檔在閘門步驟 1～4 不通過時，所有目標檔不變，且不殘留暫存檔（1.1） | SPEC-009 FR-03 |
 | Edit | 多檔寫入：反向檔全部 `rename` 後，才 `rename` 正向檔（1.1） | SPEC-009 FR-03 |
 | Edit | 多檔寫入：中途失敗時，已 `rename` 的檔依相反順序還原為寫入前的位元組；有任一檔還原失敗時回傳 `partiallyWritten`，不回傳 `written` 或「檔案未動」（1.1） | SPEC-009 FR-03、FR-05 |
-| Edit | 多檔寫入：反向檔只改 `outputs.spec_refs` 與已存在的 `updated`；鍵不存在時不新增（1.1） | SPEC-009 FR-03 |
+| Edit | 多檔寫入：反向檔只改該次改寫的 `outputs` 子鍵與已存在的 `updated`；加入時鍵不存在不新增（1.1；子鍵範圍 v1.11） | SPEC-009 FR-03 |
 | Edit | 多檔寫入：移出端的 PROP 查不到時略過；加入端的 PROP 查不到時整批阻擋（1.1） | SPEC-009 FR-03 |
 
 ## 6. 待決事項

@@ -62,7 +62,7 @@ PROP-005 只定版本序列與整合測試，沒有定可編輯的範圍。本�
 | minor | 範圍 | 主要規格 |
 |------|------|---------|
 | 1.0 | 寫入基礎：三平面寫入前閘門、快照、寫入結果型別與三個可觀測時刻、CLI 驗證狀態、變更記錄、路徑界內型別、structured log、表單元件地基。對象：文件節點的純量欄位（非邊的單值欄位，如 title、status、priority、platform）。入口：節點詳情；破洞報告入口的適用集合為空，不渲染（見範圍界定第 4 條） | SPEC-009（新建）、SPEC-001、SPEC-003、SPEC-004 |
-| 1.1 | 關係邊。文件節點的邊只有 provenance 有反向欄位（blood、spawn 也有反向欄位，但屬 ticket 欄位，在 1.2 經 ticket CLI 寫入）：改 SPEC `source_proposal` 時，同批改寫相關 PROP 的 `outputs.spec_refs`（該清單的值改寫提前自 1.4，用戶裁定 2026-11-12，`1.1.0-W1-111`），閘門整批判定、快照逐檔判定（SPEC-009 FR-03〈多檔寫入（1.1）〉）。破洞報告入口自本版啟用，以破洞項為判定單位（SPEC-001 §5） | SPEC-009、SPEC-001、SPEC-004 |
+| 1.1 | 關係邊。文件節點的邊只有 provenance 有反向欄位（blood、spawn 也有反向欄位，但屬 ticket 欄位，在 1.2 經 ticket CLI 寫入）：改 SPEC、UC、EVT 的 `source_proposal` 時，同批改寫相關 PROP 的 `outputs`（加入寫進 `spec_refs`／`usecase_refs`／`event_refs`，移除刪掉所有子鍵中的該 id；改寫提前自 1.4，用戶裁定 2026-11-12，UC、EVT 於 2026-11-13 補裁，`1.1.0-W1-111`），閘門整批判定、快照逐檔判定（SPEC-009 FR-03〈多檔寫入（1.1）〉）。破洞報告入口自本版啟用，以破洞項為判定單位（SPEC-001 §5） | SPEC-009、SPEC-001、SPEC-004 |
 | 1.2 | Ticket 編輯（經 ticket CLI）：欄位、驗收清單、生命週期動作；終態唯讀 | SPEC-009、SPEC-001、SPEC-003 |
 | 1.3 | markdown 內文（`re_editor`，關閉語法高亮） | SPEC-009、SPEC-004 |
 | 1.4 | 結構化區塊（UC flow、PROP outputs），表格列編輯 | SPEC-009、SPEC-004 |

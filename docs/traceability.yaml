@@ -505,7 +505,7 @@ data_contract_tests:
       - test/unit/schema/builtin_schema_version_contract_test.dart
 
   - contract_ref: tracking_schema.json 的 edge_types.provenance（field source_proposal、reverse_field outputs）／SPEC-009 FR-03〈多檔寫入（1.1）〉
-    description: App 改寫 SPEC source_proposal 後，相關 PROP 的 outputs.spec_refs 必須與新的正向值一致；doc validate 不檢查這項一致性（1.1.0-W1-111 查證），只能由寫入層的整批判定與回復保證，結局只能是全部落檔、全部未動或 partiallyWritten 三者之一（1.1；測試在 Step 5 補）
+    description: App 改寫 SPEC、UC、EVT 的 source_proposal 後，相關 PROP 的 outputs 各子鍵必須與新的正向值一致（SPEC-009 v1.11）；doc validate 不檢查這項一致性（1.1.0-W1-111 查證），只能由寫入層的整批判定與回復保證，結局只能是全部落檔、全部未動或 partiallyWritten 三者之一（1.1；測試在 Step 5 補）
 
 # Runtime on-device 軸：0.1.0-W3-074 盤點的三個跨邊界呼叫點。
 # status 說明驗證形態現況（fake / 實機 / 兩者，定義見
