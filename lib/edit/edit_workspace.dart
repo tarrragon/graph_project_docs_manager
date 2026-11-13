@@ -75,12 +75,7 @@ class EditWorkspace {
   }) async {
     final sink = logSink ?? defaultEditLogSink();
     final editTimer = timer ?? (duration) => Future<void>.delayed(duration);
-    final runner = EditGitRunner(
-      port: git,
-      timer: editTimer,
-      root: root,
-      logSink: sink,
-    );
+    final runner = EditGitRunner(port: git, timer: editTimer, root: root);
     final reason = await _probeReadonlyReason(runner);
     final mode = reason == null ? EditMode.writable : EditMode.readOnly;
     _logMode(sink, mode, reason);
@@ -91,7 +86,7 @@ class EditWorkspace {
         files: files,
         git: runner,
         now: now ?? DateTime.now,
-        rewriter: rewriter ?? _rewriterWith(sink),
+        rewriter: rewriter ?? rewriteFrontmatterField,
         writeList: SessionWriteList(),
         workspaceRoot: root,
         validator: validator == null
@@ -105,21 +100,6 @@ class EditWorkspace {
       ),
     );
   }
-
-  /// 預設改寫函式：把 [sink] 帶進 [rewriteFrontmatterField]。
-  static FieldRewriter _rewriterWith(LogSink<EditLogEvent> sink) =>
-      ({
-        required original,
-        required field,
-        required newValue,
-        required today,
-      }) => rewriteFrontmatterField(
-        original: original,
-        field: field,
-        newValue: newValue,
-        today: today,
-        logSink: sink,
-      );
 
   static void _logMode(
     LogSink<EditLogEvent> sink,
@@ -137,8 +117,11 @@ class EditWorkspace {
   static Future<EditReadonlyReason?> _probeReadonlyReason(
     EditGitRunner runner,
   ) async {
-    final result = await runner.run(['rev-parse', '--is-inside-work-tree']);
-    if (result == null) return EditReadonlyReason.gitMissing;
+    final outcome = await runner.run(['rev-parse', '--is-inside-work-tree']);
+    // 無法啟動、逾時、執行期例外都是「git 無法執行」：由 editModeDetermined
+    // 的 gitMissing 表達，不另記失敗事件（SPEC-009 FR-07 v1.14）。
+    if (outcome is! EditGitCompleted) return EditReadonlyReason.gitMissing;
+    final result = outcome.result;
     final inside =
         result.exitCode == 0 &&
         String.fromCharCodes(result.stdout).trim() == 'true';
@@ -158,12 +141,16 @@ class EditWorkspace {
         EditSession(_context, path, baseline, corpusParsed: corpusParsed),
       );
     } on EditFileException catch (error) {
-      final errorCode = error.errorCode;
       (_context.logSink ?? defaultEditLogSink())(
-        EditLogEvent.beginEditingReadFailed,
-        errorCode == null
-            ? LogFields.empty
-            : LogFields({EditLogKeys.errorCode: LogValue.integer(errorCode)}),
+        EditLogEvent.readIoFailed,
+        LogFields({
+          EditLogKeys.path: editLogPath(path.relative),
+          EditLogKeys.operation: const LogValue.enumValue(
+            IoOperation.readTarget,
+          ),
+          if (error.errorCode != null)
+            EditLogKeys.errorCode: LogValue.integer(error.errorCode!),
+        }),
         level: LogLevel.error,
         source: ErrorSource.platformIo,
       );
