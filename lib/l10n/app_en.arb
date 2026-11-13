@@ -328,6 +328,7 @@
   "validationUnavailableUnexpectedExitCode": "The validator exited with an unexpected code",
   "validationUnavailableUnparsableOutput": "The validator's output could not be parsed",
   "validationUnavailableTimedOut": "Validation took longer than 30 seconds and was stopped",
+  "validationUnavailableBaselineNotReady": "The validation baseline was not ready before the write",
   "radioYes": "Yes",
   "radioNo": "No",
   "editDoneAction": "Done",

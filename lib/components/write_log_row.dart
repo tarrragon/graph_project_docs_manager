@@ -216,6 +216,8 @@ class WriteLogRow extends StatelessWidget {
         l10n.validationUnavailableUnparsableOutput,
       FieldValidationUnavailableReason.timedOut =>
         l10n.validationUnavailableTimedOut,
+      FieldValidationUnavailableReason.baselineNotReady =>
+        l10n.validationUnavailableBaselineNotReady,
     };
   }
 

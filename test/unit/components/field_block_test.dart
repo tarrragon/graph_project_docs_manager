@@ -217,6 +217,10 @@ void main() {
           FieldValidationUnavailableReason.timedOut,
           zh.validationUnavailableTimedOut,
         ),
+        (
+          FieldValidationUnavailableReason.baselineNotReady,
+          zh.validationUnavailableBaselineNotReady,
+        ),
       ]) ...[
         (
           'written 不可用 ${reason.name}（無快照）',

@@ -1251,6 +1251,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Validation took longer than 30 seconds and was stopped';
 
   @override
+  String get validationUnavailableBaselineNotReady =>
+      'The validation baseline was not ready before the write';
+
+  @override
   String get radioYes => 'Yes';
 
   @override

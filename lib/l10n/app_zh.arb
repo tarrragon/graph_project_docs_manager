@@ -2060,6 +2060,10 @@
   "@validationUnavailableTimedOut": {
     "description": "SPEC-004 unavailable(timedOut) 的原因"
   },
+  "validationUnavailableBaselineNotReady": "寫入前的驗證基準尚未完成",
+  "@validationUnavailableBaselineNotReady": {
+    "description": "SPEC-004 unavailable(baselineNotReady) 的原因"
+  },
   "radioYes": "是",
   "@radioYes": {
     "description": "SPEC-004 4.47 布林欄位選項"

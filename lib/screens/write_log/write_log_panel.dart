@@ -50,14 +50,14 @@ FieldWriteState writeStateOf(WriteListEntry entry) {
   };
 }
 
-/// 元件庫的原因枚舉沒有 `baselineNotReady`，暫以最接近的「非預期結束碼」呈現。
 FieldValidationUnavailableReason _unavailableReasonOf(UnavailableReason r) =>
     switch (r) {
       UnavailableReason.executableMissing =>
         FieldValidationUnavailableReason.executableMissing,
-      UnavailableReason.unexpectedExitCode ||
-      UnavailableReason.baselineNotReady =>
+      UnavailableReason.unexpectedExitCode =>
         FieldValidationUnavailableReason.unexpectedExitCode,
+      UnavailableReason.baselineNotReady =>
+        FieldValidationUnavailableReason.baselineNotReady,
       UnavailableReason.unparsableOutput =>
         FieldValidationUnavailableReason.unparsableOutput,
       UnavailableReason.timedOut => FieldValidationUnavailableReason.timedOut,
