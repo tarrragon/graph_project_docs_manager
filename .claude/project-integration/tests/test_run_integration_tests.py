@@ -53,13 +53,23 @@ def test_no_files_is_nonzero():
     assert rit.run_all([], lambda f: (0, "")) != 0
 
 
-def test_discover_recursive_only_test_suffix_sorted(tmp_path):
+def test_discover_top_level_only_test_suffix_sorted(tmp_path):
     base = tmp_path / "integration_test"
     (base / "research").mkdir(parents=True)
     for name in ["b_test.dart", "a_test.dart", "research/deep_test.dart", "research/ux_main.dart", "helper.dart"]:
         (base / name).write_text("")
-    assert rit.discover_tests(tmp_path) == [
-        "integration_test/a_test.dart", "integration_test/b_test.dart", "integration_test/research/deep_test.dart"]
+    assert rit.discover_tests(tmp_path) == ["integration_test/a_test.dart", "integration_test/b_test.dart"]
+
+
+def test_discover_excludes_perf_probe(tmp_path):
+    """perf/ 下的探針不收集（與 CI 的非遞迴 glob 一致）；頂層照常收集。"""
+    base = tmp_path / "integration_test"
+    (base / "perf").mkdir(parents=True)
+    (base / "top_test.dart").write_text("")
+    (base / "perf" / "probe_test.dart").write_text("")
+    found = rit.discover_tests(tmp_path)
+    assert "integration_test/perf/probe_test.dart" not in found
+    assert found == ["integration_test/top_test.dart"]
 
 
 def test_discover_missing_dir_is_empty(tmp_path):
