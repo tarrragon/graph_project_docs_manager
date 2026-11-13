@@ -1,15 +1,16 @@
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/corpus/frontmatter_classifier.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:yaml/yaml.dart';
 
-const String _tag = 'edit.field_rewrite';
 const String _updatedKey = 'updated';
 const String _delimiter = '---';
-const int _errorLevel = 900;
 const List<int> _bom = [0xEF, 0xBB, 0xBF];
 
 /// 一次改寫的結果。
@@ -41,13 +42,14 @@ FieldRewriteResult rewriteFrontmatterField({
   required String field,
   required String? newValue,
   required DateTime today,
+  LogSink<EditLogEvent>? logSink,
 }) {
   final located = _locate(original);
   final replacements = located == null
       ? null
       : _replacementsFor(located, field, newValue, today);
   if (located == null || replacements == null) {
-    return _notIsolated('target not rewritable'); // i18n-exempt
+    return _notIsolated(EditRewriteRejection.targetNotRewritable, logSink);
   }
   final rewritten = _splice(located, replacements);
   final verdict = checkRewriteIsolation(
@@ -56,9 +58,11 @@ FieldRewriteResult rewriteFrontmatterField({
     allowedKeys: {field, _updatedKey},
   );
   if (verdict != RewriteIsolationVerdict.isolated) {
-    return _notIsolated(
-      'isolation check failed: ${verdict.name}',
-    ); // i18n-exempt
+    return _notIsolated(switch (verdict) {
+      RewriteIsolationVerdict.parseLayerFailed =>
+        EditRewriteRejection.parseLayerFailed,
+      _ => EditRewriteRejection.byteLayerFailed,
+    }, logSink);
   }
   return FieldRewritten(rewritten);
 }
@@ -81,11 +85,15 @@ RewriteIsolationVerdict checkRewriteIsolation({
   return RewriteIsolationVerdict.isolated;
 }
 
-FieldRewriteResult _notIsolated(String reason) {
-  developer.log(
-    'rewriteNotIsolated: $reason', // i18n-exempt
-    name: _tag,
-    level: _errorLevel,
+FieldRewriteResult _notIsolated(
+  EditRewriteRejection reason,
+  LogSink<EditLogEvent>? logSink,
+) {
+  (logSink ?? defaultEditLogSink())(
+    EditLogEvent.rewriteNotIsolated,
+    LogFields({EditLogKeys.reason: LogValue.enumValue(reason)}),
+    level: LogLevel.error,
+    source: ErrorSource.gateBlocked,
   );
   return const FieldRewriteNotIsolated();
 }

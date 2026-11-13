@@ -4,13 +4,15 @@
 /// 失敗，或在指定步驟之後改動目標檔。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
-const String _tag = 'edit.file_port';
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
 const int _modeMask = 4095; // 0o7777
-const int _errorLevel = 900;
 
 /// 檔案操作失敗。[notFound] 為檔案不存在；其他失敗帶 [errorCode]（可能為空）。
 class EditFileException implements Exception {
@@ -44,7 +46,9 @@ abstract interface class EditFilePort {
 
 /// 以 `dart:io` 實作。
 class IoEditFilePort implements EditFilePort {
-  const IoEditFilePort();
+  const IoEditFilePort({this._logSink});
+
+  final LogSink<EditLogEvent>? _logSink;
 
   @override
   Future<Uint8List> read(String path) =>
@@ -91,10 +95,15 @@ class IoEditFilePort implements EditFilePort {
     } on PathNotFoundException {
       return;
     } on FileSystemException catch (error) {
-      developer.log(
-        'delete temp failed: errorCode=${error.osError?.errorCode}', // i18n-exempt
-        name: _tag,
-        level: _errorLevel,
+      final errorCode = error.osError?.errorCode;
+      (_logSink ?? defaultEditLogSink())(
+        EditLogEvent.tempDeleteFailed,
+        errorCode == null
+            ? LogFields.empty
+            : LogFields({EditLogKeys.errorCode: LogValue.integer(errorCode)}),
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+        error: error,
       );
     }
   }
