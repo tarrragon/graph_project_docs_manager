@@ -738,6 +738,229 @@ void main() {
     });
   });
 
+  group('預警與阻擋的轉換（#59、#60；§3.6 放棄並重讀、生命週期）', () {
+    Future<ProviderContainer> toWarning(WidgetTester tester, _Env env) async {
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      env.setDisk(_doc.replaceFirst('me', 'someone'));
+      _completeRound(container, env);
+      await _flush(tester);
+      expect(_anchor('state-nodeDetail-edit-warning'), findsOneWidget);
+      return container;
+    }
+
+    Future<void> toBlocked(WidgetTester tester, _Env env) async {
+      await _pump(tester, env);
+      await _enterEditing(tester);
+      env.setDisk(_doc.replaceFirst('原標題', '外部改的'));
+      await _submit(tester, 'title', '新標題');
+      expect(_anchor('state-nodeDetail-edit-blocked'), findsOneWidget);
+    }
+
+    testWidgets('#59 預警：放棄並重讀成功 → 編輯中，草稿捨棄、顯示磁碟值、橫幅消失', (tester) async {
+      final env = _Env.create();
+      await toWarning(tester, env);
+      await tester.enterText(_inputOf('title'), '草稿');
+      await tester.pump();
+      await tester.tap(_anchor('action-nodeDetail-edit-reload'));
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-editing'), findsOneWidget);
+      expect(_anchor('panel-nodeDetail-edit-banner'), findsNothing);
+      expect(
+        tester.widget<EditableText>(_inputOf('title')).controller.text,
+        '原標題',
+      );
+      expect(
+        tester.widget<EditableText>(_inputOf('owner')).controller.text,
+        'someone',
+      );
+      await _drainTimers(tester);
+    });
+
+    testWidgets('#59 預警：放棄並重讀得 notFound → state-nodeDetail-missing', (
+      tester,
+    ) async {
+      final env = _Env.create();
+      await toWarning(tester, env);
+      env.files.files.remove(env.abs);
+      await tester.tap(_anchor('action-nodeDetail-edit-reload'));
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-missing'), findsOneWidget);
+      expect(_anchor('state-nodeDetail-edit-warning'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('#59 預警：送出得 blocked(externallyModified) → 阻擋', (tester) async {
+      final env = _Env.create();
+      await toWarning(tester, env);
+      // 磁碟內容仍與 M 不同：閘門判 externallyModified。
+      await _submit(tester, 'title', '新標題');
+
+      expect(_anchor('state-nodeDetail-edit-blocked'), findsOneWidget);
+      expect(
+        find.text(_zh.editBannerExternallyModifiedBlocked),
+        findsOneWidget,
+      );
+      expect(env.targetText, contains('someone'));
+      await _drainTimers(tester);
+    });
+
+    testWidgets('#59 預警：完成 → state-nodeDetail-normal', (tester) async {
+      final env = _Env.create();
+      final container = await toWarning(tester, env);
+      await tester.tap(_anchor('action-nodeDetail-edit-done'));
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-normal'), findsOneWidget);
+      expect(container.read(nodeDetailEditProvider), isNull);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('#60 阻擋：完成 → state-nodeDetail-normal', (tester) async {
+      final env = _Env.create();
+      await toBlocked(tester, env);
+      await tester.tap(_anchor('action-nodeDetail-edit-done'));
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-normal'), findsOneWidget);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('#60 阻擋：點關聯退出編輯模式並替換為該節點', (tester) async {
+      final env = _Env.create();
+      await toBlocked(tester, env);
+      await tester.tap(_anchor('card-nodeDetail-relation-SPEC-901'));
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-normal'), findsOneWidget);
+      expect(_anchor('state-nodeDetail-edit-blocked'), findsNothing);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('放棄並重讀：重跑 baseline（驗證器再次被呼叫）', (tester) async {
+      final validator = FakeValidatorPort(
+        validate: const [ValidatorHang(), ValidatorHang()],
+        ucVerify: const [ValidatorHang(), ValidatorHang()],
+      );
+      final env = _Env.create(validator: validator);
+      await toWarning(tester, env);
+      final before = validator.calls.length;
+      await tester.tap(_anchor('action-nodeDetail-edit-reload'));
+      await _flush(tester);
+
+      expect(validator.calls.length, greaterThan(before));
+      await _drainTimers(tester);
+    });
+
+    testWidgets('放棄並重讀：讀取失敗後橫幅為 negative，再按一次可成功', (tester) async {
+      final env = _Env.create();
+      await _pump(tester, env);
+      await _enterEditing(tester);
+      env.setDisk(_doc.replaceFirst('原標題', '外部改的'));
+      await _submit(tester, 'title', '新標題');
+      env.files.resetCounters();
+      env.files.readScript[2] = const EditFileException(errorCode: 5);
+      await tester.tap(_anchor('action-nodeDetail-edit-reload'));
+      await _flush(tester);
+
+      final banner = tester.widget<NoticeBanner>(find.byType(NoticeBanner));
+      expect(banner.variant, NoticeBannerVariant.negative);
+      expect(_button('action-nodeDetail-edit-reload', tester).enabled, isTrue);
+
+      env.files.readScript.clear();
+      await tester.tap(_anchor('action-nodeDetail-edit-reload'));
+      await _flush(tester);
+      expect(_anchor('state-nodeDetail-editing'), findsOneWidget);
+      expect(_anchor('panel-nodeDetail-edit-banner'), findsNothing);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('已預警再收一輪：狀態維持預警', (tester) async {
+      final env = _Env.create();
+      final container = await toWarning(tester, env);
+      _completeRound(container, env);
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-edit-warning'), findsOneWidget);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('已阻擋再收一輪：狀態維持阻擋', (tester) async {
+      final env = _Env.create();
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      env.setDisk(_doc.replaceFirst('原標題', '外部改的'));
+      await _submit(tester, 'title', '新標題');
+      _completeRound(container, env);
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-edit-blocked'), findsOneWidget);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('切到其他導覽項期間收到輪次：回來時為預警', (tester) async {
+      final env = _Env.create();
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      navigateTo(container.read, AppDestination.traceability, NavIntent.rail);
+      await _flush(tester);
+      env.setDisk(_doc.replaceFirst('me', 'someone'));
+      _completeRound(container, env);
+      await _flush(tester);
+      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.rail);
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-edit-warning'), findsOneWidget);
+      await _drainTimers(tester);
+    });
+
+    testWidgets('X-7：預警出現時不請求焦點，不搶走編輯中欄位的焦點', (tester) async {
+      final env = _Env.create();
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      await tester.tap(_inputOf('owner'));
+      await tester.pump();
+      final focusBefore = FocusManager.instance.primaryFocus;
+      expect(focusBefore, isNotNull);
+      env.arbiter.requests.clear();
+
+      env.setDisk(_doc.replaceFirst('原標題', '外部改的'));
+      _completeRound(container, env);
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-edit-warning'), findsOneWidget);
+      expect(env.arbiter.requests, isEmpty);
+      expect(FocusManager.instance.primaryFocus, same(focusBefore));
+      await _drainTimers(tester);
+    });
+
+    testWidgets('預警不出現 SnackBar，持有中的可棄 SnackBar 不被取代', (tester) async {
+      final env = _Env.create();
+      final container = await _pump(tester, env);
+      await _enterEditing(tester);
+      AppSnackBar.show(
+        tester.element(_anchor('panel-nodeDetail-field-list')),
+        message: 'held',
+        level: AttentionLevel.discardable,
+        origin: AppSnackBarOrigin.userInitiated,
+      );
+      await tester.pump();
+      env.arbiter.requests.clear();
+
+      env.setDisk(_doc.replaceFirst('me', 'someone'));
+      _completeRound(container, env);
+      await _flush(tester);
+
+      expect(_anchor('state-nodeDetail-edit-warning'), findsOneWidget);
+      expect(env.arbiter.requests, isEmpty);
+      expect(find.text('held'), findsOneWidget);
+      await _drainTimers(tester);
+    });
+  });
+
   group('退出與保留（#58 返回與導覽）', () {
     testWidgets('點關聯：退出編輯模式並替換為該節點', (tester) async {
       final env = _Env.create();
