@@ -242,8 +242,8 @@ mappings:
       - externally-modified
       - write-not-completed
       - read-only-workspace
-      - revise-relation  # 1.1（1.1.0-W1-111）；測試於 Step 5 補
-      - partially-written  # 1.1（1.1.0-W1-111）；測試於 Step 5 補
+      - revise-relation  # 1.1（1.1.0-W1-111）；測試見 SPEC-009-test-design M、W 群組與 IT-E7
+      - partially-written  # 1.1（1.1.0-W1-111）；測試見 SPEC-009-test-design W-24、W-25、W-28
     tests:  # 規格 docs/test-design/SPEC-009-test-design.md（1.0.0-W3-553.4），檔案待 edit 實作票建立
       - test/unit/edit/write_gate_test.dart
       - test/unit/edit/snapshot_test.dart
@@ -262,6 +262,14 @@ mappings:
       - integration_test/edit_path_symlink_test.dart
       - integration_test/edit_readonly_degrade_test.dart
       - integration_test/edit_validation_real_cli_test.dart
+      # 1.1（1.1.0-W1-111.1，SPEC-009-test-design 0.9）
+      - test/unit/edit/multi_value_rewrite_test.dart
+      - test/unit/edit/provenance_write_set_test.dart
+      - test/unit/edit/multi_file_write_test.dart
+      - test/unit/edit/multi_file_write_log_test.dart
+      - test/unit/edit/session_write_list_multi_file_test.dart
+      - test/unit/screens/node_detail/node_detail_edit_test.dart
+      - integration_test/edit_multi_file_real_git_test.dart
 
   - spec: SPEC-001
     usecase: UC-08
@@ -274,7 +282,12 @@ mappings:
       - begin-from-gap-report
       - external-change-warning
       - read-only-workspace
-    tests: []  # 編輯狀態由 1.0.0-W3-553.3 定義，widget 測試設計待其定稿後補（SPEC-009-test-design §6 第 4 項）
+    tests:  # 1.1 的編輯入口、寫入清單結果與 IT-RE1～IT-RE3，依 docs/test-design/SPEC-001-test-design.md（1.1.0-W1-111.2）；1.0 編輯狀態的 widget 錨點仍待補（SPEC-009-test-design §6 第 4 項）
+      - test/unit/screens/gap_report/gap_report_edit_entry_test.dart
+      - test/widget/screens/gap_report/gap_report_edit_entry_widget_test.dart
+      - test/widget/screens/node_detail/node_detail_gap_entry_test.dart
+      - test/widget/screens/write_log/write_log_panel_partial_test.dart
+      - integration_test/uc08_relation_edit_test.dart
 
 # 水平 domain 規則軸：docs/spec/{domain}/domain-map.md §3 的 8 個 bundle（索引見 docs/system-layer.md §1.3）。
 # invariants 取自該表「唯一變更理由」欄；layer 取自 docs/system-layer.md §2 分層圖。
@@ -301,6 +314,18 @@ domain_bundle_tests:
       - test/unit/schema/tracking_schema_contract_test.dart
       - test/unit/schema/edge_type_decoding_test.dart
       - test/unit/schema/edge_type_undirected_test.dart
+
+  - bundle: Observability
+    layer: L0
+    invariants:
+      - Bundle 不變式清單（docs/spec/observability/domain-map.md §3）逐條對應的案例見 docs/test-design/SPEC-010-test-design.md §4.3
+    tests:  # SPEC-010（1.0.0-W3-553.2.5 測試設計）；本列由 1.1.0-W1-111.1 補登，O3-12 為 1.1 起
+      - test/unit/observability/log_record_encoder_test.dart
+      - test/unit/observability/log_values_test.dart
+      - test/unit/observability/log_writer_test.dart
+      - test/observability_contract_test.dart
+      - test/unit/app/global_error_handling_test.dart
+      - test/integration/observability_log_rotation_test.dart
 
   - bundle: Corpus
     layer: L1
@@ -384,7 +409,7 @@ domain_bundle_tests:
     layer: L3
     invariants:
       - 寫入安全政策、git 與 doc CLI 的寫入期互動、寫入結果的呈現契約改變是唯一合法變更理由（docs/spec/edit/domain-map.md §3）
-      - Bundle 不變式清單 12 條逐條對應的案例見 docs/test-design/SPEC-009-test-design.md §4.4
+      - Bundle 不變式清單（docs/spec/edit/domain-map.md §3）逐條對應的案例見 docs/test-design/SPEC-009-test-design.md §4.4
     tests:  # 1.0.0-W3-553.4 指定，edit 實作票建立前檔案尚不存在
       - test/unit/edit/write_gate_test.dart
       - test/unit/edit/snapshot_test.dart
@@ -393,6 +418,9 @@ domain_bundle_tests:
       - test/unit/edit/workspace_relative_path_test.dart
       - test/unit/edit/validation_baseline_test.dart
       - test/unit/edit/session_write_list_test.dart
+      - test/unit/edit/provenance_write_set_test.dart  # 1.1
+      - test/unit/edit/multi_file_write_test.dart  # 1.1
+      - test/unit/edit/multi_value_rewrite_test.dart  # 1.1
       - test/unit/edit/edit_log_test.dart
       - test/edit_contract_test.dart
 
@@ -505,7 +533,12 @@ data_contract_tests:
       - test/unit/schema/builtin_schema_version_contract_test.dart
 
   - contract_ref: tracking_schema.json 的 edge_types.provenance（field source_proposal、reverse_field outputs）／SPEC-009 FR-03〈多檔寫入（1.1）〉
-    description: App 改寫 SPEC、UC、EVT 的 source_proposal 後，相關 PROP 的 outputs 各子鍵必須與新的正向值一致（SPEC-009 v1.11）；doc validate 不檢查這項一致性（1.1.0-W1-111 查證），只能由寫入層的整批判定與回復保證，結局只能是全部落檔、全部未動或 partiallyWritten 三者之一（1.1；測試在 Step 5 補）
+    description: App 改寫 SPEC、UC、EVT 的 source_proposal 後，相關 PROP 的 outputs 各子鍵必須與新的正向值一致（SPEC-009 v1.11）；doc validate 不檢查這項一致性（1.1.0-W1-111 查證），只能由寫入層的整批判定與回復保證，結局只能是全部落檔、全部未動或 partiallyWritten 三者之一（1.1）
+    tests:  # 規格 docs/test-design/SPEC-009-test-design.md §3 M、W 群組與 §2.7 IT-E7（1.1.0-W1-111.1），檔案待 1.1 edit 實作票建立
+      - test/unit/edit/provenance_write_set_test.dart
+      - test/unit/edit/multi_file_write_test.dart
+      - test/unit/edit/multi_value_rewrite_test.dart
+      - integration_test/edit_multi_file_real_git_test.dart
 
 # Runtime on-device 軸：0.1.0-W3-074 盤點的三個跨邊界呼叫點。
 # status 說明驗證形態現況（fake / 實機 / 兩者，定義見

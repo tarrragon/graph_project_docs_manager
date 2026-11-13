@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-007
 created: "2026-11-10"
 updated: "2026-11-13"
-version: "1.12"
+version: "1.13"
 owner: L54-main
 has_functional_requirements: true
 
@@ -189,7 +189,8 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | 移除後剩零項（其他欄位） | — | `[]` |
 | block 序列、anchor、alias、跨多行的 flow 序列（含其中的註解）、項為非純量 | 不改寫，回傳 `blocked(rewriteNotIsolated)` | 同左 |
 
-- **加入的值已在清單中**：呼叫端不發出寫入，畫面的選項已排除已選的值（SPEC-004 4.52）。寫入層仍收到時視同無變更：不改檔案、不建快照、不成列（FR-08）。
+- **加入的值已在清單中**：判定點在呼叫端，發出寫入之前。呼叫端不發出寫入，畫面的選項已排除已選的值（SPEC-004 4.52）。因為沒有發出，所以沒有 `WriteResult`、不成列（FR-08 驗收中「呼叫端未發出的寫入」的對照），也不記 FR-07 事件；處理方式與必填欄位送出空白相同（FR-09〈可否清空〉）。對寫入層而言，「加入的值不在清單中」是前置條件：呼叫端保證成立，寫入層在 debug 期以 assert 檢查，不為違反前置條件的情形新增 `WriteResult`。
+  - **已知限制**：release build 中 assert 不生效。寫入層若被繞過呼叫端直接呼叫，會寫出重複值，該次寫入也照常成列。不另新增 `WriteResult` 擋下這種情形，是接受的殘餘風險（主控裁定 2026-11-13）：唯一的發出者是呼叫端，而呼叫端已依前置條件把關。
 - **正向檔的重複值**（F4）：移除 v 時刪除 v 的全部出現。理由同〈多檔寫入（1.1）〉〈寫入集合〉的 Q1：只刪一筆時剩下的那筆仍讓邊存在，畫面上卻少了一個 chip，使用者以為已移除。
 - **flow 序列的項**：以純量寫入，不加引號；值含 YAML 需要引號的字元時（`,`、`[`、`]`、`:`、`#` 與前後空白），回傳 `blocked(rewriteNotIsolated)`。節點 ID 受 `id_pattern` 約束，domain 名受 domain 名稱權威寫法約束，兩者都不含這些字元。
 
@@ -314,7 +315,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - [ ] 多值欄位（v1.10，F3）：`source_proposal` 為純量 v 時移除 v 得 `null`，鍵仍存在
 - [ ] 多值欄位（v1.10，F4）：正向檔 `[a, v, v]` 移除 v 得純量 `a`（`source_proposal`）；其他欄位 `[a, v, v]` 移除 v 得 `[a]`
 - [ ] 多值欄位（v1.10）：值為 block 序列或跨多行的 flow 序列時，回傳 `rewriteNotIsolated`，目標檔不變
-- [ ] 多值欄位（v1.10）：加入已在清單中的值時不改檔案、不成列
+- [ ] 多值欄位（v1.10）：加入已在清單中的值時，呼叫端不發出寫入：不改檔案、不成列、不記 FR-07 事件；寫入層直接收到時，debug 期 assert 失敗（v1.13）
 - [ ] 多檔寫入（v1.6；v1.11 限加入）：加入時反向檔缺 `outputs.spec_refs` 鍵，整批回傳 `rewriteNotIsolated`，所有檔不變
 - [ ] 多檔寫入（v1.6）：任一檔在步驟 1～4 不通過時，所有目標檔不變，同目錄不殘留暫存檔
 - [ ] 多檔寫入（v1.6）：第 2 個檔 `rename` 失敗（以注入模擬）且還原成功時，回傳原失敗結果，已 `rename` 的檔還原為寫入前的位元組
@@ -477,7 +478,7 @@ depends_on_domains: [workspace, schema, corpus, observability]
 | 事件 | level | `error_source` | `fields` |
 |---|---|---|---|
 | `writeIssued` | info | — | 路徑、欄位名 |
-| `writeAccepted` | info | — | 路徑、欄位名 |
+| `writeAccepted` | info | — | 路徑（多檔寫入時為路徑清單，1.1）、欄位名 |
 | `snapshotTaken` | info | — | 路徑、`blob_sha` |
 | `writeBlocked`（原因 `externallyModified`、`rewriteNotIsolated`） | warning | `gate_blocked` | 路徑、原因 |
 | `writeBlocked`（原因 `snapshotFailed`） | error | `external_process` | 路徑、原因、`git` 結束碼／`executableMissing`／`timedOut` 三擇一 |
@@ -494,6 +495,12 @@ depends_on_domains: [workspace, schema, corpus, observability]
 - 多檔寫入中途失敗（1.1）的記錄方式依結局分兩種，維持一次失敗只記一筆：
   - 還原全部成功：記觸發檔的原失敗事件（`writeBlocked` 或 `writeIoFailed`），另記一筆 `writeRolledBack`。`writeRolledBack` 是回復動作，不是第二次失敗，所以不帶 `error_source`。
   - 有檔還原失敗：只記一筆 `writePartiallyWritten`，觸發失敗的路徑放在它的欄位裡，不另記原失敗事件。
+- 多檔寫入（1.1）是一次操作，各事件的記法如下（主控裁定 2026-11-13）：
+  - `writeIssued`：記錄時點沿用 1.0，不因多檔改變。「路徑」只記正向檔，值為單一路徑，因為發出當下只拿得到正向檔。整批在閘門被擋時不記 `writeIssued`，只記 `writeBlocked`。
+  - `writeAccepted`：整批記一筆，「路徑」為寫入集合各檔的路徑，型別為 SPEC-010 FR-03 的「工作區相對路徑清單」。與 FR-08〈多檔寫入的列法（1.1）〉整批一列一致。
+  - `snapshotTaken`：逐檔各記一筆，因為每個檔各有自己的快照 SHA。
+  - `writePartiallyWritten` 的「未還原的路徑清單」同樣使用「工作區相對路徑清單」。
+  - **已知限制**：反向檔改了 `outputs` 的哪個子鍵不記錄。加入時可由正向檔的型別推得（〈反向清單鍵〉表）；移除時可比對該檔的快照追溯（FR-02）。
 - `osError` 為 null 時不帶 `osError.errorCode` 欄位。
 - `blob_sha` 以 SPEC-010 FR-03 的 commit SHA 包裝型別記錄。該型別的名稱是 commit，實際記的是 blob；兩者同為 40 字元小寫十六進位，序列化結果相同。此名稱不符為已知限制，SPEC-010 新增物件 SHA 型別時改用。
 - 不新增 App 自有的跨 session 內容副本（〈2026-09-10〉C-1）。射程限跨 session 存活的副本：編輯器內文字級 undo（`re_editor` 內建）與 session 內的單步復原不受限。
@@ -713,3 +720,4 @@ Ticket 欄位（1.2 起，經 ticket CLI；處於 ticket CLI 定義的終態時�
 | 1.10 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 前置，主控審 SPEC-004 1.148 時指出的跨規格缺口）。<br>**FR-03**<br>- 新增〈多值欄位的加入與移除（1.1）〉：操作單位為一次加入或一次移除；值的改寫規則表（flow 序列附加與刪除、純量轉清單、移除到剩一項或零項）；加入已存在的值不寫入；不支援的寫法回傳 `rewriteNotIsolated`。F1–F4 四項格式選擇由用戶裁定（2026-11-13，經主控 AUQ）：F1 `null` 加入寫純量、F2 剩一項寫回純量、F3 剩零項寫 `null`、F4 正向檔重複值移除全部出現。<br>- 〈多檔寫入（1.1）〉〈寫入集合〉改為「加入、移除各一次」：寫入集合最多兩個檔；A 改 B 為兩次寫入。<br>- 驗收：原「由 PROP-A 改為 PROP-B」一條改寫，另補多值欄位各條（含 F1–F4 各一條的具體值）。<br>**FR-09**<br>- `source_proposal` 列改為 chips 加搜尋（`forward_cardinality` 為 many） |
 | 1.11 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 第 3 項衍生）。主控查證 FR-09 漏列：8 份 UC 與 12 份 EVT 都帶 `source_proposal`，FR-09 只列了 SPEC。用戶裁定（2026-11-13，經主控 AUQ）UC、EVT 的 `source_proposal` 都在 1.1 開放，兩者都比照 SPEC 做多檔寫入。EVT 原裁為單檔寫入，前提是「PROP 沒有 EVT 的反向清單」；查證後 4 份 PROP 帶 `outputs.event_refs`，主控向用戶更正後重問，改裁為多檔寫入。<br>**FR-03**<br>- 〈多值欄位的加入與移除〉適用範圍補 UC、EVT。<br>- 〈多檔寫入〉適用範圍改為一般化寫法（正向 `source_proposal`、反向 `outputs` 子鍵，依 SPEC-007 FR-03 子鍵不列舉）。<br>- 新增〈反向清單鍵〉表：SPEC→`spec_refs`、UC→`usecase_refs`、EVT→`event_refs`。註明是依語料慣例的寫入對照，不是型別表資料（主控判定不構成 schema 副本）。<br>- **改變 v1.6 起的既有寫法**（主控依 Q1 與 SPEC-007 D6 推導）：移除時，從 `outputs` 所有清單子鍵刪除該 id 的全部出現，不再只刪 `spec_refs`；加入時只寫依型別決定的子鍵，任一子鍵已含該 id 就不列入寫入集合。理由：任何子鍵的清單項都建反向邊，只刪一處時邊仍存在。寫入集合仍最多兩個檔（仍是同一份 PROP）。<br>- 反向檔允許變更集合改為「`updated` 加上該次改寫的子鍵」；缺鍵保護只適用加入。<br>- 新增〈反向檔子鍵值的形狀〉表：清單、block 或跨多行、`null`、純量四種形狀各自算不算「含該 id」，以及移除、加入時怎麼處理；加入時目標子鍵為 `null` 或純量時回傳 `rewriteNotIsolated`。形狀表前寫明判定順序：先依〈寫入集合〉判定 PROP 列不列入，已列入才套形狀表的移除與加入欄。第 2 列直接引用值改寫規則表的「不改寫」列，不另列較窄清單。新增〈`outputs` 本身不是 map〉表（清單、純量字串、`null` 或缺鍵、數字或布林）。〈寫入集合〉的「含該 id」改依兩張表的「算不算含」欄判定，判定順序第 1 步同時指向兩張表，`outputs` 不是 map 時不以「沒有子鍵」推得不含。驗收補子鍵形狀與 `outputs` 非 map 的情形，各附 E2 對照。<br>- 新增〈已知後果〉：PROP-001、006、007 沒有 `event_refs`，EVT 加入這三份時回傳 `rewriteNotIsolated`。<br>- 〈寫入後驗證〉理由句改為依允許變更集合描述。<br>- 驗收補 UC、EVT 的寫入，以及跨子鍵移除、跨子鍵已含的情形；v1.6 的 `danglingRef` 修正驗收依 v1.10 操作單位改寫為先移除、再加入。<br>**FR-09**<br>- 補 UC、EVT 的 `source_proposal` 列。<br>- PROP `outputs` 列改寫：加入限三個子鍵、移除涵蓋任一子鍵；目標元件改為「每個子鍵一列」，不寫死清單數 |
 | 1.12 | 2026-11-13 | `1.0.0-W3-553.17.1`（執行期澄清，主控審）。553.17 實作時發現 SessionWriteList 只記錄 `written`，與 SPEC-001 §12「列出所有發出過的寫入，不只 `written`」不一致；用戶裁定 2026-11-13（經主控 AUQ）1.0 本版修，以 §12 為準。<br>**FR-08**<br>- 〈正常流程中的即時確認〉載體由「本 session 寫過的檔案與欄位清單」改為「本 session 發出過的所有寫入」：發出即成列（寫入中），結局（`written`、`blocked` 三種原因、`ioFailed`）回來時更新同一列；每列附所屬專案；驗證狀態只附在被受理的寫入上。補理由：退出編輯模式後未受理的失敗只在清單上看得到；清單屬 session，切換專案後保留。<br>- 驗收補兩條：各結局成列（含「未發出不成列」的對照）、列附所屬專案且切換專案後保留 |
+| 1.13 | 2026-11-13 | `1.1.0-W1-111.1`（1.1 規劃波 Step 5 測試設計回報的缺口，主控依規格內部一致性定案，不經用戶）。原文「寫入層仍收到時視同無變更」沒有寫回傳哪個 `WriteResult`，也沒有寫是否記 FR-07 事件。<br>**FR-03**<br>- 〈多值欄位的加入與移除（1.1）〉的「加入的值已在清單中」：判定點定在呼叫端，發出寫入之前，比照必填欄位送出空白。不發出寫入，所以沒有 `WriteResult`、不成列、不記 FR-07 事件。寫入層把「加入的值不在清單中」當作前置條件，debug 期以 assert 檢查，不新增 `WriteResult`。理由：FR-08 驗收已把這種情形歸為「呼叫端未發出的寫入」；FR-07 事件表本來就沒有必填空白的事件。<br>**FR-07**<br>- 約束條件補多檔寫入的記法（主控裁定）：`writeIssued` 時點沿用 1.0，路徑只記正向檔，整批被閘門擋下時不記；`writeAccepted` 整批一筆，路徑為清單；`snapshotTaken` 逐檔記；路徑清單用 SPEC-010 v1.2 新增的「工作區相對路徑清單」；已知限制：反向檔改了哪個子鍵不記錄。<br>- FR-03 該段補〈已知限制〉：release build 中 assert 不生效，寫入層被直接呼叫時會寫出重複值並成列，接受為殘餘風險（主控裁定） |

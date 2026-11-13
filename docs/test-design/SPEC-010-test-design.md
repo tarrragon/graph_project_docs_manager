@@ -4,10 +4,10 @@ title: "SPEC-010 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-010
-spec_version: "1.1"
+spec_version: "1.2"
 ticket: 1.0.0-W3-553.2.5
 created: "2026-11-10"
-updated: "2026-11-10"
+updated: "2026-11-13"
 ---
 
 # SPEC-010 Phase 2 紅燈測試規格
@@ -105,6 +105,7 @@ FR-02 第一條驗收「帶 `error_source` 的事件在發出端事件表寫明�
 | O3-8（守衛） | 節點 ID `a/b`、含換行、65 個字元 | 建構 | 皆失敗，替代值為 `nodeIdRejected`（正向對照：O3-7） |
 | O3-9（守衛） | 40 字元小寫十六進位 SHA；39 字元；含 `g`；40 字元大寫十六進位 | 建構 commit SHA | 第一案成功，其餘皆失敗；大寫不轉小寫（正向對照：第一案） |
 | O3-10 | enum 值、整數、布林各一 | 編碼 | 分別為值名稱字串、JSON number、JSON boolean |
+| O3-12（守衛，1.1 起，SPEC-010 v1.2） | 根 `/w`；工作區相對路徑清單依序傳入 `/w/docs/a.md`、`/Users/someone/b.md`、`/w/docs/c.md` | 建構並序列化 | 序列化為三元素字串陣列：第 1、3 個為 `docs/a.md`、`docs/c.md`，第 2 個為 `LogLocation` 的值名稱；結果不含 `/Users/`，順序與傳入相同。正向對照：三個元素都在 `/w` 之下時，三個位置皆為相對路徑。 |
 | O3-11（守衛，C-2） | 例外 `FileSystemException`，訊息含 `secretMarker` | 經 writer 寫一筆 `platform_io` 記錄 | 檔案內容不含 `secretMarker`，`error_type` 為 `FileSystemException`；`RecordingDevLog` 收到的 `error` 物件含 `secretMarker`（正向對照：證明標記確實送進了 writer，檔案中缺席是剝除的結果而非沒送到） |
 
 ### O4 LogSink 契約（FR-04）
@@ -185,7 +186,7 @@ O4-4、O4-5 的測試檔落在 `test/unit/corpus/` 與監看所在 domain 的目
 | 守衛 | 應被擋下的輸入 | 案例 |
 |---|---|---|
 | 白名單（編譯期） | 字串字面值作為 fields 值 | O3-1 |
-| 白名單（建構期） | 工作區外路徑、逃出根的路徑、不合字元集的欄位名與節點 ID | O3-3、O3-4、O3-6、O3-8 |
+| 白名單（建構期） | 工作區外路徑、逃出根的路徑、不合字元集的欄位名與節點 ID、路徑清單中的工作區外元素（1.1） | O3-3、O3-4、O3-6、O3-8、O3-12 |
 | C-2 | 例外訊息中的標記字串 | O3-11、O7-2 |
 | 輪替上限 | 已有 4 個歷史檔時再輪替 | O5-4、O5-5、IT-1-2 |
 | 單一 typedef、單一 `developer.log` 出口 | 含兩處 typedef 或一處直接呼叫的樣本 | O4-1、O4-2 |
@@ -210,6 +211,7 @@ O4-4、O4-5 的測試檔落在 `test/unit/corpus/` 與監看所在 domain 的目
 | `1.0.0-W3-553.2.2` writer | O1、O2、O3（O3-1 除外）、O5、O6、N1、IT-1 |
 | `1.0.0-W3-553.2.3` LogSink 統一 | O3-1、O4 |
 | `1.0.0-W3-553.2.4` 全域攔截落檔 | O7 |
+| 1.1 多檔整批閘門與回復的實作票（`1.1.0-W1-111` Step 6 建立，SPEC-009-test-design §5 該列） | O3-12 |
 
 O3-1 歸 `.2.3`：包裝型別由 `.2.2` 建立，但「沒有任何呼叫點能傳字串」要等全部 sink 遷移完才成立。
 
@@ -231,3 +233,10 @@ O3-1 歸 `.2.3`：包裝型別由 `.2.2` 建立，但「沒有任何呼叫點能
 | `AppSnackBarLogEvent` | `lib/components/app_snack_bar.dart` | `shown` `skippedUnmounted` `actionPressed` `closed` `preempted` `yielded` `clearedByProjectChange` |
 | `GraphLogEvent` | `lib/graph/graph_log_event.dart` | `buildCompleted` `buildUnavailable` `adjacencyUnavailable` `flowUnavailable` `bundleOrderUnavailable` `domainUcRelationUnavailable` |
 | `HistoryLogEvent` | `lib/history/git/history_log_event.dart` | `preflightEntered` `preflightResult` `degraded` `scanStarted` `scanFinished` `scanParseReported` `scanCancelled` `tripwire` `processStarted` `processExited` `processKilled` `processLaunchFailed` |
+
+## 8. 變更歷史
+
+| 日期 | 票 | 變更 |
+|------|----|------|
+| 2026-11-10 | `1.0.0-W3-553.2.5` | 初版，對應 SPEC-010 v1.1 |
+| 2026-11-13 | `1.1.0-W1-111.1` | 對應 SPEC-010 v1.2：新增 O3-12（工作區相對路徑清單中的工作區外元素改記 `LogLocation`，其餘照常，正向對照為全部在工作區內）；§4.2 白名單（建構期）列與 §5 同步。O3-12 由 1.1 多檔整批閘門與回復的實作票承接 |
