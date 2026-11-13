@@ -337,6 +337,7 @@
   "writeResultBlocked": "Not written",
   "writeResultIoFailed": "Read or write failed",
   "writeResultExternallyModified": "The file was changed outside the app, so this write was not performed",
+  "writeLogEmptyMessage": "No files have been written in the app since it was opened",
   "writeLogColumnPath": "Path",
   "writeLogColumnField": "Field",
   "writeLogColumnResult": "Write result",

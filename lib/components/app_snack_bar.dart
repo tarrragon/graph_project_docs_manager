@@ -8,10 +8,11 @@
 /// 靜態入口。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import 'attention_level.dart';
 import '../tokens/tokens.dart';
@@ -41,7 +42,7 @@ enum AppSnackBarOrigin {
 
 /// [AppSnackBar] 診斷日誌的事件類別（0.1.0-W3-165）。
 ///
-/// 測試斷言依此列舉與 [AppSnackBarLogSink] 的 `fields` 結構化欄位判斷「發生
+/// 測試斷言依此列舉與 [LogSink] 的 `fields` 結構化欄位判斷「發生
 /// 了什麼」，不比對日誌散文字面——`0.1.0-W3-132` 尚未把日誌訊息改為事件識別
 /// 碼，比對字面會與其目標衝突。
 enum AppSnackBarLogEvent {
@@ -84,7 +85,7 @@ enum AppSnackBarLogEvent {
 final class AttentionHolderHint {
   const AttentionHolderHint({required this.showId, required this.level});
 
-  /// 被截斷者的識別，與本檔 [AppSnackBarLogSink] 的 `showId` 同一空間。
+  /// 被截斷者的識別，與本檔 [appSnackBarLogKeys] 的 `showId` 同一空間。
   final int showId;
 
   /// 持有者目前顯示中訊息的級別。
@@ -109,13 +110,31 @@ enum _Preemption {
   yieldToHolder,
 }
 
-/// 日誌投影的接縫。生產預設轉呼 `developer.log(name: 'AppSnackBar')`；
-/// `fields` 攜帶結構化欄位（測試取用），組句給人閱讀由接收端自行處理。
-typedef AppSnackBarLogSink = void Function(
-  AppSnackBarLogEvent event,
-  Map<String, Object?> fields, {
-  int? level,
-});
+/// 日誌負載鍵（具名常數，測試以常數比對）。
+///
+/// 使用者內容（訊息文字、動作標籤）不入負載（SPEC-010 FR-03）；停留時長
+/// 由 `variant` 決定，不另記。
+///
+/// 以 const record 承載而非 `static` 成員：本檔的 static 成員集合受
+/// T-205-18 白名單守衛，不得因日誌鍵而擴張。
+const appSnackBarLogKeys = (
+  showId: 'showId',
+  origin: 'origin',
+  variant: 'variant',
+  level: 'level',
+  reason: 'reason',
+  holderShowId: 'holderShowId',
+  holderLevel: 'holderLevel',
+  preemptedShowId: 'preemptedShowId',
+  preemptedLevel: 'preemptedLevel',
+  sameLevelReplace: 'sameLevelReplace',
+  holderUnknown: 'holderUnknown',
+  projectChange: 'projectChange',
+);
+
+/// 生產預設：經共用 writer 輸出，App 層 domain 為 `presentation`（FR-01）。
+final LogSink<AppSnackBarLogEvent> defaultAppSnackBarLogSink =
+    defaultLogSink<AppSnackBarLogEvent>('presentation');
 
 /// SnackBar 唯一承載元件（SPEC-004 §4.26）。
 ///
@@ -125,13 +144,6 @@ abstract final class AppSnackBar {
   static const String
   _actionSlotAssertMessage = // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
       'actionLabel 與 onAction 於 withAction 變體為必填（SPEC-004 §4.26 slot 契約）';
-
-  static const String _tag = 'AppSnackBar';
-
-  // dart:developer 承自 package:logging 的 Level 值（INFO=800、WARNING=900）；
-  // 專案既有 warning 皆為 900（2.4 日誌等級規則表）。
-  static const int _levelInfo = 800;
-  static const int _levelWarning = 900;
 
   // 一次 show 呼叫的關聯識別（D1）：process 內單調遞增，供四個日誌事件
   // 共享同一值以配對；不重置、不提供重置 API（少一個公開面）。單執行緒事件
@@ -150,18 +162,18 @@ abstract final class AppSnackBar {
   // actionPressed 為該則是否已記錄 actionPressed（SPEC-003 §2.13〈已按動作者
   // 不是截斷〉）：使用者按動作後的關閉由使用者造成，比照非 hide 不套用截斷
   // 等級。
-  static int? _resolveClosedLevel(
+  static LogLevel _resolveClosedLevel(
     SnackBarClosedReason reason,
     AppSnackBarOrigin origin,
     bool actionPressed,
   ) {
     if (actionPressed || reason != SnackBarClosedReason.hide) {
-      return null;
+      return LogLevel.info;
     }
     if (origin == AppSnackBarOrigin.background) {
-      return _levelWarning;
+      return LogLevel.warning;
     }
-    return _levelInfo;
+    return LogLevel.info;
   }
 
   // 截斷裁決純函式（唯一裁決點，0.1.0-W3-205 T-205-17）：輸入恰兩項，
@@ -184,28 +196,19 @@ abstract final class AppSnackBar {
     return _Preemption.yieldToHolder;
   }
 
-  static void _defaultLogSink(
-    AppSnackBarLogEvent event,
-    Map<String, Object?> fields, {
-    int? level,
-  }) {
-    final detail = fields.entries
-        .map((entry) => '${entry.key}=${entry.value}')
-        .join(', ');
-    if (level != null) {
-      developer.log(
-        '$event：$detail',
-        name: _tag,
-        level: level,
-      ); // i18n-exempt: 開發者診斷 log
-      return;
-    }
-    developer.log('$event：$detail', name: _tag); // i18n-exempt: 開發者診斷 log
-  }
-
-  /// 日誌投影的接縫（測試替身注入點；正式路徑固定用 [_defaultLogSink]）。
+  /// 日誌投影的接縫（測試替身注入點；正式路徑固定用
+  /// [defaultAppSnackBarLogSink]）。
   @visibleForTesting
-  static AppSnackBarLogSink logSink = _defaultLogSink;
+  static LogSink<AppSnackBarLogEvent> logSink = defaultAppSnackBarLogSink;
+
+  // showId／origin 為每個 show 事件共有的關聯欄位。
+  static Map<String, LogValue> _baseFields(
+    int showId,
+    AppSnackBarOrigin origin,
+  ) => {
+    appSnackBarLogKeys.showId: LogValue.integer(showId),
+    appSnackBarLogKeys.origin: LogValue.enumValue(origin),
+  };
 
   /// 顯示一則 SnackBar，依級別裁決是否取代目前顯示的任何 SnackBar
   /// （0.1.0-W3-205〈截斷條件綁級別〉）。
@@ -235,17 +238,20 @@ abstract final class AppSnackBar {
 
     // showId 在 mounted 判定之前產生（D1），使 skippedUnmounted 也有識別。
     final showId = _nextShowId();
-    final baseFields = <String, Object?>{'showId': showId, 'origin': origin};
+    final baseFields = _baseFields(showId, origin);
 
     // 早退關卡 1（必須位於裁決之前，T-205-8／既有 M7／M15）：靜默早退
     // （唯一無痕跡的失敗路徑，0.1.0-W3-078 起因）：context 已卸載時
     // ScaffoldMessenger.of 查找不安全，記錄 warning 後直接返回。
     if (!context.mounted) {
-      logSink(AppSnackBarLogEvent.skippedUnmounted, {
-        ...baseFields,
-        'variant': variant,
-        'message': message,
-      }, level: _levelWarning);
+      logSink(
+        AppSnackBarLogEvent.skippedUnmounted,
+        LogFields({
+          ...baseFields,
+          appSnackBarLogKeys.variant: LogValue.enumValue(variant),
+        }),
+        level: LogLevel.warning,
+      );
       return;
     }
 
@@ -258,17 +264,22 @@ abstract final class AppSnackBar {
     if (decision == _Preemption.yieldToHolder) {
       logSink(
         AppSnackBarLogEvent.yielded,
-        {
+        LogFields({
           ...baseFields,
-          'level': level,
-          'holderShowId': currentHolder?.showId,
-          'holderLevel': currentHolder?.level,
-          'variant': variant,
-          'message': message,
-        },
+          appSnackBarLogKeys.level: LogValue.enumValue(level),
+          if (currentHolder != null) ...{
+            appSnackBarLogKeys.holderShowId: LogValue.integer(
+              currentHolder.showId,
+            ),
+            appSnackBarLogKeys.holderLevel: LogValue.enumValue(
+              currentHolder.level,
+            ),
+          },
+          appSnackBarLogKeys.variant: LogValue.enumValue(variant),
+        }),
         level: origin == AppSnackBarOrigin.background
-            ? _levelWarning
-            : _levelInfo,
+            ? LogLevel.warning
+            : LogLevel.info,
       );
       return;
     }
@@ -278,25 +289,35 @@ abstract final class AppSnackBar {
     // 全檔唯一的「無引數清除」，緊接於本函式主體，其後恰接一次呈現
     // （INV-SNACKBAR-NOQUEUE，T-205-16）。
     messenger.hideCurrentSnackBar();
-    logSink(AppSnackBarLogEvent.preempted, {
-      ...baseFields,
-      'level': level,
-      'preemptedShowId': currentHolder?.showId,
-      'preemptedLevel': currentHolder?.level,
-      'sameLevelReplace': decision == _Preemption.replaceSameLevel,
-      'holderUnknown': decision == _Preemption.holderUnknown,
-    });
+    logSink(
+      AppSnackBarLogEvent.preempted,
+      LogFields({
+        ...baseFields,
+        appSnackBarLogKeys.level: LogValue.enumValue(level),
+        if (currentHolder != null) ...{
+          appSnackBarLogKeys.preemptedShowId: LogValue.integer(
+            currentHolder.showId,
+          ),
+          appSnackBarLogKeys.preemptedLevel: LogValue.enumValue(
+            currentHolder.level,
+          ),
+        },
+        appSnackBarLogKeys.sameLevelReplace: LogValue.boolean(
+          decision == _Preemption.replaceSameLevel,
+        ),
+        appSnackBarLogKeys.holderUnknown: LogValue.boolean(
+          decision == _Preemption.holderUnknown,
+        ),
+      }),
+    );
     final isWithAction = variant == AppSnackBarVariant.withAction;
-    final durationToken = isWithAction
-        ? 'Motion.snackBarWithAction'
-        : 'Motion.snackBar';
-    logSink(AppSnackBarLogEvent.shown, {
-      ...baseFields,
-      'variant': variant,
-      'message': message,
-      'duration': durationToken,
-      if (isWithAction) 'actionLabel': actionLabel,
-    });
+    logSink(
+      AppSnackBarLogEvent.shown,
+      LogFields({
+        ...baseFields,
+        appSnackBarLogKeys.variant: LogValue.enumValue(variant),
+      }),
+    );
     // 本則是否已按動作：閉包區域變數，不使用 static（T-205-18 白名單）。
     var actionPressed = false;
     final controller = messenger.showSnackBar(
@@ -339,10 +360,10 @@ abstract final class AppSnackBar {
                     // 以 action 關掉（T-205-11）。此處帶引數清除不計入
                     // INV-SNACKBAR-NOQUEUE 的「無引數清除恰 1 次」。
                     actionPressed = true;
-                    logSink(AppSnackBarLogEvent.actionPressed, {
-                      ...baseFields,
-                      'actionLabel': actionLabel,
-                    });
+                    logSink(
+                      AppSnackBarLogEvent.actionPressed,
+                      LogFields(baseFields),
+                    );
                     messenger.hideCurrentSnackBar(
                       reason: SnackBarClosedReason.action,
                     );
@@ -371,10 +392,14 @@ abstract final class AppSnackBar {
       // baseFields／origin 由本次呼叫的區域繫結經閉包捕獲，不讀取模組級
       // 現值——closed 完成時計數器可能已被後續 show 遞增（C-2、語言注意
       // 事項段）。
-      logSink(AppSnackBarLogEvent.closed, {
-        ...baseFields,
-        'reason': reason,
-      }, level: _resolveClosedLevel(reason, origin, actionPressed));
+      logSink(
+        AppSnackBarLogEvent.closed,
+        LogFields({
+          ...baseFields,
+          appSnackBarLogKeys.reason: LogValue.enumValue(reason),
+        }),
+        level: _resolveClosedLevel(reason, origin, actionPressed),
+      );
     });
   }
 
@@ -384,13 +409,17 @@ abstract final class AppSnackBar {
   /// v1.68 新增的退出路徑，故為 [show] 之外第二處無引數清除。
   static void clearForProjectChange(BuildContext context) {
     if (!context.mounted) {
-      logSink(AppSnackBarLogEvent.skippedUnmounted, {
-        'reason': 'projectChange',
-      }, level: _levelWarning);
+      logSink(
+        AppSnackBarLogEvent.skippedUnmounted,
+        LogFields({
+          appSnackBarLogKeys.projectChange: const LogValue.boolean(true),
+        }),
+        level: LogLevel.warning,
+      );
       return;
     }
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    logSink(AppSnackBarLogEvent.clearedByProjectChange, {});
+    logSink(AppSnackBarLogEvent.clearedByProjectChange, LogFields.empty);
   }
 }
 

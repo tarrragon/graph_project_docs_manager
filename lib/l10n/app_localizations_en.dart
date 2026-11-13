@@ -1280,6 +1280,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The file was changed outside the app, so this write was not performed';
 
   @override
+  String get writeLogEmptyMessage =>
+      'No files have been written in the app since it was opened';
+
+  @override
   String get writeLogColumnPath => 'Path';
 
   @override

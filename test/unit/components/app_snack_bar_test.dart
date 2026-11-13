@@ -14,6 +14,9 @@ import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 
 import '../../helpers/helpers.dart';
@@ -29,13 +32,32 @@ const _snackBarActionKey = Key('snackbar-action');
 // 避免改一處忘另兩處而靜默失準）。
 const _materialTransition = Duration(milliseconds: 250);
 
-/// 一次 [AppSnackBarLogSink] 呼叫的紀錄快照（0.1.0-W3-176 Phase 4b：原為
-/// 四處重複的匿名 record 型別字面，改用檔案私有 typedef 收斂）。
+/// 一次 `LogSink<AppSnackBarLogEvent>` 呼叫的紀錄快照（0.1.0-W3-176 Phase 4b：
+/// 原為四處重複的匿名 record 型別字面，改用檔案私有 typedef 收斂）。
+///
+/// `fields` 為還原後的負載（enum 值保留為 enum 物件、整數與布林為原值）；
+/// `level` 為 developer.log 數值（info=800、warning=900）。
 typedef _SnackBarLogRecord = ({
   AppSnackBarLogEvent event,
-  Map<String, Object?> fields,
-  int? level,
+  Map<String, Object> fields,
+  int level,
 });
+
+_SnackBarLogRecord _snapshot(
+  AppSnackBarLogEvent event,
+  LogFields fields,
+  LogLevel level,
+) => (
+  event: event,
+  fields: {
+    for (final entry in fields.values.entries)
+      entry.key: switch (entry.value) {
+        LogEnumValue(:final value) => value,
+        final other => other.toJson(),
+      },
+  },
+  level: level.devLogLevel,
+);
 
 /// SnackBar 的進出動畫由 Material 內建 [Timer] + [AnimationController] 驅動
 /// （SPEC-004 §4.26「Material 預設進出，不覆寫」）；`flutter_test` 的
@@ -465,18 +487,19 @@ void main() {
     // 斷言只依 AppSnackBarLogEvent 列舉與呼叫次數，不比對日誌散文字面——
     // `0.1.0-W3-132` 尚未把日誌訊息改為事件識別碼，比對字面會與其目標衝突
     // （how.strategy 決策點 4 的測試規範）。
-    late AppSnackBarLogSink originalSink;
+    late LogSink<AppSnackBarLogEvent> originalSink;
     final events = <AppSnackBarLogEvent>[];
-    final levels = <int?>[];
+    final levels = <int>[];
 
     setUp(() {
       originalSink = AppSnackBar.logSink;
       events.clear();
       levels.clear();
-      AppSnackBar.logSink = (event, fields, {level}) {
-        events.add(event);
-        levels.add(level);
-      };
+      AppSnackBar.logSink =
+          (event, fields, {level = LogLevel.info, source, error}) {
+            events.add(event);
+            levels.add(level.devLogLevel);
+          };
     });
 
     tearDown(() {
@@ -496,7 +519,7 @@ void main() {
         AppSnackBarLogEvent.preempted,
         AppSnackBarLogEvent.shown,
       ]);
-      expect(levels, [null, null]);
+      expect(levels, [800, 800]);
 
       await _pumpBy(tester, _materialTransition);
       await _pumpBy(
@@ -574,15 +597,16 @@ void main() {
 
   group('關聯識別與截斷等級判別（0.1.0-W3-176）', () {
     // 新群組自裝替身，既有群組的 events／levels 不被觸及（acceptance A8）。
-    late AppSnackBarLogSink originalSink;
+    late LogSink<AppSnackBarLogEvent> originalSink;
     final records = <_SnackBarLogRecord>[];
 
     setUp(() {
       originalSink = AppSnackBar.logSink;
       records.clear();
-      AppSnackBar.logSink = (event, fields, {level}) {
-        records.add((event: event, fields: Map.of(fields), level: level));
-      };
+      AppSnackBar.logSink =
+          (event, fields, {level = LogLevel.info, source, error}) {
+            records.add(_snapshot(event, fields, level));
+          };
     });
 
     tearDown(() {
@@ -640,8 +664,8 @@ void main() {
       // preempted（[0]）與 shown（[1]）。
       expect(showIdOf(records[1]), showIdOf(records[2]));
       expect(records[2].fields['reason'], SnackBarClosedReason.timeout);
-      expect(records[2].level, isNull);
-      expect(records[1].level, isNull);
+      expect(records[2].level, LogLevel.info.devLogLevel);
+      expect(records[1].level, LogLevel.info.devLogLevel);
     });
 
     testWidgets('T-2 同步區塊內連續兩次 show 的配對', (tester) async {
@@ -703,10 +727,9 @@ void main() {
         Motion.snackBar + _materialTransition + _materialTransition,
       );
 
-      final secondShownIndex = records.indexWhere(
-        (record) =>
-            record.event == AppSnackBarLogEvent.shown &&
-            record.fields['message'] == 'second',
+      // 訊息文字不入負載（FR-03）；第二則為最後一筆 shown。
+      final secondShownIndex = records.lastIndexWhere(
+        (record) => record.event == AppSnackBarLogEvent.shown,
       );
       final hideClosedIndex = records.indexWhere(
         (record) =>
@@ -870,7 +893,7 @@ void main() {
       expect(showIdOf(records[2]), showId);
       expect(showIdOf(records[3]), showId);
       expect(records[3].fields['reason'], SnackBarClosedReason.action);
-      expect(records[3].level, isNull);
+      expect(records[3].level, LogLevel.info.devLogLevel);
       expect(actionCalled, 1);
     });
 
@@ -926,15 +949,16 @@ void main() {
 
   group('截斷裁決（0.1.0-W3-205 G-B）', () {
     // 自裝替身，不觸及其他群組的 events／levels／records（P2.7 約束 5）。
-    late AppSnackBarLogSink originalSink;
+    late LogSink<AppSnackBarLogEvent> originalSink;
     final records = <_SnackBarLogRecord>[];
 
     setUp(() {
       originalSink = AppSnackBar.logSink;
       records.clear();
-      AppSnackBar.logSink = (event, fields, {level}) {
-        records.add((event: event, fields: Map.of(fields), level: level));
-      };
+      AppSnackBar.logSink =
+          (event, fields, {level = LogLevel.info, source, error}) {
+            records.add(_snapshot(event, fields, level));
+          };
     });
 
     tearDown(() {
@@ -1113,7 +1137,6 @@ void main() {
               expect(yielded.fields['holderShowId'], currentHolder!.showId);
               expect(yielded.fields['holderLevel'], holderLevel);
               expect(yielded.fields['level'], newLevel);
-              expect(yielded.fields['message'], 'incoming-message');
               expect(yielded.fields['variant'], AppSnackBarVariant.plain);
           }
         });
@@ -1201,11 +1224,11 @@ void main() {
       );
 
       expect(find.text('yielded-message'), findsNothing);
+      // records 於讓步前已清空，讓步的請求不得產生任何 shown（訊息文字不入
+      // 負載，改以事件序斷言）。
       expect(
-        records
-            .where((r) => r.event == AppSnackBarLogEvent.shown)
-            .any((r) => r.fields['message'] == 'yielded-message'),
-        isFalse,
+        records.where((r) => r.event == AppSnackBarLogEvent.shown),
+        isEmpty,
       );
       expect(
         records.where((r) => r.event == AppSnackBarLogEvent.yielded),
@@ -1299,22 +1322,17 @@ void main() {
       final yielded = records.singleWhere(
         (r) => r.event == AppSnackBarLogEvent.yielded,
       );
-      for (final key in [
-        'level',
-        'holderShowId',
-        'holderLevel',
-        'variant',
-        'message',
-      ]) {
+      for (final key in ['level', 'holderShowId', 'holderLevel', 'variant']) {
         expect(
           yielded.fields[key],
           isNotNull,
           reason:
-              '0.1.0-W3-205 T-205-5：yielded 五鍵（$key）皆須非 null'
-              '——被丟棄的告知不得只留事件類型而無內容。',
+              '0.1.0-W3-205 T-205-5：yielded 四鍵（$key）皆須非 null'
+              '——被丟棄的告知不得只留事件類型而無內容（訊息文字依 SPEC-010 '
+              'FR-03 不入負載）。',
         );
       }
-      expect(yielded.fields['message'], 'incoming-message');
+      expect(yielded.fields.containsKey('message'), isFalse);
     });
 
     testWidgets('T-205-6：過渡缺口可搜尋——holderUnknown 鍵恆存在、值二分', (tester) async {
@@ -1461,15 +1479,16 @@ void main() {
   });
 
   group('動作 slot 與回呼順序（0.1.0-W3-205 G-C）', () {
-    late AppSnackBarLogSink originalSink;
+    late LogSink<AppSnackBarLogEvent> originalSink;
     final records = <_SnackBarLogRecord>[];
 
     setUp(() {
       originalSink = AppSnackBar.logSink;
       records.clear();
-      AppSnackBar.logSink = (event, fields, {level}) {
-        records.add((event: event, fields: Map.of(fields), level: level));
-      };
+      AppSnackBar.logSink =
+          (event, fields, {level = LogLevel.info, source, error}) {
+            records.add(_snapshot(event, fields, level));
+          };
     });
 
     tearDown(() {

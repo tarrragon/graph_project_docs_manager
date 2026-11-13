@@ -385,15 +385,12 @@ void main() {
       ).allMatches(stripped).map((m) => m.group(1)!).toSet();
       const expectedStatic = {
         '_actionSlotAssertMessage',
-        '_tag',
-        '_levelInfo',
-        '_levelWarning',
         '_lastShowId',
         'logSink',
         '_nextShowId',
         '_resolveClosedLevel',
         '_resolvePreemption',
-        '_defaultLogSink',
+        '_baseFields',
         'clearForProjectChange',
         'show',
       };
