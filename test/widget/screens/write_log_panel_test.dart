@@ -188,6 +188,33 @@ void main() {
     expect(find.text(_l10n.validationFailed(1)), findsOneWidget);
   });
 
+  testWidgets('#62 baseline 未完成即寫入：顯示 baselineNotReady 原因，非非預期結束碼文案', (
+    tester,
+  ) async {
+    final (_, _, session) = await _pumpOpen(
+      tester,
+      validator: FakeValidatorPort(
+        ucVerify: const [ValidatorHang(), validatorOk],
+      ),
+    );
+
+    await tester.runAsync(() async {
+      await session.writeField(field: 'title', newValue: 'x');
+      await session.validationIdle;
+    });
+    await tester.pump();
+
+    expect(find.text(_l10n.validationUnavailable), findsOneWidget);
+    expect(
+      find.text(_l10n.validationUnavailableBaselineNotReady),
+      findsOneWidget,
+    );
+    expect(
+      find.text(_l10n.validationUnavailableUnexpectedExitCode),
+      findsNothing,
+    );
+  });
+
   testWidgets('#62 路徑可由節點表查得：渲染為可點，點擊關閉面板並跳到節點詳情', (tester) async {
     final (container, _, session) = await _pumpOpen(
       tester,

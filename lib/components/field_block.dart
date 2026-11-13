@@ -33,6 +33,7 @@ enum FieldValidationUnavailableReason {
   unexpectedExitCode,
   unparsableOutput,
   timedOut,
+  baselineNotReady,
 }
 
 enum _Kind { writing, written, blocked, ioFailed }
@@ -258,6 +259,8 @@ class FieldBlock extends StatelessWidget {
       l10n.validationUnavailableUnparsableOutput,
     FieldValidationUnavailableReason.timedOut =>
       l10n.validationUnavailableTimedOut,
+    FieldValidationUnavailableReason.baselineNotReady =>
+      l10n.validationUnavailableBaselineNotReady,
   };
 
   @override

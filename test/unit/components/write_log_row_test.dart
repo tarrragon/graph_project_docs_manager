@@ -183,6 +183,31 @@ void main() {
     });
   });
 
+  group('驗證不可用原因 baselineNotReady', () {
+    for (final (reason, text) in [
+      (
+        FieldValidationUnavailableReason.baselineNotReady,
+        zh.validationUnavailableBaselineNotReady,
+      ),
+      (
+        FieldValidationUnavailableReason.unexpectedExitCode,
+        zh.validationUnavailableUnexpectedExitCode,
+      ),
+    ]) {
+      testWidgets('原因 ${reason.name} 顯示對應文案', (tester) async {
+        await pumpRow(tester, [
+          row(
+            state: written(
+              validation: FieldValidation.unavailable,
+              unavailableReason: reason,
+            ),
+          ),
+        ]);
+        expect(find.text(text), findsOneWidget);
+      });
+    }
+  });
+
   group('5.19 排列不變式', () {
     for (final width in [minWidth, panelWidth]) {
       testWidgetsAtEachSize('寬 $width：最長文案不溢位、容器寬為父格位寬', (tester, size) async {
