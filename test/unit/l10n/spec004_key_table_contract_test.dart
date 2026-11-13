@@ -18,7 +18,6 @@ import '../../helpers/spec_first_marker.dart';
 const Set<String> pendingAdditionExemptions = <String>{
   'editFieldsAction',
   'nodeDetailEditReadFailedMessage',
-  'writeLogEmptyMessage',
 };
 
 /// 表列仍保留、但 ARB 已刻意移除的淘汰 key（SPEC-004 該列註明「ARB 實檔已移除」）。

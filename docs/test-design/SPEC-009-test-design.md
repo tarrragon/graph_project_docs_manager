@@ -446,7 +446,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-06 | #2 EVT-CORPUS-001 到達、內容與 M 相同時狀態不變（v1.3） | X-2 | domain unit（application 層） |
 | FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
 | FR-07 | #1、#2；`timedOut` 欄位（v1.2） | 見 L 群組末段；L-11、L-12 | domain unit |
-| FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration |
+| FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration；widget（寫入清單面板與側欄項，`1.0.0-W3-553.17`：`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`、`test/unit/app/write_list_providers_test.dart`） |
 | FR-09 | #1 1.0 欄位都有元件與值域來源 | F-1 | 畫面狀態層 unit |
 | FR-09 | #2 無機器定義的列舉以單行呈現 | F-2、F-3 | 畫面狀態層 unit |
 | FR-09 | 約束：〈可否清空〉三類、trim 判定、非空不修剪、必填集合讀 `completeness_fields`（v1.4，非驗收條目） | F-5、F-6、F-7 | 畫面狀態層 unit |

@@ -1172,6 +1172,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get writeResultExternallyModified => '檔案已在 App 外被修改，這次寫入沒有執行';
 
   @override
+  String get writeLogEmptyMessage => '本次開啟 App 之後尚未在 App 內寫入任何檔案';
+
+  @override
   String get writeLogColumnPath => '路徑';
 
   @override

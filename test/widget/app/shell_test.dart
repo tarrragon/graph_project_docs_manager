@@ -33,6 +33,9 @@ import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/screens/preferences/preferences_panel.dart';
 import 'package:graph_project_docs_manager/services/macos_preferences_channel.dart';
 import 'package:graph_project_docs_manager/screens/shortcuts/shortcuts_panel.dart';
+import 'package:graph_project_docs_manager/screens/write_log/write_log_panel.dart';
+import 'package:graph_project_docs_manager/app/edit_providers.dart';
+import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
 import 'package:graph_project_docs_manager/workspace/framework_signal_probe.dart';
@@ -43,10 +46,14 @@ import '../../helpers/domain_view_fixtures.dart';
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/pump_harness.dart' show lastWinsByProvider;
 import '../../helpers/stub_workspace_repository.dart';
+import '../../helpers/spec009/edit_gate_harness.dart';
+import '../../helpers/spec009/fake_validator_port.dart';
+import '../../helpers/spec009/frontmatter_fixtures.dart';
 
 void main() {
   _registerFocusTests();
   _registerBottomItemTests();
+  _registerWriteLogTests();
   testWidgets('啟動首幀（restore 未完成）不顯示 fixture 矩陣', (tester) async {
     final pending = Completer<WorkspaceState>();
     addTearDown(() => pending.complete(const WorkspaceUnset()));
@@ -533,6 +540,136 @@ void _registerBottomItemTests() {
   });
 }
 
+// 1.0.0-W3-553.17：側欄底部第三項「寫入清單」與面板（SPEC-003 §3.12）。
+void _registerWriteLogTests() {
+  Future<(ProviderContainer, EditSession)> pump(
+    WidgetTester tester, {
+    FakeValidatorPort? validator,
+  }) async {
+    final h = (await tester.runAsync(
+      () => EditHarness.create(validator: validator ?? FakeValidatorPort()),
+    ))!;
+    final session = (await tester.runAsync(h.begin))!;
+    late ProviderContainer container;
+    await _pumpShell(
+      tester,
+      overrides: [
+        editWorkspaceProvider.overrideWith((ref) async => h.workspace),
+      ],
+      onReady: (c) => container = c,
+    );
+    await tester.runAsync(() => container.read(editWorkspaceProvider.future));
+    await tester.pump();
+    return (container, session);
+  }
+
+  group('寫入清單項與面板', () {
+    testWidgets('底部三項；失敗計數為 0 時無徽章', (tester) async {
+      await pump(tester);
+
+      for (final key in [
+        'nav-action-preferences',
+        'nav-action-shortcuts',
+        'nav-action-writeLog',
+      ]) {
+        expect(find.byKey(Key(key)), findsOneWidget, reason: key);
+      }
+      expect(
+        find.byKey(const Key('badge-writeLog-failure-count')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('點寫入清單項開啟面板（無寫入態），不改導覽狀態', (tester) async {
+      final (container, _) = await pump(tester);
+
+      await tester.tap(find.byKey(const Key('nav-action-writeLog')));
+      await tester.pump();
+
+      expect(container.read(writeLogOpenProvider), isTrue);
+      expect(find.byKey(const Key('state-writeLog-empty')), findsOneWidget);
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
+      expect(container.read(returnToProvider), isNull);
+    });
+
+    testWidgets('已有寫入時開啟為清單態', (tester) async {
+      final (container, session) = await pump(tester);
+      await tester.runAsync(() async {
+        await session.writeField(field: 'title', newValue: 'a');
+        await session.validationIdle;
+      });
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('nav-action-writeLog')));
+      await tester.pump();
+
+      expect(find.byKey(const Key('state-writeLog-list')), findsOneWidget);
+      expect(container.read(writeLogOpenProvider), isTrue);
+    });
+
+    testWidgets('三面板互斥：開寫入清單先關另兩個，反向亦然', (tester) async {
+      final (container, _) = await pump(tester);
+      container.read(preferencesOpenProvider.notifier).state = true;
+      await tester.pump();
+      container.read(writeLogOpenProvider.notifier).state = true;
+      await tester.pump();
+      expect(container.read(preferencesOpenProvider), isFalse);
+
+      container.read(shortcutsOpenProvider.notifier).state = true;
+      await tester.pump();
+      expect(container.read(writeLogOpenProvider), isFalse);
+      expect(container.read(shortcutsOpenProvider), isTrue);
+
+      container.read(writeLogOpenProvider.notifier).state = true;
+      await tester.pump();
+      expect(container.read(shortcutsOpenProvider), isFalse);
+      expect(container.read(writeLogOpenProvider), isTrue);
+    });
+
+    testWidgets('面板關閉後焦點回到寫入清單項', (tester) async {
+      final (container, _) = await pump(tester);
+      await tester.tap(find.byKey(const Key('nav-action-writeLog')));
+      await tester.pump();
+
+      container.read(writeLogOpenProvider.notifier).state = false;
+      await tester.pump();
+      await tester.pump();
+
+      expect(_itemNode(tester, 'nav-action-writeLog').hasFocus, isTrue);
+    });
+
+    testWidgets('驗證失敗回來：徽章出現並顯示計數，面板未開啟也更新', (tester) async {
+      final (container, session) = await pump(
+        tester,
+        validator: FakeValidatorPort(
+          ucVerify: [
+            validatorOk,
+            ValidatorExit(1, ucViolationOutput(unregisteredUc, 1)),
+          ],
+        ),
+      );
+      expect(container.read(writeLogOpenProvider), isFalse);
+
+      await tester.runAsync(() async {
+        await session.baselineIdle;
+        await session.writeField(field: 'title', newValue: 'a');
+        await session.validationIdle;
+      });
+      await tester.pump();
+
+      final badge = find.byKey(const Key('badge-writeLog-failure-count'));
+      expect(badge, findsOneWidget);
+      expect(
+        find.descendant(of: badge, matching: find.text('1')),
+        findsOneWidget,
+      );
+    });
+  });
+}
+
 Future<void> _pumpShell(
   WidgetTester tester, {
   void Function(ProviderContainer container)? onReady,
@@ -548,6 +685,9 @@ Future<void> _pumpShell(
           domainViewStateProvider.overrideWithInitial(
             (ref) => const DomainReady(mode: DomainMode.matrix),
           ),
+        // 殼讀寫入清單（553.17）會間接 watch editWorkspaceProvider；預設不碰
+        // 真實 git，需要寫入清單資料的測試自行覆寫。
+        editWorkspaceProvider.overrideWith((ref) async => null),
         ...overrides,
       ]),
       child: ScreenUtilInit(
@@ -718,11 +858,11 @@ void _registerFocusTests() {
     expect(_navHasAccentBorder(tester, 'nav-item-ucFlow'), isFalse);
   });
 
-  testWidgets('Tab 從專案切換入口依序經七個導覽項、底部兩項後進入內容區（SPEC-003 §2.10）', (tester) async {
+  testWidgets('Tab 從專案切換入口依序經七個導覽項、底部三項後進入內容區（SPEC-003 §2.10）', (tester) async {
     await _pumpShell(tester);
     await _focusSwitcherEntry(tester);
     final stops = <FocusNode?>[];
-    for (var i = 0; i < 11; i++) {
+    for (var i = 0; i < 12; i++) {
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
       stops.add(FocusManager.instance.primaryFocus);
@@ -734,10 +874,11 @@ void _registerFocusTests() {
     for (final (i, key) in [
       (7, 'nav-action-preferences'),
       (8, 'nav-action-shortcuts'),
+      (9, 'nav-action-writeLog'),
     ]) {
       expect(_ancestorKeys(stops[i]), contains(Key(key)));
     }
-    for (final stop in [stops[9], stops[10]]) {
+    for (final stop in [stops[10], stops[11]]) {
       _expectInMainArea(stop);
     }
   });

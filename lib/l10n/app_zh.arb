@@ -2088,6 +2088,10 @@
   "@writeResultExternallyModified": {
     "description": "SPEC-004 4.51 寫入結果說明（blocked(externallyModified)）"
   },
+  "writeLogEmptyMessage": "本次開啟 App 之後尚未在 App 內寫入任何檔案",
+  "@writeLogEmptyMessage": {
+    "description": "SPEC-001 §12 無寫入狀態說明"
+  },
   "writeLogColumnPath": "路徑",
   "@writeLogColumnPath": {
     "description": "SPEC-004 4.51 朗讀欄名"

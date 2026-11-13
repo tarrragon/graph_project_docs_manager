@@ -74,11 +74,9 @@ class AppShell extends StatelessWidget {
          'pages 恰 7 項（SPEC-004 4.27 slot 契約）',
        ),
        assert(
-         bottomItems.length == 0 ||
-             bottomItems.length == 2 ||
-             bottomItems.length == 3,
+         bottomItems.length == 0 || bottomItems.length == 3,
          // i18n-exempt: assert 訊息僅開發期可見，非 user-facing
-         'bottomItems 為 0、2 或 3 項（暫時放寬；收緊為 0 或恰 3 由 1.0.0-W3-553.17 完成）',
+         'bottomItems 為 0 或恰 3 項（SPEC-004 4.27 slot 契約）',
        );
 
   /// 整合測試與元件測試用來確認「已抵達殼」的錨點（SPEC-004 4.27 slot

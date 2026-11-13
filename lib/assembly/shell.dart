@@ -19,6 +19,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../components/components.dart' as components;
+import '../state/state_holder.dart' show StateHolder;
 import '../l10n/app_localizations.dart';
 import '../app/domain_view_providers.dart';
 import '../screens/domain_view/domain_view_screen.dart';
@@ -32,6 +33,8 @@ import '../screens/ticket_list/ticket_list_screen.dart';
 import '../screens/preferences/preferences_panel.dart';
 import '../screens/shortcuts/shortcuts_panel.dart';
 import '../screens/project_switcher/project_switcher_overlay.dart';
+import '../screens/write_log/write_log_panel.dart';
+import '../app/write_list_providers.dart';
 import '../services/macos_preferences_channel.dart';
 import '../app/project_switcher_providers.dart';
 import '../workspace/current_workspace_provider.dart';
@@ -73,6 +76,9 @@ class _AppShellState extends ConsumerState<AppShell>
   );
   final FocusNode _shortcutsItemFocus = FocusNode(
     debugLabel: 'nav-action-shortcuts',
+  );
+  final FocusNode _writeLogItemFocus = FocusNode(
+    debugLabel: 'nav-action-writeLog',
   );
 
   /// 面板關閉後焦點的歸還目標（SPEC-003 §3.10）：底部項開啟為該項，
@@ -159,6 +165,29 @@ class _AppShellState extends ConsumerState<AppShell>
     ref.read(shortcutsOpenProvider.notifier).state = true;
   }
 
+  void _openWriteLog(FocusNode? returnTo) {
+    _returnFocusTarget = returnTo;
+    ref.read(writeLogOpenProvider.notifier).state = true;
+  }
+
+  /// 面板互斥：[panel] 開啟時關閉 [others]；關閉且其他面板皆未開時歸還焦點。
+  void _listenExclusivePanel(
+    NotifierProvider<StateHolder<bool>, bool> panel,
+    List<NotifierProvider<StateHolder<bool>, bool>> others,
+  ) {
+    ref.listen<bool>(panel, (_, open) {
+      if (open) {
+        for (final other in others) {
+          ref.read(other.notifier).state = false;
+        }
+      } else {
+        _restoreFocusAfterClose(
+          otherPanelOpen: others.any((other) => ref.read(other)),
+        );
+      }
+    });
+  }
+
   /// 面板關閉（非因另一面板開啟而被互斥關閉）後把焦點交還開啟者。
   void _restoreFocusAfterClose({required bool otherPanelOpen}) {
     if (otherPanelOpen) return;
@@ -174,6 +203,7 @@ class _AppShellState extends ConsumerState<AppShell>
   void dispose() {
     _preferencesItemFocus.dispose();
     _shortcutsItemFocus.dispose();
+    _writeLogItemFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _preferencesRequests?.cancel();
     _shortcutsRequests?.cancel();
@@ -220,25 +250,21 @@ class _AppShellState extends ConsumerState<AppShell>
     // 此前提，屬既有設計缺口，隨本票一併修正）。
     final isPreferencesOpen = ref.watch(preferencesOpenProvider);
     final isShortcutsOpen = ref.watch(shortcutsOpenProvider);
-    // 兩面板互斥（SPEC-003 §3.8、§3.10）：開一個時先關另一個。
-    ref.listen<bool>(preferencesOpenProvider, (_, open) {
-      if (open) {
-        ref.read(shortcutsOpenProvider.notifier).state = false;
-      } else {
-        _restoreFocusAfterClose(
-          otherPanelOpen: ref.read(shortcutsOpenProvider),
-        );
-      }
-    });
-    ref.listen<bool>(shortcutsOpenProvider, (_, open) {
-      if (open) {
-        ref.read(preferencesOpenProvider.notifier).state = false;
-      } else {
-        _restoreFocusAfterClose(
-          otherPanelOpen: ref.read(preferencesOpenProvider),
-        );
-      }
-    });
+    final isWriteLogOpen = ref.watch(writeLogOpenProvider);
+    final failureCount = ref.watch(writeListFailureCountProvider);
+    // 三面板互斥（SPEC-003 §3.8、§3.10、§3.12）：開一個時先關其他兩個。
+    _listenExclusivePanel(preferencesOpenProvider, [
+      shortcutsOpenProvider,
+      writeLogOpenProvider,
+    ]);
+    _listenExclusivePanel(shortcutsOpenProvider, [
+      preferencesOpenProvider,
+      writeLogOpenProvider,
+    ]);
+    _listenExclusivePanel(writeLogOpenProvider, [
+      preferencesOpenProvider,
+      shortcutsOpenProvider,
+    ]);
     return Scaffold(
       body: Stack(
         children: [
@@ -284,6 +310,20 @@ class _AppShellState extends ConsumerState<AppShell>
                   onTap: () => _openShortcuts(_shortcutsItemFocus),
                   testKey: const Key('nav-action-shortcuts'),
                 ),
+                components.NavItem.action(
+                  icon: const components.AppIcon(icon: Icons.edit_note),
+                  label: l10n.writeLogTitle,
+                  focusNode: _writeLogItemFocus,
+                  onTap: () => _openWriteLog(_writeLogItemFocus),
+                  testKey: const Key('nav-action-writeLog'),
+                  badge: failureCount == 0
+                      ? null
+                      : components.Badge.count(
+                          key: const Key('badge-writeLog-failure-count'),
+                          count: failureCount,
+                          inline: true,
+                        ),
+                ),
               ],
               pages: [
                 for (final item in AppDestination.values)
@@ -315,6 +355,7 @@ class _AppShellState extends ConsumerState<AppShell>
           ),
           if (isPreferencesOpen) const Center(child: PreferencesPanel()),
           if (isShortcutsOpen) const Center(child: ShortcutsPanel()),
+          if (isWriteLogOpen) const Center(child: WriteLogPanel()),
         ],
       ),
     );

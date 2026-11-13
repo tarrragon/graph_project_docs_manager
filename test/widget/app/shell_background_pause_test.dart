@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/gate_detection_notifier.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
@@ -74,6 +75,8 @@ Future<_Rig> _pump(WidgetTester tester) async {
         builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
         scanRoundProvider.overrideWith(() => fake),
         scanNotifierProvider.overrideWithValue(notifier),
+        // 殼讀寫入清單（553.17）；不開真實 git 探測。
+        editWorkspaceProvider.overrideWith((ref) async => null),
       ]),
       child: ScreenUtilInit(
         designSize: const Size(1280, 800),
