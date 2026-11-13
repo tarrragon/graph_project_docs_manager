@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:graph_project_docs_manager/main.dart';
 import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/observability/log_writer.dart';
 
@@ -98,21 +99,21 @@ void main() {
 
   group('structured log（SPEC-010 FR-07）', () {
     late FakeLogFilePort port;
-    final originalWriter = fatalLogWriter;
+    final originalWriter = sharedLogWriter;
 
     setUp(() {
       port = FakeLogFilePort();
-      fatalLogWriter = LogWriter(
+      sharedLogWriter = LogWriter(
         port: port,
         devLog: RecordingDevLog().call,
         clock: fixedClock,
       );
     });
 
-    tearDown(() => fatalLogWriter = originalWriter);
+    tearDown(() => sharedLogWriter = originalWriter);
 
     Future<List<Map<String, dynamic>>> records() async {
-      await fatalLogWriter.flush();
+      await sharedLogWriter.flush();
       final text = port.files['app.jsonl'] ?? '';
       return const LineSplitter()
           .convert(text)
@@ -121,6 +122,7 @@ void main() {
     }
 
     test('O7-1：三個來源各寫一筆 internal 記錄', () async {
+      // 單一注入點：fatal 出口與 defaultLogSink 讀同一個 sharedLogWriter。
       reportFatalError('FlutterError', StateError('x'), StackTrace.current);
       reportFatalError(
         'PlatformDispatcher',
@@ -152,14 +154,14 @@ void main() {
         StackTrace.current,
       );
 
-      await fatalLogWriter.flush();
+      await sharedLogWriter.flush();
       final raw = port.files['app.jsonl'] ?? '';
       expect(raw, isNotEmpty, reason: '正向對照：記錄確實寫出');
       expect(raw, isNot(contains(secretMarker)));
     });
 
     test('O7-3：writer 拋例外時畫面通知照舊且出口不拋出', () {
-      fatalLogWriter = _ThrowingWriter();
+      sharedLogWriter = _ThrowingWriter();
       final error = StateError('boom');
 
       expect(
