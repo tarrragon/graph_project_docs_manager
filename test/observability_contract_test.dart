@@ -75,7 +75,7 @@ typedef WorkspaceLogSink = void Function(String message);
     });
   });
 
-  group('O4-3既有事件 enum 值名稱凍結（test-design §7）', () {
+  group('O4-3 既有事件 enum 值名稱凍結（test-design §7）', () {
     List<String> names(List<Enum> values) => [for (final v in values) v.name];
 
     test('WorkspaceLogEvent', () {
