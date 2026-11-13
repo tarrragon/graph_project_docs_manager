@@ -5,15 +5,17 @@ type: test-design
 status: draft
 source_spec: SPEC-001
 spec_version: "1.35"
-delta_spec_version: "1.52"
-related_specs: [SPEC-004, UC-02, SPEC-007]
+delta_spec_version: "1.93"
+related_specs: [SPEC-004, UC-02, SPEC-007, SPEC-003, SPEC-009, UC-08]
 ticket: 0.5.0-W1-114
-delta_ticket: 0.5.0-W1-114.22.2
+delta_ticket: 1.1.0-W1-111.2
 created: "2026-10-08"
-updated: "2026-10-20"
+updated: "2026-11-13"
 ---
 
 # SPEC-001 v1.38／SPEC-004 v1.77／UC-02 v1.8 Phase 2 紅燈測試規格
+
+**v1.91～v1.93 差異（`1.1.0-W1-111.2`，1.1 編輯畫面範圍）**：依 SPEC-001 1.93、SPEC-003 1.98、UC-08 v1.4 增補：5a 外圈新增 IT-RE1～IT-RE3（§2.5，UC-08 三個 1.1 場景）；5b 新增 §3.7 破洞項編輯入口的逐項判定（R3）、§3.8 SPEC-003 互動與生命週期（N1）、§3.9 編輯模式與寫入清單的 1.1 結果（WL）。只增案例，既有案例不改。SPEC-004 元件測試點 4.34、4.40、4.48、4.51、4.52、4.53 在元件契約內，本檔只引用不複寫。變更歷史見 §7。
 
 **v1.51～v1.52 差異（`0.5.0-W1-443`、`0.5.0-W1-114.22.2`）**：v1.51 依 `0.5.0-W1-443` 用戶裁決，宣告狀態行補零 bundle 文案與跨票去重（R1-12、R1-13、K4-3，P3-4 註記單票層級）。v1.52 補 §5 事件類項目投影（新節 §3.6 R2-1～R2-8、K4-4）：項目 id、路徑、指向、選定 UC 與說明 key，以及建圖不可用與路徑模式查詢不可用兩種情況下的出現規則。兩輪皆只增案例，既有案例不改。
 
@@ -165,6 +167,42 @@ Mock 只替換外部世界（資料夾選擇、檔案系統 port）；Graph、La
 | ITD4-A3（E1 對照） | A2 的工作區再補齊全部宣告與非 domain 清單 | 同上 | 宣告狀態行不出現；破洞數與 A2 相同（宣告缺口不計入破洞數） |
 | ITD4-A4 | A1 工作區 | 掃描中 | 宣告狀態行不出現 |
 | ITD4-A5（E1 對照，v1.37 新增） | A3 的工作區，僅把非 domain 路徑清單檔改為 YAML 語法錯誤 | 進入破洞報告、掃描完成 | 宣告狀態行出現，`{detail}` 含 `pathDeclarationNonDomainMalformed`（zh「非 domain 路徑清單格式錯誤」）而非 `pathDeclarationNonDomainMissing`；破洞報告多一筆 `parseFailure`（原因碼 `nonDomainPathsMalformed`），破洞數比 A3 多 1。與 A3（不出現、破洞數不變）及「刪除該檔」（`{detail}` 為 Missing、破洞數同 A3）兩組對照皆不同（UC-02 v1.7 驗收；SPEC-006 FR-10 規則 4） |
+
+### 2.5 IT-RE UC-08 的 1.1 場景（SPEC-001 v1.93 §5、§6、§12；UC-08 v1.4；1.1 新增）
+
+UC-08 `runtime_surface: "yes"`，以下為 1.1 編輯畫面的完成條件。
+
+| 項目 | 定案 |
+|------|------|
+| 測試檔 | `integration_test/uc08_relation_edit_test.dart`（形式同 `uc07_history_test.dart`：pump 真實 app root） |
+| 測資 | 暫存目錄內的最小文件語料（git repo，含 PROP-A、PROP-B、SPEC-X、UC-X、EVT-X 與一張 ticket），由測試實體化；不使用 §1.2 的凍結快照，理由是寫入會改檔 |
+| 替身 | 只替換寫入路徑的檔案 IO port（IT-RE2 注入「反向檔 `rename` 成功後，正向檔的 `rename`（SPEC-009 FR-01 步驟 6）失敗」與「反向檔還原失敗」；失敗點不設在步驟 4，理由是步驟 4 失敗時尚無檔落檔，結果為 `ioFailed`、不走還原）；git、doc CLI 用真實程序（同 SPEC-009-test-design IT-E1 的取向） |
+| gate 隔離 | 開發期 `@Tags(['wip-acceptance'])`，`dart_test.yaml` 以 `skip` 排除，`fvm flutter test integration_test/uc08_relation_edit_test.dart -t wip-acceptance --run-skipped` 觀察紅燈；落地票 `1.1.0-W2-003`／`1.1.0-W2-004` 完成時移除 tag，移除 commit 附執行輸出（`.claude/skills/tdd/references/phase2/rules.md`〈外圈紅燈與 100% 綠 gate 的共存〉） |
+
+#### IT-RE1 修正關係邊（UC-08〈修正關係邊（1.1）〉）
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| ITRE1-A1 | UC-X `source_proposal` 為空；PROP-B `outputs.usecase_refs` 不含 UC-X | 節點詳情 UC-X 進入編輯，`source_proposal` 加入 PROP-B 並送出 | 該欄提示格為已寫入；UC-X 的 `source_proposal` 含 PROP-B；PROP-B 的 `outputs.usecase_refs` 含 UC-X；寫入清單新增一列，路徑與欄位名為 UC-X 與 `source_proposal`，「同批檔案」列出 PROP-B 的路徑與取回說明 |
+| ITRE1-A2 | ITRE1-A1 之後；PROP-B `outputs` 另一子鍵（如 `design_refs`）也含 UC-X | 移除 PROP-B 並送出 | PROP-B `outputs` 所有子鍵皆不含 UC-X；寫入清單再多一列（加入、移除各一列） |
+| ITRE1-A3（E1 對照） | UC-X `related_specs` 為空 | 加入 SPEC-X 並送出 | 只有 UC-X 改變（SPEC-X 逐位元組不變）；該列「同批檔案」不出現。與 A1 為同一流程、同一斷言器：有反向欄位者多一個檔、無者沒有 |
+
+#### IT-RE2 多檔寫入只成功一部分（UC-08〈多檔寫入只成功一部分（1.1）〉）
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| ITRE2-A1 | IT-RE1-A1 的初始語料；IO 替身使 PROP-B 的 `rename` 成功、UC-X 的 `rename`（步驟 6）失敗，且 PROP-B 的還原失敗 | 加入 PROP-B 並送出 | 該欄提示格為「部分寫入」（isError）、「見寫入清單」；畫面仍在編輯中，`source_proposal` 值格維持送出前（不含 PROP-B）；UC-X 檔不變；寫入清單該列寫入結果為「部分寫入」，附未還原檔數、補齊方式與觸發原因，「同批檔案」列出 PROP-B 與其取回說明；側欄失敗計數徽章為 1 |
+| ITRE2-A2 | ITRE2-A1 之後，解除替身 | 重送同一修正 | 寫入結果為已寫入；UC-X 含 PROP-B；PROP-B 的 `outputs.usecase_refs` 中 UC-X 只出現一次（已落檔的反向檔不再列入寫入集合） |
+| ITRE2-A3（E1 對照） | 同 A1（失敗點同為 UC-X 的 `rename`），但 PROP-B 的還原成功 | 加入 PROP-B 並送出 | 寫入結果為讀寫失敗（「讀寫失敗，檔案未改」），兩檔皆為原內容；該列無「同批檔案」。與 A1 只差還原成敗，結果文字與同批檔案兩處不同 |
+
+#### IT-RE3 從破洞報告開始編輯（UC-08〈從破洞報告開始編輯〉、SPEC-001 §5〈破洞報告的編輯入口〉）
+
+| # | Given | When | Then |
+|---|-------|------|------|
+| ITRE3-A1 | 語料含 UC-X 缺 `spec_association`（`missingRequiredEdge`） | 進入破洞報告、掃描完成，按該項的 `action-gaps-edit-<itemId>` | 跳至節點詳情 UC-X，狀態為編輯中；焦點在 `card-nodeDetail-field-related_specs` 的值格 |
+| ITRE3-A2 | ITRE3-A1 之後 | 加入 SPEC-X 送出、完成、返回 | 回到破洞報告；重新掃描後該破洞項消失（兩個入口進入同一編輯流程，UC-08 驗收第 1 條） |
+| ITRE3-A3（E2） | 同一語料另含：PROP-A `outputs.spec_refs` 指向不存在的 SPEC（成因在 `outputs`）、ticket `parent_id` 指向不存在的票 | 進入破洞報告 | 兩項皆有 `card-gaps-<itemId>`，但 `find.byKey(action-gaps-edit-<itemId>)` 為 `findsNothing`；正向對照為同頁 ITRE3-A1 的項 `findsOneWidget`（UC-08 驗收第 8 條） |
+| ITRE3-A4（E1 對照） | 同 A1 語料，工作區不是 git repo（唯讀降級） | 進入破洞報告 | ITRE3-A1 的項的 `action-gaps-edit-<itemId>` 存在且 disabled；A3 的兩項仍缺席。唯讀以 disabled 呈現、不適用以缺席呈現，兩者可區分 |
 
 ## 3. 5b 內圈：逐單元測試案例
 
@@ -440,6 +478,74 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | R2-7 | 路徑模式查詢不可用、建圖可用，語料含一個孤立事件 | 狀態為無法判定破洞，且 `orphan-event` 分節照常列出該項 |
 | R2-8 | 建圖可用，語料含孤立事件、宣告不符與 `graph-defect-flow` 各一 | 分節順序為 `graph-defect-flow` → `orphan-event` → `event-declaration-mismatch`（定案 O1）；事件類項目計入破洞數 |
 
+### 3.7 破洞項的編輯入口：逐項判定（SPEC-001 v1.93 §5〈破洞報告的編輯入口〉；1.1 新增）
+
+**測試檔**：判定 R3-1～R3-13 在 `test/unit/screens/gap_report/gap_report_edit_entry_test.dart`（純函式：輸入破洞項、型別表、FR-09 欄位表與當下 minor，輸出「不渲染」或「渲染＋目標欄位」）；畫面 R3-14～R3-16 在 `test/widget/screens/gap_report/gap_report_edit_entry_widget_test.dart`。
+
+**Mock 策略**：型別表用 build 內嵌副本（真實資料，不 mock）；FR-09 欄位表與當下 minor 由參數注入，使 R3-12 可換 minor。期望目標欄位依規範條文（條件 1～3、〈目標欄位〉）推出；〈1.1 的逐項投影〉表只作核對，實作不得寫死該表。
+
+**不渲染的斷言方式**：widget 層一律 `find.byKey(ValueKey('action-gaps-edit-<itemId>'))` 為 `findsNothing`，同時斷言同項的 `card-gaps-<itemId>` 為 `findsOneWidget`（證明項目在、入口缺席）；不以 disabled 斷言（SPEC-003 §3.5〈編輯入口〉）。
+
+| # | Given（破洞項） | Then |
+|---|----------------|------|
+| R3-1 | `danglingRef`，來源 UC-X，負載欄位 `related_specs` | 渲染；目標欄位 `related_specs` |
+| R3-2（E2） | `danglingRef`，來源 PROP-A，負載欄位 `outputs`；正向對照為 R3-1 | 不渲染（`outputs` 不提供直接編輯，條件 3）；R3-1 渲染 |
+| R3-3 | `malformedRef`，來源 SPEC-X，負載欄位 `source_proposal` | 渲染；目標欄位 `source_proposal` |
+| R3-4（E2） | `danglingRef`，來源為 ticket，負載欄位 `parent_id`；正向對照為 R3-1 | 不渲染（條件 2） |
+| R3-5 | `multiSource`，成因在 ticket 欄位（如兩張 ticket 的 `spawned_tickets` 指向同一票，邊型 `spawn`） | 不渲染（條件 2；1.1 無文件節點的 `multiSource`） |
+| R3-6 | `isolatedNode`，型別依序為 PROP、SPEC、UC、EVT、DomainBundle 各一 | 五項皆渲染；目標欄位依序為 `related_proposals`（PROP，跳過 `outputs`）、`source_proposal`（SPEC）、`source_proposal`（UC）、`source_proposal`（EVT）、`source_specs`（DomainBundle） |
+| R3-7（E2） | `isolatedNode`，節點為 ticket；正向對照為 R3-6 | 不渲染 |
+| R3-8 | `missingRequiredEdge`，UC 分別缺 `provenance`、`spec_association`、`uc_ticket_refs` | 三項皆渲染，目標欄位依序為 `source_proposal`、`related_specs`、`ticket_refs` |
+| R3-9 | `missingRequiredEdge`，EVT 二擇一皆缺 | 渲染；目標欄位 `source_proposal`（不是 `related_specs`：EVT 在 FR-09 無此欄位） |
+| R3-10 | `traceGap`，負載沒有欄位名 | 不渲染（目標欄位無法判定） |
+| R3-11 | `parseFailure`（含主題檔、非 domain 清單）、`duplicateId`、domain 重複宣告、flow 各子類、`unlocatable`、必要欄位缺席（SPEC-001 §5 末列）各一 | 全部不渲染 |
+| R3-12（E1：當下 minor） | 同一 `danglingRef`（來源 UC-X、`related_specs`），當下 minor 分別為 1.0 與 1.1 | 1.0 不渲染、1.1 渲染；兩次結果不同，證明判定讀 FR-09「自」欄而非寫死 |
+| R3-13（E2） | `danglingRef` 但負載缺欄位名（無法判定目標欄位）；正向對照為 R3-1 | 不渲染（「任一條件無法由破洞項的資料判定時不渲染」） |
+| R3-14 | 畫面狀態：有破洞、無法判定破洞（其餘類別有 R3-1 的項）；另一組為有破洞時檔案監看輪次進行中（停留在有破洞，不經掃描中，SPEC-001 §5〈檔案監看觸發的輪次不經「掃描中」〉） | 三組的 R3-1 項皆有 `action-gaps-edit-<itemId>`（監看輪次期間入口仍在，項目與入口沿用前一輪結果） |
+| R3-15 | 有破洞，R3-1 項 | 入口為 `ListRow.item` trailing 第二個次要操作，位於 `action-gaps-open-source-<itemId>` 左側；文字為 `editFieldsAction`（zh／en 與節點詳情「編輯欄位」逐字相同）；ARB 無新增 key |
+| R3-16（E1：disabled 對缺席） | 唯讀降級，R3-1 項與 R3-2 項並列 | R3-1 項入口存在且 disabled，tooltip 為唯讀原因（同 `action-nodeDetail-edit`）；R3-2 項入口缺席 |
+
+元件形式（trailing 次要操作的排列與 disabled 外觀）的測試點在 SPEC-004 4.40、4.34，本節不複寫。
+
+### 3.8 破洞入口的互動與節點詳情生命週期（SPEC-003 1.98 §3.5〈編輯入口〉、§3.6〈生命週期〉「由破洞報告的編輯入口進入」列、§2.14 列 24、§4 #23／#40；1.1 新增）
+
+本節案例來源為 SPEC-003，不是 SPEC-001；SPEC-001 §5〈畫面形式（1.1）〉為同一規則的畫面側描述。
+
+**測試檔**：N1-1～N1-2、N1-13 在 `test/widget/screens/gap_report/gap_report_edit_entry_widget_test.dart`（併 §3.7 widget 部分）；N1-3～N1-12 在 `test/widget/screens/node_detail/node_detail_gap_entry_test.dart`。開始編輯讀取以 edit 的讀取 port 替身控制結果（`notFound`、其他讀取失敗、成功）；寫入進行中以未完成的 `Completer` 停在受理前。
+
+| # | Given | When | Then（來源條文） |
+|---|-------|------|----------------|
+| N1-1 | 有破洞，R3-1 項 | 點 `action-gaps-edit-<itemId>` | jump 至 `nav-page-nodeDetail`，payload 為 UC-X 與 `related_specs`，`returnTo` 為 `gaps`；`card-gaps-<itemId>` 的點擊處理未被觸發（§3.5〈編輯入口〉） |
+| N1-2 | N1-1 之後 | 返回 | 回到 `state-gaps-found`（`returnTo`） |
+| N1-3 | 節點詳情不在編輯模式；讀取成功 | 由入口進入（情形 3） | `state-nodeDetail-editing`；`card-nodeDetail-field-related_specs` 在 `scroll-nodeDetail-content` 可見範圍內；焦點在其值格，不在序列第一個停留點；FieldBlock 無高亮；無 SnackBar（§3.6） |
+| N1-4 | 同上；讀取得 `notFound`／其他讀取失敗 | 由入口進入 | 前者 `state-nodeDetail-missing`；後者 `state-nodeDetail-normal` 加 `badge-nodeDetail-edit-read-failed`（§3.6，同 `action-nodeDetail-edit` 分支） |
+| N1-5（E2） | payload 節點不在圖上／圖不可用；正向對照為 N1-3 | 由入口進入 | 進入對應既有狀態；讀取 port 呼叫次數為 0（不讀檔），目標欄位捨棄；N1-3 呼叫次數為 1 |
+| N1-6 | 已在編輯模式，選定 UC-X，`title` 有未送出草稿，焦點在 `title` | 由入口進入，payload 為 UC-X、`related_specs`（情形 1） | 狀態仍為編輯中；`title` 草稿保留；讀取 port 未再呼叫（不重讀）；焦點移至 `related_specs` 值格 |
+| N1-7 | 同 N1-6，但一次寫入停在受理前 | 由入口進入 | 目標欄位捲入可見範圍；焦點不移動（仍在原欄位）（§3.6，比照欄位間 Tab） |
+| N1-7b | 同 N1-6，但處於 `state-nodeDetail-edit-warning`（編輯中收到 EVT-CORPUS-001 且重讀內容與 M 不同） | 由入口進入 | 目標欄位捲入可見範圍，焦點移至 `related_specs` 值格；狀態仍為 `state-nodeDetail-edit-warning`，頂端橫幅仍在（SPEC-003 1.98）。與 N1-8 對照：同一入口在阻擋狀態不移動焦點 |
+| N1-8 | 同 N1-6，但處於 `state-nodeDetail-edit-blocked`（送出得 `blocked(externallyModified)` 後經 `nav-item-gaps` 離開） | 由入口進入 | 只捲動、焦點不移動；狀態仍為 `state-nodeDetail-edit-blocked`，頂端橫幅仍在 |
+| N1-9（E1） | N1-6、N1-7、N1-7b、N1-8 四組 | 同一操作 | 焦點落點：N1-6、N1-7b 在目標值格，N1-7、N1-8 不在；四者目標欄位皆可見 |
+| N1-10 | 已在編輯模式，選定 SPEC-X 且有草稿 | 由入口進入，payload 為 UC-X（情形 2） | 依點關聯退出模式、SPEC-X 草稿捨棄；接著對 UC-X 執行 N1-3 的流程，結果同 N1-3 |
+| N1-11 | 編輯中，`source_proposal` 送出得 `partiallyWritten`（觸發原因非外部已改） | 讀畫面 | 該欄 FieldBlock 提示格 isError 承載「部分寫入」；狀態維持 `state-nodeDetail-editing`；無 AppSnackBar；不進入任何阻擋狀態（§2.14 列 24；SPEC-001 §6） |
+| N1-12（E1） | 同 N1-11，但觸發原因為 `blocked(externallyModified)` | 讀畫面 | 提示格同 N1-11，且狀態進入 `state-nodeDetail-edit-blocked`；與 N1-11 只差觸發原因，狀態不同（SPEC-001 §6〈編輯模式〉） |
+| N1-13 | `state-gaps-undeterminable`，其餘類別有 R3-1 的項 | 點 `action-gaps-edit-<itemId>` | 同 N1-1 的 jump（§4 #40；#23 由 N1-1 覆蓋） |
+
+FieldBlock 提示格、唯讀鎖定與 disabled 的元件行為在 SPEC-004 4.48、4.52、4.53，本節不複寫。
+
+### 3.9 編輯模式與寫入清單的 1.1 結果（SPEC-001 v1.92 §6〈編輯模式〉、§12〈列的內容〉；1.1 新增）
+
+**測試檔**：WL-1 在 `test/widget/screens/node_detail/node_detail_gap_entry_test.dart`（併 N1）；WL-2～WL-5 在 `test/widget/screens/write_log/write_log_panel_partial_test.dart`。寫入結果以 edit 應用層替身直接給出（含 `partiallyWritten` 攜帶的未還原檔清單與取回說明），本節不測 SPEC-009 的寫入集合判定。
+
+| # | Given | Then |
+|---|-------|------|
+| WL-1 | 編輯中，`source_proposal` 送出前不含 PROP-B，結果為 `partiallyWritten` | 值格維持送出前（不含 PROP-B）；提示格寫「見寫入清單」，不含取回指令 |
+| WL-2 | 寫入清單一列 `partiallyWritten`，未還原 1 檔（PROP-B），觸發原因 `ioFailed` | 寫入結果欄為「部分寫入」，附未還原檔數 1、補齊方式與觸發原因 |
+| WL-3（E1） | 一列 `written` 的多檔寫入（反向檔 PROP-B），一列 `written` 的單檔寫入 | 前者「同批檔案」列出 PROP-B 的路徑與取回說明；後者無「同批檔案」 |
+| WL-4 | WL-2 的列 | 「同批檔案」列出 PROP-B 與取回說明；路徑、欄位名兩欄為正向檔 UC-X 與 `source_proposal` |
+| WL-5 | 清單含一列 `written` 的多檔寫入（正向檔驗證狀態 `passed`）、一列 `partiallyWritten` | 側欄失敗計數徽章為 1；`written` 列只顯示正向檔的驗證狀態 `passed`，同批檔案不附驗證狀態（SPEC-009 FR-08〈多檔寫入的列法（1.1）〉） |
+
+WriteLogRow 的同批檔案排版在 SPEC-004 4.51，本節不複寫。
+
 ## 4. 覆蓋矩陣
 
 ### 4.1 規則 ↔ 測試
@@ -462,6 +568,13 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | 宣告狀態行（SPEC-001 §5；含格式錯誤、零 bundle、跨票去重） | ITD4（含 A5） | R1（含 R1-9～R1-13）、K4-1、K4-2、K4-3 |
 | proposed 標記（SPEC-004 4.19；SPEC-001 §6） | ITD3-A5 | K3、K4-1 |
 | 事件類項目投影（SPEC-001 v1.52 §5；SPEC-004 v1.94） | —（兩份語料孤立事件皆為 0 筆，宣告不符的修正方向待 `0.5.0-W1-458` 裁定，期望值未凍結） | R2、K4-4 |
+| 破洞項編輯入口：條件 1～3、目標欄位（SPEC-001 v1.93 §5〈逐項判定規則〉〈目標欄位〉；UC-08 驗收第 8 條） | ITRE3-A1、A3 | R3-1～R3-13 |
+| 破洞項編輯入口：畫面形式、出現狀態、唯讀 disabled（SPEC-001 v1.93 §5〈畫面形式（1.1）〉；SPEC-004 4.40、4.34 引用） | ITRE3-A4 | R3-14～R3-16 |
+| 入口 jump 與返回（SPEC-003 §3.5〈編輯入口〉、§4 #23、#40） | ITRE3-A1、A2 | N1-1、N1-2、N1-13 |
+| 由入口進入的生命週期三種情形與兩個只捲動分支（SPEC-003 §3.6） | ITRE3-A1 | N1-3～N1-10 |
+| `partiallyWritten` 的畫面承載（SPEC-001 §6；SPEC-003 §2.14 列 24；SPEC-004 4.48 引用） | ITRE2-A1 | N1-11、N1-12、WL-1 |
+| 寫入清單寫入結果列與同批檔案列（SPEC-001 §12；SPEC-004 4.51 引用） | ITRE1-A1、A3、ITRE2-A1、A3 | WL-2～WL-5 |
+| 修正關係邊與反向欄位（UC-08〈修正關係邊（1.1）〉、驗收第 7 條；SPEC-004 4.52、4.53 引用） | ITRE1-A1～A3、ITRE2-A2 | 寫入集合判定屬 SPEC-009-test-design |
 
 L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄），外圈無資料可驅動。L7 由 ITD2-A5
 （flutter_balance 九步缺鍵）在外圈驅動。F1 不在外圈：理由見 F1 節末。
@@ -487,12 +600,17 @@ L6 不在外圈：兩份語料皆無懸空與循環（SPEC-001 期望值欄）�
 | 報告頁宣告狀態行 | R1 | 13（加 R1-9～R1-11；SPEC-001 v1.51 加 R1-12、R1-13） |
 | 元件 | K1～K4 | 14（加 K2-5、K4-2；K2-4 改寫不計增；SPEC-004 v1.93 加 K4-3、v1.94 加 K4-4） |
 | 報告頁事件類項目投影 | R2 | 8（SPEC-001 v1.52 新增） |
-| 合計 | | 128 |
+| 5a 外圈（1.1） | IT-RE1～IT-RE3 | 10（SPEC-001 v1.93 新增） |
+| 破洞項編輯入口 | R3 | 16（SPEC-001 v1.93 新增） |
+| 破洞入口互動與生命週期 | N1 | 14（SPEC-003 1.97 新增 13、1.98 新增 N1-7b） |
+| 編輯模式與寫入清單 1.1 結果 | WL | 5（SPEC-001 v1.92 新增） |
+| 合計 | | 173（128＋45） |
 
 守衛型案例（已附正向對照）：L2-5、L6-1、L6-2、L7-1、R1-5、R2-6、P4-1、P4-2、P4-3、P4-5（L2-4 已移為 SPEC-007 G13-8）。
 E1 對照：ITD1-A4、ITD2-A5、ITD3-A4、ITD3-A5、ITD4-A3、ITD4-A5、L3-3、L4-3、L5-3、L7-2、L7-4、L7-6、
 L8-2、L8-4、L9-2、V3-2、V3-4、F1-2、F1-4、F1-7、P1-7、P2-2、P2-3、P4-4、P4-7、P4-8、R1-7、R1-10、R2-2、R2-3、R2-4、K2-3、K2-4、K3-1
 （L1-2、L2-2 已移為 SPEC-007 G13-2、G13-5）。
+1.1 新增：守衛型 ITRE3-A3、R3-2、R3-4、R3-7、R3-13、N1-5；E1 對照 ITRE1-A3、ITRE2-A3、ITRE3-A4、R3-12、R3-16、N1-9、N1-12、WL-3。
 
 ## 6. 待決與交接
 
@@ -559,3 +677,20 @@ v1.38 處置（`0.5.0-W1-114.2` 用戶裁決，SPEC-001 v1.38、SPEC-007 v1.18�
 
 已有承接票者不再分組：P1～P4 → `0.5.0-W1-096.5`；R1 與 `pathDeclaration*` → `0.5.0-W1-119`。
 各實作票驗收須含 §1.4 的 import 方向檢查。
+
+**1.1 範圍（`1.1.0-W1-111.2`）**：
+
+| 案例群組 | 實作單元 | 承接票 | 依賴 |
+|---------|---------|-------|------|
+| R3、N1-1、N1-2、N1-13 | 破洞報告頁（編輯入口判定與 jump） | `1.1.0-W2-003`／`1.1.0-W2-004`（分派依 `1.1.0-W1-111` Step 6） | FR-09 欄位表、型別表內嵌副本 |
+| N1-3～N1-12、WL-1 | 節點詳情編輯模式 | 同上 | edit 讀取 port、寫入結果型別含 `partiallyWritten`（SPEC-009） |
+| WL-2～WL-5 | 寫入清單面板 | 同上 | SPEC-004 4.51 |
+| IT-RE1～IT-RE3 | 外圈（`wip-acceptance`） | 同上，移除 tag 者為最後完成的一張 | 以上全部；`dart_test.yaml` 的 `wip-acceptance` skip 設定 |
+
+## 7. 變更歷史
+
+| 日期 | 票 | 變更 |
+|------|----|------|
+| 2026-11-13 | `1.1.0-W1-111.2` | 依 SPEC-001 1.93、SPEC-003 1.97、UC-08 v1.4 增補 1.1 編輯畫面範圍：§2.5 IT-E1～IT-E3（10）、§3.7 R3（16）、§3.8 N1（13）、§3.9 W1（5），覆蓋表補 7 列，§6.2 補 1.1 對照表；既有案例未改 |
+| 2026-11-13 | `1.1.0-W1-111.2` | 依 SPEC-003 1.98（主控裁定 NC-a）新增 N1-7b：外部已改預警狀態下由破洞入口進入，焦點照常移入目標欄位、橫幅保留，以 N1-8 的阻擋狀態作對照 |
+| 2026-11-13 | `1.1.0-W1-111.2` | 第一輪審查修正：外圈前綴 IT-E／ITE 改為 IT-RE／ITRE（避開 SPEC-009-test-design 的 IT-E）；寫入清單群組 W1 改名 WL；R3-5、R3-10 給負載；R3-6 寫具體目標欄位；R3-11 補必要欄位缺席；R3-14 掃描中組改為監看輪次期間；ITRE2-A1、A3 失敗點定在正向檔 `rename`；WL-5 定驗證狀態；§3.8 標題與檔頭改 SPEC-003 1.98；§5 統計 N1 改 14、合計 173 |

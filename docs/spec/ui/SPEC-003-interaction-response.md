@@ -5,7 +5,7 @@ status: draft
 source_proposal: PROP-004
 created: "2026-09-01"
 updated: "2026-11-13"
-version: "1.97"
+version: "1.98"
 owner: star-anise-system-designer
 
 domain: "ui"
@@ -2309,7 +2309,7 @@ SPEC-001 §6〈來源鏈〉，本節只定可觀察結果。不新增 §4 對照
 | 建構 | 隨 `IndexedStack` 建構，內容為空（無選定節點） |
 | 經導覽列進入且圖未建立 | 渲染 `state-nodeDetail-project-unready`（SPEC-001 共用定義，`0.1.0-W3-335.37` R9；優先於「未選節點」判定，見上方註記）；圖建立完成後依有無選定節點回到「由 jump 進入」或「未選節點」 |
 | 由 jump 進入 | 選定節點設為 payload 的 nodeId，依 SPEC-001 §6〈「圖不可用」「節點不在目前的圖上」的成列理由與判定順序〉判定：在圖上時主欄與右欄依該節點渲染；不在圖上時進入 `state-nodeDetail-node-absent`；建圖不可用時進入 `state-nodeDetail-graph-unavailable`（jump 本身不檢查檔案存在，§3.6〈互動反應〉） |
-| 由破洞報告的編輯入口進入（1.1 起，SPEC-001 §5〈破洞報告的編輯入口〉） | 依下列順序處理，payload 帶指向節點 ID 與目標欄位鍵名：(1) 本畫面已在編輯模式且選定節點等於 payload 節點 → 維持模式與草稿，不重讀；`card-nodeDetail-field-<目標欄位>` 捲入 `scroll-nodeDetail-content` 可見範圍，焦點移入其值格；寫入進行中時只捲動、不移動焦點（值格唯讀鎖定，同〈互動反應〉欄位間 Tab）。處於 `state-nodeDetail-edit-blocked` 時同樣只捲動、不移動焦點：該狀態的值格為 disabled、不進 Tab 順序（SPEC-004 4.44 的 `enabled: false`，輸入元件組共用），焦點無處可落；狀態不變，頂端橫幅已提示先放棄並重讀。這條路徑的走法是：在節點詳情送出得 `blocked(externallyModified)` 進入阻擋，經 `nav-item-gaps` 離開（編輯模式保留，見本表「編輯模式期間切至其他導覽項」列），再按同一節點破洞項的 `action-gaps-edit-<itemId>`。(2) 本畫面已在編輯模式但選定節點不同 → 依 `card-nodeDetail-relation-*` 同一規則退出模式（草稿捨棄，比照 §3.12 列的路徑），再接 (3)。(3) 選定節點設為 payload 節點，依「由 jump 進入」列判定；判定為正常時，接著執行與 `action-nodeDetail-edit` 相同的開始編輯讀取，結果分支同該列：讀取成功 → `state-nodeDetail-editing`，目標欄位捲入可見範圍並取得焦點，取代「進入編輯模式時焦點落在序列的第一個停留點」；`notFound` → `state-nodeDetail-missing`；其他讀取失敗 → `state-nodeDetail-normal` 加 `badge-nodeDetail-edit-read-failed`。判定不為正常時（節點不在圖上、圖不可用）不讀檔，目標欄位捨棄。捲動依 SPEC-004 §4.0.10 即時定位，不高亮：焦點環已指出目標，FieldBlock 沒有 located 態。不出現 SnackBar |
+| 由破洞報告的編輯入口進入（1.1 起，SPEC-001 §5〈破洞報告的編輯入口〉） | 依下列順序處理，payload 帶指向節點 ID 與目標欄位鍵名：(1) 本畫面已在編輯模式且選定節點等於 payload 節點 → 維持模式與草稿，不重讀；`card-nodeDetail-field-<目標欄位>` 捲入 `scroll-nodeDetail-content` 可見範圍，焦點移入其值格；寫入進行中時只捲動、不移動焦點（值格唯讀鎖定，同〈互動反應〉欄位間 Tab）。處於 `state-nodeDetail-edit-warning` 時照常捲動並把焦點移入目標欄位的值格，狀態不變，頂端橫幅保留：預警狀態仍可送出（〈互動反應〉「欄位送出」列），值格沒有停用。處於 `state-nodeDetail-edit-blocked` 時同樣只捲動、不移動焦點：該狀態的值格為 disabled、不進 Tab 順序（SPEC-004 4.44 的 `enabled: false`，輸入元件組共用），焦點無處可落；狀態不變，頂端橫幅已提示先放棄並重讀。這條路徑的走法是：在節點詳情送出得 `blocked(externallyModified)` 進入阻擋，經 `nav-item-gaps` 離開（編輯模式保留，見本表「編輯模式期間切至其他導覽項」列），再按同一節點破洞項的 `action-gaps-edit-<itemId>`。(2) 本畫面已在編輯模式但選定節點不同 → 依 `card-nodeDetail-relation-*` 同一規則退出模式（草稿捨棄，比照 §3.12 列的路徑），再接 (3)。(3) 選定節點設為 payload 節點，依「由 jump 進入」列判定；判定為正常時，接著執行與 `action-nodeDetail-edit` 相同的開始編輯讀取，結果分支同該列：讀取成功 → `state-nodeDetail-editing`，目標欄位捲入可見範圍並取得焦點，取代「進入編輯模式時焦點落在序列的第一個停留點」；`notFound` → `state-nodeDetail-missing`；其他讀取失敗 → `state-nodeDetail-normal` 加 `badge-nodeDetail-edit-read-failed`。判定不為正常時（節點不在圖上、圖不可用）不讀檔，目標欄位捨棄。捲動依 SPEC-004 §4.0.10 即時定位，不高亮：焦點環已指出目標，FieldBlock 沒有 located 態。不出現 SnackBar |
 | 掃描輪次離開 Completed（他頁重掃、取消重掃、輪次失敗、檔案監看觸發的重掃）／新一輪完成（`0.6.0-W1-105` 缺口 G-N3，`0.6.0-W1-105.2`，比照 §3.1、§3.4 同名列） | 輪次不是 Completed 期間照常顯示上一輪結果：狀態、選定節點、主欄、關聯右欄與兩欄 offset 全部不變，不另設狀態、不清空（對齊 SPEC-006 FR-11 掃描期間保留舊結果、完成後替換）。新一輪完成後依 SPEC-001 §6 判定順序重新判定：選定節點仍在圖上 → 維持或回到 `state-nodeDetail-normal`，主欄與關聯右欄改用新輪次的值，兩欄 offset 夾在新的可捲範圍內、不歸零（同 §2.8「視窗尺寸變更」）；選定節點不在圖上 → `state-nodeDetail-node-absent`，選定 id 保留，之後的輪次再出現時回到正常；該輪建圖不可用 → `state-nodeDetail-graph-unavailable`，選定 id 保留；無選定節點時維持 `state-nodeDetail-unset`。處於 `state-nodeDetail-missing` 時：節點仍在圖上則維持（檔案是否已恢復仍由重新整理判定），節點已不在圖上則轉 `state-nodeDetail-node-absent`（SPEC-001 §6 兩者同時成立時後者優先）。`returnTo` 不變。不發提示（狀態承載，§2.13 T1 承接 (b1)） |
 | 重新整理與掃描輪次的關係 | `action-nodeDetail-refresh` 只讀該節點一個檔案（上方〈重新整理的三分支〉），不產生掃描輪次、不回寫共用輪次結果，其他畫面不因此更新；下一輪完成時本畫面依上一列重新判定，以輪次結果為準（`0.6.0-W1-105` 缺口 G-N3 併入項） |
 | 切至其他導覽項 | 選定節點、兩欄 offset 保留；`returnTo` 依 §2.3 規則 1 設為 `null`（回到本畫面時 `action-nodeDetail-back` 不渲染） |
@@ -2898,6 +2898,7 @@ SPEC-001 對應列的參照鍵；退出路徑以 SPEC-001 該列「退出路徑�
 
 | 版本 | 日期 | 變更 |
 |------|------|------|
+| 1.98 | 2026-11-13 | `1.1.0-W1-111.2`（1.1 規劃波 Step 5 測試設計回報的缺口，主控依規格內部一致性定案，不經用戶）：§3.6〈生命週期〉「由破洞報告的編輯入口進入」列的情形 (1) 補上 `state-nodeDetail-edit-warning`：照常捲動並把焦點移入目標欄位，狀態不變，橫幅保留。理由：〈互動反應〉「欄位送出」列允許在預警狀態送出，值格沒有停用，所以不比照阻擋狀態只捲動 |
 | 1.97 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 第 3 項，對齊 SPEC-001 v1.93）：§3.5「編輯入口在 1.0 不渲染」段改為〈編輯入口〉，新增 `action-gaps-edit-<itemId>` 列（jump 至節點詳情並開始編輯，`returnTo`=gaps；不渲染時以缺席斷言）；§2.9〈動態 ID 段取值〉補該錨點；§3.5〈導航跳轉與退出〉「有破洞」「無法判定破洞」兩列與 §4 #23、#40 補該 jump；§3.6〈生命週期〉新增「由破洞報告的編輯入口進入」列（同節點維持模式、別節點依點關聯退出、焦點落在目標欄位、即時定位不高亮；同節點處於外部已改阻擋時比照寫入進行中只捲動，並寫明這條路徑如何到達）。§3.6〈生命週期〉「切換專案」與「編輯模式期間收到 EVT-CORPUS-001」兩列原以兩個相連的直線分隔符接在同一行，拆回兩列（HEAD 既有的表格錯誤，主控審查發現）。§4 列數不變 |
 | 1.96 | 2026-11-13 | `1.1.0-W1-111`（1.1 規劃波 Step 4.5 第 2 項）：§2.14 列 24 補 1.1 的 `partiallyWritten`，載體同列 24（該欄 FieldBlock 提示格），不可棄；驗收表補一列（注入正向檔 `rename` 失敗且反向檔還原失敗，含重送補齊的對照）。元件形式見 SPEC-004 1.149 |
 | 1.95 | 2026-11-11 | `1.0.0-W3-553.3.1`（用戶裁定 2026-11-11 題 1–3，題 2 依 (e)）：§3.6〈互動反應〉「欄位送出」列的寫入期間鎖定由「其他欄位的送出與完成 disabled」改為「全部值格唯讀鎖定（保留焦點），完成與放棄並重讀 disabled」；「編輯欄位」列的「取代 meta 列」改為「取代分隔線以上整區（meta 列、標題、狀態徽章）」；新增「欄位失焦」（草稿保留、不送出、提示格標示未送出）與「欄位間 Tab」（順序依 SPEC-009 FR-09 表列序，進入模式的焦點落點，結果不移動焦點）兩列。對應 SPEC-001 v1.90、SPEC-004 v1.143 |
