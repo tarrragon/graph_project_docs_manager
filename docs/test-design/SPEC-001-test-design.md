@@ -522,8 +522,9 @@ F1 不設外圈：兩份語料皆無 flow 區塊解析失敗的 UC（SPEC-006 FR
 | N1-5（E2） | payload 節點不在圖上／圖不可用；正向對照為 N1-3 | 由入口進入 | 進入對應既有狀態；讀取 port 呼叫次數為 0（不讀檔），目標欄位捨棄；N1-3 呼叫次數為 1 |
 | N1-6 | 已在編輯模式，選定 UC-X，`title` 有未送出草稿，焦點在 `title` | 由入口進入，payload 為 UC-X、`related_specs`（情形 1） | 狀態仍為編輯中；`title` 草稿保留；讀取 port 未再呼叫（不重讀）；焦點移至 `related_specs` 值格 |
 | N1-7 | 同 N1-6，但一次寫入停在受理前 | 由入口進入 | 目標欄位捲入可見範圍；焦點不移動（仍在原欄位）（§3.6，比照欄位間 Tab） |
+| N1-7b | 同 N1-6，但處於 `state-nodeDetail-edit-warning`（編輯中收到 EVT-CORPUS-001 且重讀內容與 M 不同） | 由入口進入 | 目標欄位捲入可見範圍，焦點移至 `related_specs` 值格；狀態仍為 `state-nodeDetail-edit-warning`，頂端橫幅仍在（SPEC-003 1.98）。與 N1-8 對照：同一入口在阻擋狀態不移動焦點 |
 | N1-8 | 同 N1-6，但處於 `state-nodeDetail-edit-blocked`（送出得 `blocked(externallyModified)` 後經 `nav-item-gaps` 離開） | 由入口進入 | 只捲動、焦點不移動；狀態仍為 `state-nodeDetail-edit-blocked`，頂端橫幅仍在 |
-| N1-9（E1） | N1-6、N1-7、N1-8 三組 | 同一操作 | 焦點落點：N1-6 在目標值格，N1-7、N1-8 不在；三者目標欄位皆可見 |
+| N1-9（E1） | N1-6、N1-7、N1-7b、N1-8 四組 | 同一操作 | 焦點落點：N1-6、N1-7b 在目標值格，N1-7、N1-8 不在；四者目標欄位皆可見 |
 | N1-10 | 已在編輯模式，選定 SPEC-X 且有草稿 | 由入口進入，payload 為 UC-X（情形 2） | 依點關聯退出模式、SPEC-X 草稿捨棄；接著對 UC-X 執行 N1-3 的流程，結果同 N1-3 |
 | N1-11 | 編輯中，`source_proposal` 送出得 `partiallyWritten`（觸發原因非外部已改） | 讀畫面 | 該欄 FieldBlock 提示格 isError 承載「部分寫入」；狀態維持 `state-nodeDetail-editing`；無 AppSnackBar；不進入任何阻擋狀態（§2.14 列 24；SPEC-001 §6） |
 | N1-12（E1） | 同 N1-11，但觸發原因為 `blocked(externallyModified)` | 讀畫面 | 提示格同 N1-11，且狀態進入 `state-nodeDetail-edit-blocked`；與 N1-11 只差觸發原因，狀態不同（SPEC-001 §6〈編輯模式〉） |
@@ -691,3 +692,4 @@ v1.38 處置（`0.5.0-W1-114.2` 用戶裁決，SPEC-001 v1.38、SPEC-007 v1.18�
 | 日期 | 票 | 變更 |
 |------|----|------|
 | 2026-11-13 | `1.1.0-W1-111.2` | 依 SPEC-001 1.93、SPEC-003 1.97、UC-08 v1.4 增補 1.1 編輯畫面範圍：§2.5 IT-E1～IT-E3（10）、§3.7 R3（16）、§3.8 N1（13）、§3.9 W1（5），覆蓋表補 7 列，§6.2 補 1.1 對照表；既有案例未改 |
+| 2026-11-13 | `1.1.0-W1-111.2` | 依 SPEC-003 1.98（主控裁定 NC-a）新增 N1-7b：外部已改預警狀態下由破洞入口進入，焦點照常移入目標欄位、橫幅保留，以 N1-8 的阻擋狀態作對照 |
