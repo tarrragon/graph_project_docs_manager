@@ -33,7 +33,7 @@ class FakeEditFilePort implements EditFilePort {
     readScript.clear();
   }
 
-  /// 指定操作種類（write／fsync／setMode／rename）一律失敗。
+  /// 指定操作種類（write／fsync／setMode／rename／delete）一律失敗。
   void failOp(String kind, {int? errorCode = 5}) =>
       _opFaults[kind] = EditFileException(errorCode: errorCode);
 
@@ -97,7 +97,7 @@ class FakeEditFilePort implements EditFilePort {
 
   @override
   Future<void> delete(String path) async {
-    ops.add(FileOp('delete', path));
+    _record('delete', path);
     files.remove(path);
     modes.remove(path);
   }

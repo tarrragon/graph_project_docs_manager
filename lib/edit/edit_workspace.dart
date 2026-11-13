@@ -91,11 +91,7 @@ class EditWorkspace {
         workspaceRoot: root,
         validator: validator == null
             ? null
-            : EditValidatorRunner(
-                port: validator,
-                timer: editTimer,
-                logSink: sink,
-              ),
+            : EditValidatorRunner(port: validator, timer: editTimer),
         logSink: sink,
       ),
     );
