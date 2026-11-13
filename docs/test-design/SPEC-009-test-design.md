@@ -7,7 +7,7 @@ source_spec: SPEC-009
 spec_version: "1.7"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
-updated: "2026-11-12"
+updated: "2026-11-13"
 ---
 
 # SPEC-009 Phase 2 紅燈測試規格
@@ -361,8 +361,12 @@ FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類�
 | C-3 | 修正 SPEC-900，驗證器設為延後完成；之後對 PROP-900 開始編輯 | SPEC-900 的驗證以 `failed` 完成 | 清單中 SPEC-900 那一列的狀態由 `running` 變為 `failed`；PROP-900 的編輯 session 不受影響 |
 | C-4 | W ≠ H 的寫入一次、W = H 的寫入一次 | 讀日誌 | 前者有 `snapshotTaken`，且其 `blob_sha` 等於清單該列的 SHA；後者沒有（正向對照） |
 | C-5 | 任一次寫入 | 寫入 | `FakeEditGitPort` 沒有 `commit`、`add`、`stash` 呼叫 |
+| C-6（SPEC-009 v1.12） | 同一 fixture 依序發出 `written`、`ioFailed`、`blocked` 三次寫入；另各發一次 `blocked(externallyModified)`、`blocked(snapshotFailed)`、`blocked(rewriteNotIsolated)`；另一次寫入在受理前讀取清單 | 讀取 session 寫入清單 | 每次發出各成一列（對照：v1.11 以前的實作只有 `written` 成列，三次得一列）；受理前該列為寫入中（結果為空），受理後原地更新同一列，不新增列。對照：呼叫端未發出的寫入（必填欄位送出空白）不進寫入路徑，不成列 |
+| C-7（SPEC-009 v1.12） | 兩個專案各發出一次寫入 | 讀取清單；切換專案後再讀取 | 每列附所屬專案；切換專案後兩列都保留，非目前專案的列路徑不可點（畫面層，SPEC-001 §12〈切換專案〉） |
 
-FR-08 驗收第 1 條由 C-5 與 IT-E2-1、IT-E2-2 涵蓋；第 2 條由 C-2 與 L-9 涵蓋；第 3 條由 C-3 涵蓋；第 4 條由 C-4 涵蓋。
+C-6、C-7 的測試檔：`test/unit/edit/session_write_list_issued_test.dart`（C-6 全部、C-7 的資料層）、`test/widget/screens/write_log_panel_test.dart`（C-6 的寫入中與失敗列呈現、C-7 的畫面層）、`test/widget/app/shell_test.dart`（失敗計數徽章計入 `blocked`、`ioFailed`），皆由 `1.0.0-W3-553.17.1` 建立；C-6 的「未發出不成列」對照由 `1.0.0-W3-553.15` 的 `test/unit/screens/node_detail/node_detail_edit_test.dart`（必填空白不發出寫入）涵蓋。
+
+FR-08 驗收第 1 條由 C-5 與 IT-E2-1、IT-E2-2 涵蓋；第 2 條由 C-2 與 L-9 涵蓋；第 3 條由 C-3 涵蓋；第 4 條由 C-4 涵蓋；第 5 條（v1.12）由 C-6 涵蓋；第 6 條（v1.12）由 C-7 涵蓋。
 
 ### F 逐欄位輸入元件（FR-09）
 
@@ -447,6 +451,8 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
 | FR-07 | #1、#2；`timedOut` 欄位（v1.2） | 見 L 群組末段；L-11、L-12 | domain unit |
 | FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration；widget（寫入清單面板與側欄項，`1.0.0-W3-553.17`：`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`、`test/unit/app/write_list_providers_test.dart`） |
+| FR-08 | #5 每次發出的寫入都成列（寫入中、`written`、`blocked` 三種原因、`ioFailed`），結局更新同一列；未發出不成列（v1.12） | C-6 | domain unit（`test/unit/edit/session_write_list_issued_test.dart`）；widget（`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`，`1.0.0-W3-553.17.1`）；對照：`test/unit/screens/node_detail/node_detail_edit_test.dart`（`1.0.0-W3-553.15`） |
+| FR-08 | #6 每列附所屬專案；切換專案後清單保留（v1.12） | C-7 | domain unit（`test/unit/edit/session_write_list_issued_test.dart`）；widget（`test/widget/screens/write_log_panel_test.dart`，`1.0.0-W3-553.17.1`） |
 | FR-09 | #1 1.0 欄位都有元件與值域來源 | F-1 | 畫面狀態層 unit |
 | FR-09 | #2 無機器定義的列舉以單行呈現 | F-2、F-3 | 畫面狀態層 unit |
 | FR-09 | 約束：〈可否清空〉三類、trim 判定、非空不修剪、必填集合讀 `completeness_fields`（v1.4，非驗收條目） | F-5、F-6、F-7 | 畫面狀態層 unit |
@@ -531,3 +537,4 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | 0.3 | 2026-11-11 | `1.0.0-W3-553.7`，對應 SPEC-009 v1.4（`1.0.0-W3-686`）：<br>- §1.6 `doc_plain` 加 `target_version`。<br>- R 組新增 R-13（清空寫 `null`，FR-03 驗收 #7）、R-14（守衛：清空不得移除鍵）。<br>- F 組新增 F-5（可清空欄位空白寫 `null`、非空不修剪）、F-6（守衛：必填欄位空白擋下）、F-7（守衛：必填集合讀 `completeness_fields`，fake 少一鍵即改判）。<br>- §4.2 補 FR-03 #7 與 FR-09〈可否清空〉約束；§4.3 補三個守衛；§5 兩列同步。 |
 | 0.4 | 2026-11-12 | `1.0.0-W3-553.10`，對應 SPEC-009 v1.5（執行期澄清，用戶裁定 2026-11-12）：<br>- G 組新增 G-24：真實流程下非 UTF-8 檔案在第 2 步回傳 `rewriteNotIsolated`、目標檔不變（FR-03 驗收 #8）。G-6 維持以替身改寫器驗第 1 步逐位元組比較。<br>- IT-E2-1 修訂：stash、reflog、log 逐字相同；status 只斷言目標檔一列、只有工作區欄已修改、無 staged 項目。原「四者逐字相同」在 R0（寫入前乾淨）下不可能成立。<br>- §1.6 `doc_nonutf8` 用途補 G-24；§4.2 補 FR-03 #8。 |
 | 0.5 | 2026-11-12 | `1.0.0-W3-553.11.1`，對應 SPEC-009 v1.7（執行期澄清，用戶裁定 2026-11-12，經主控 AUQ）：<br>- V 組新增 V-19（守衛：baseline 未完成即寫入 → `unavailable(baselineNotReady)`，丟棄延遲的 baseline，該次寫入後的問題集合成為下一次 baseline）、V-20（寫入後驗證 `unavailable` 時保留原 baseline）、V-21（沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline）。V-19 的延遲 baseline 在兩次寫入之間完成並回報零個問題，用以分辨它是否被丟棄。<br>- IT-E6-1 改為先等 baseline 完成再寫入。<br>- §2.6 補真實 CLI 測試的前置條件（PATH 上的 `doc` 與 `uv`、doc 符號連結、UC 白名單），基準文件改為 UC 型（`doc validate` 依檔名取 ID）。<br>- §4.2 補 FR-05〈baseline 與寫入的先後〉。<br>- 原因值名稱 `baselineNotReady`（L56 提案，主控審查通過）。 |
+| 0.6 | 2026-11-13 | `1.0.0-W3-553.17.1`，對應 SPEC-009 v1.12 FR-08（執行期澄清，用戶裁定 2026-11-13，經主控 AUQ）：<br>- C 組新增 C-6（每次發出的寫入都成列，含寫入中與三種 `blocked`、`ioFailed`；對照：v1.11 以前只有 `written` 成列；未發出不成列）、C-7（列附所屬專案，切換專案後保留）。<br>- §4.2 補 FR-08 #5、#6，追溯到 553.17.1 的測試檔與 553.15 的對照測試。<br>- `spec_version` 未改：v1.8～v1.11 屬 1.1 的條文，本文件尚未涵蓋，只補 v1.12 的 FR-08。 |
