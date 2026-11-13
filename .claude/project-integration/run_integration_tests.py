@@ -13,6 +13,11 @@ App），並印含檔名的 TIMEOUT_MESSAGE。改自舊的 900 秒全檔共用�
 flutter 輸出的單檔測試時間最大為 app_test 約 55 秒（含冷建置的首檔），其餘 0～28 秒；12 檔全跑完的
 總耗時 473～660 秒，平均單檔含建置與 pub 解析約 40～55 秒；swap 高時耗時約加倍，故取 300 秒
 （約觀測最大單檔的 2～3 倍）。
+收集範圍：只收 integration_test 頂層的 *_test.dart，與 CI（.github/workflows/macos-integration.yml 的
+`integration_test/*_test.dart` 非遞迴 glob）一致。integration_test/perf/ 是 Profiler 探針，需 profile 模式與
+driver，不屬逐檔 `flutter test` 範圍；手動執行：
+`fvm flutter drive --profile -d macos --driver=test_driver/perf_driver.dart
+--target=integration_test/perf/ticket_list_perf_test.dart`（見該檔檔頭）。
 名額：閘門持有者的子程序，本腳本直接啟動 fvm，不經 run-with-timeout，故不會再取名額。
 """
 import argparse
@@ -45,9 +50,10 @@ class SuiteTimeout(Exception):
 
 
 def discover_tests(root: Path) -> List[str]:
-    """遞迴列舉 *_test.dart（與 flutter test integration_test 同規則），排序固定，回傳相對 root 的路徑。"""
+    """非遞迴列舉 integration_test 頂層的 *_test.dart（與 CI 的 `integration_test/*_test.dart` glob 一致），
+    排序固定，回傳相對 root 的路徑。子目錄（如 perf/ 探針）不收集。"""
     base = root / TEST_DIR
-    return sorted(p.relative_to(root).as_posix() for p in base.rglob(f"*{TEST_SUFFIX}") if p.is_file())
+    return sorted(p.relative_to(root).as_posix() for p in base.glob(f"*{TEST_SUFFIX}") if p.is_file())
 
 
 def kill_group(proc: subprocess.Popen) -> None:
