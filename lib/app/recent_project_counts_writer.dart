@@ -7,17 +7,17 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/project_switcher_providers.dart';
 import 'package:graph_project_docs_manager/app/round_gaps.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_repository.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
-
-const String _tag = 'RecentProjectCountsWriter';
 
 /// 需求：[SPEC-005 §2.4 計數快照] 輪次結果 → 三個計數。
 ///
@@ -67,10 +67,9 @@ void _syncProvider(Ref ref, String path, RecentProjectCounts counts) {
     for (final project in notifier.state)
       project.path == path ? project.withCounts(counts) : project,
   ];
-  developer.log(
-    // i18n-exempt: 開發者診斷 log
-    '已同步最近專案計數快照 path=$path',
-    name: _tag,
-    level: 500,
+  appLogSink(
+    AppLogEvent.recentProjectCountsSynced,
+    LogFields.empty,
+    level: LogLevel.debug,
   );
 }

@@ -2,9 +2,9 @@
 /// 監看輪次完成時的系統層通知判定（0.6.0-W1-080）。
 library;
 
-import 'dart:developer' as developer;
-
-const String _tag = 'WatchRoundNotification';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// 判定結果。
 class WatchNotificationDecision {
@@ -58,11 +58,12 @@ Future<void> deliverWatchNotification({
   try {
     await port.withdrawPending();
   } catch (error) {
-    developer.log(
-      // i18n-exempt: 開發者 log，非使用者可見
-      'Withdraw pending notification failed: $error',
-      name: _tag,
-      level: 900,
+    appLogSink(
+      AppLogEvent.watchNotificationWithdrawFailed,
+      LogFields.empty,
+      level: LogLevel.error,
+      source: ErrorSource.platformIo,
+      error: error,
     );
   }
   await port.sendWatchNotification(count);

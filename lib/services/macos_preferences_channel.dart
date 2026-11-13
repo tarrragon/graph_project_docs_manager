@@ -9,29 +9,34 @@
 /// 與開檔都落到系統預設的保守路徑（SPEC-003 §3.8、§2.2〈行號定位〉）。
 ///
 /// 可觀測性（observability 規則 5）：查詢入口與結果、選單事件、平台例外皆以
-/// `developer.log` 記錄（開發者診斷字串，非使用者可見文字，不進 i18n）。
+/// `LogSink<ServicesLogEvent>` 記錄（SPEC-010；負載只用白名單型別）。
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/services/services_log_event.dart';
 
 import '../workspace/editor_preference.dart';
-
-const String _tag = 'MacosPreferencesChannel';
 
 /// `MethodChannel` 名稱：須與 AppDelegate.swift 的 `preferencesChannelName` 一致。
 const String preferencesChannelName = 'graph_project_docs_manager/preferences';
 
 class MacosPreferencesChannel implements EditorHandlerProbe {
-  MacosPreferencesChannel({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel(preferencesChannelName) {
+  MacosPreferencesChannel({
+    MethodChannel? channel,
+    LogSink<ServicesLogEvent>? logSink,
+  }) : _channel = channel ?? const MethodChannel(preferencesChannelName),
+       _log = logSink ?? defaultServicesLogSink() {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
   final MethodChannel _channel;
+  final LogSink<ServicesLogEvent> _log;
   final StreamController<void> _openRequestedController =
       StreamController<void>.broadcast();
 
@@ -47,40 +52,50 @@ class MacosPreferencesChannel implements EditorHandlerProbe {
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (call.method == 'openPreferences') {
-      developer.log('收到偏好設定開啟請求', name: _tag); // i18n-exempt: 開發者診斷 log
+      _log(ServicesLogEvent.preferencesOpenRequested, LogFields.empty);
       _openRequestedController.add(null);
     } else if (call.method == 'openKeyboardShortcuts') {
-      developer.log('收到鍵盤快捷鍵開啟請求', name: _tag); // i18n-exempt: 開發者診斷 log
+      _log(ServicesLogEvent.keyboardShortcutsOpenRequested, LogFields.empty);
       _openShortcutsController.add(null);
     }
     return null;
   }
 
+  /// 平台失敗統一記錄：例外走 `error:`（只留型別），來源為平台 I/O。
+  void _logPlatformFailure(Object error) {
+    _log(
+      ServicesLogEvent.handlerQueryFailed,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
+      error: error,
+    );
+  }
+
   @override
   Future<bool> hasHandler(String scheme) async {
-    developer.log('查詢 handler：$scheme', name: _tag); // i18n-exempt: 開發者診斷 log
+    final schemeField = LogValue.fieldName(scheme);
+    _log(
+      ServicesLogEvent.handlerQueried,
+      LogFields({ServicesLogKeys.scheme: schemeField}),
+    );
     try {
       final found = await _channel.invokeMethod<bool>('hasHandler', {
         'scheme': scheme,
       });
-      developer.log(
-        'handler 查詢結果：$scheme=$found',
-        name: _tag,
-      ); // i18n-exempt: 開發者診斷 log
+      _log(
+        ServicesLogEvent.handlerQueryResolved,
+        LogFields({
+          ServicesLogKeys.scheme: schemeField,
+          ServicesLogKeys.found: LogValue.boolean(found ?? false),
+        }),
+      );
       return found ?? false;
     } on PlatformException catch (error) {
-      developer.log(
-        'handler 查詢失敗（視為無）：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(error);
       return false;
     } on MissingPluginException catch (error) {
-      developer.log(
-        'handler 查詢失敗，原生端未註冊（視為無）：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(error);
       return false;
     }
   }

@@ -8,9 +8,8 @@
 /// 依賴方向：corpus／graph／layout 不得依賴本層；本層不另起掃描。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
@@ -22,8 +21,6 @@ import 'package:graph_project_docs_manager/observability/log_sink.dart';
 import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
-
-const String _tag = 'domain_view_loader';
 
 /// Domain 視圖的日誌事件（SPEC-010 FR-04：取代原純字串 sink）。
 enum DomainViewLogEvent {
@@ -93,13 +90,13 @@ class DomainViewLoader extends Notifier<void> {
     final ScanRoundResult? round;
     try {
       round = await _obtainRound(generation);
-    } catch (e, st) {
-      developer.log(
-        'Domain 視圖取得掃描輪次失敗', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
+    } catch (e) {
+      appLogSink(
+        AppLogEvent.domainViewRoundFetchFailed,
+        LogFields.empty,
+        level: LogLevel.error,
+        source: ErrorSource.internal,
         error: e,
-        stackTrace: st,
       );
       // SPEC-001 v1.49 §1 載入失敗：落阻擋狀態，不外拋（降級入口以 unawaited 呼叫）。
       if (_isCurrent(generation)) _write(const DomainLoadFailed());
