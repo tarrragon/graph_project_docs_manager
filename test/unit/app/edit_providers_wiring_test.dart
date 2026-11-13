@@ -2,13 +2,19 @@
 // 只覆寫 driven port 與上游狀態；唯讀旗標值取自 EditWorkspace 探測。
 library;
 
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/components/app_shell.dart'
     show ReadonlyWorkspaceReason;
+import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_workspace.dart';
+import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
@@ -16,6 +22,7 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import '../../helpers/gap_round_fakes.dart';
 import '../../helpers/spec009/fake_edit_file_port.dart';
 import '../../helpers/spec009/fake_edit_git_port.dart';
+import '../../helpers/spec009/fake_validator_port.dart';
 
 class _FixedLastRound extends LastCompletedRoundNotifier {
   _FixedLastRound(this._round);
@@ -105,6 +112,51 @@ void main() {
       expect(c.read(fieldDomainSourceProvider).completenessFields('SPEC'), {
         'title',
       });
+    });
+  });
+
+  group('驗證器 port（SPEC-009 FR-05）', () {
+    test('工作區就緒：預設為以工作區根為工作目錄的 IoEditValidatorPort', () {
+      final c = _container(FakeEditGitPort.repo());
+      final port = c.read(editValidatorPortProvider);
+      expect(port, isA<IoEditValidatorPort>());
+      expect((port! as IoEditValidatorPort).workingDirectory, '/ws/fake');
+    });
+
+    test('正向對照：工作區未就緒為 null', () {
+      final c = _container(
+        FakeEditGitPort.repo(),
+        workspace: const WorkspaceUnset(),
+      );
+      expect(c.read(editValidatorPortProvider), isNull);
+    });
+
+    test('validator 經 editWorkspaceProvider 傳入：開始編輯即啟動驗證', () async {
+      final dir = Directory.systemTemp.createTempSync('wiring_validator_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      final root = dir.resolveSymbolicLinksSync();
+      final path = WorkspaceRelativePath.from(root, 'a.md')!;
+      final files = FakeEditFilePort()
+        ..files[path.absolute] = Uint8List.fromList(
+          utf8.encode('---\nid: A\n---\n'),
+        );
+      final validator = FakeValidatorPort();
+      final c = ProviderContainer(
+        overrides: [
+          editGitPortProvider.overrideWithValue(FakeEditGitPort.repo()),
+          editFilePortProvider.overrideWithValue(files),
+          editValidatorPortProvider.overrideWithValue(validator),
+          lastCompletedRoundProvider.overrideWith(() => _FixedLastRound(null)),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(currentWorkspaceStateProvider.notifier).state = WorkspaceReady(
+        root,
+      );
+      final workspace = await c.read(editWorkspaceProvider.future);
+      await workspace!.beginEditing(path);
+      await Future<void>.delayed(Duration.zero);
+      expect(validator.calls, isNotEmpty);
     });
   });
 }

@@ -10,11 +10,13 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/corpus/docs_file_system.dart';
@@ -26,8 +28,6 @@ import 'package:graph_project_docs_manager/schema/type_table.dart';
 import 'package:graph_project_docs_manager/schema/type_table_json_codec.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
-
-const String _tag = 'scan_round';
 
 /// 專案 `tracking_schema.json` 相對工作區根的路徑（PROP-002）。
 const String projectSchemaRelativePath =
@@ -197,13 +197,9 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     return const ScanRoundIdle();
   }
 
-  void _log(String message, {int level = 500, Object? error}) {
-    developer.log(
-      message, // i18n-exempt: 開發者 debug log
-      name: _tag,
-      level: level,
-      error: error,
-    );
+  /// 無負載事件的記錄捷徑（預設 debug 等級）。
+  void _log(AppLogEvent event, {LogLevel level = LogLevel.debug}) {
+    appLogSink(event, LogFields.empty, level: level);
   }
 
   bool _isSameWorkspace(WorkspaceState? prev, WorkspaceState next) =>
@@ -230,8 +226,11 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
 
   /// 取消／失效：丟棄進行中或已完成的輪次，之後讀取開新輪。
   void discard([String reason = 'cancel']) {
-    // i18n-exempt: 開發者 debug log
-    _log('discard：reason=$reason, generation=$_generation');
+    appLogSink(
+      AppLogEvent.scanRoundDiscarded,
+      LogFields({AppLogKeys.reason: LogValue.fieldName(reason)}),
+      level: LogLevel.debug,
+    );
     _generation++;
     _inFlight = null;
     state = const ScanRoundIdle();
@@ -245,8 +244,7 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
     if (workspace is! WorkspaceReady) return Future.value(null);
     final generation = ++_generation;
     state = ScanRoundRunning(workspace.path);
-    // i18n-exempt: 開發者 debug log
-    _log('開始：path=${workspace.path}, generation=$generation');
+    _log(AppLogEvent.scanRoundStarted);
     final future = awaitWatchReady
         ? _runAfterWatchReady(workspace.path, generation)
         : _runGuarded(workspace.path, generation);
@@ -260,8 +258,7 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
   ) async {
     await ref.read(corpusWatcherProvider).ready;
     if (generation != _generation) {
-      // i18n-exempt: 開發者 debug log
-      _log('等待監看就緒期間輪次已失效，不開輪：generation=$generation');
+      _log(AppLogEvent.scanRoundSkippedStale);
       return null;
     }
     return _runGuarded(path, generation);
@@ -277,22 +274,24 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
         },
       );
       if (generation != _generation) {
-        // i18n-exempt: 開發者 debug log
-        _log('丟棄過期輪次：path=$path, generation=$generation');
+        _log(AppLogEvent.scanRoundStaleResultDropped);
         return null;
       }
       state = ScanRoundCompleted(result);
       _inFlight = null;
-      // i18n-exempt: 開發者 debug log
-      _log('完成：path=$path, degraded=${result.isDegraded}');
+      appLogSink(
+        AppLogEvent.scanRoundCompleted,
+        LogFields({AppLogKeys.degraded: LogValue.boolean(result.isDegraded)}),
+        level: LogLevel.debug,
+      );
       return result;
-    } catch (e, st) {
-      developer.log(
-        '輪次失敗：$path, generation=$generation', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
+    } catch (e) {
+      appLogSink(
+        AppLogEvent.scanRoundFailed,
+        LogFields.empty,
+        level: LogLevel.error,
+        source: ErrorSource.internal,
         error: e,
-        stackTrace: st,
       );
       // 過期輪次失敗與過期輪次成功一致：回傳 null，不往外拋。
       if (generation != _generation) return null;
@@ -350,18 +349,18 @@ class ScanRoundNotifier extends Notifier<ScanRoundState> {
   ) async {
     final read = await fileSystem.readBytes(projectSchemaRelativePath);
     if (read is! DocsReadSuccess) {
-      // i18n-exempt: 開發者 debug log
-      _log('專案型別表讀取失敗（視為缺席）：$projectSchemaRelativePath', level: 900);
+      _log(AppLogEvent.projectSchemaReadFailed, level: LogLevel.warning);
       return null;
     }
     try {
       final decoded = jsonDecode(utf8.decode(read.bytes));
       return decoded is Map<String, dynamic> ? decoded : null;
     } on FormatException catch (e) {
-      developer.log(
-        'tracking_schema.json 解析失敗', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
+      appLogSink(
+        AppLogEvent.projectSchemaParseFailed,
+        LogFields.empty,
+        level: LogLevel.error,
+        source: ErrorSource.parse,
         error: e,
       );
       return null;

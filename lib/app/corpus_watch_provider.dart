@@ -6,10 +6,12 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/corpus/corpus_watch.dart';
@@ -19,8 +21,6 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 export 'package:graph_project_docs_manager/app/corpus_watcher_provider.dart'
     show watchClockProvider, watchSourceProvider;
-
-const String _tag = 'corpus_watch';
 
 /// 輪次事件。
 sealed class WatchRoundEvent {
@@ -87,14 +87,14 @@ class CorpusWatchController {
     try {
       final round = await _obtainRound(trigger);
       if (round != null) ids = gapItemIdsOf(round);
-    } catch (e, st) {
+    } catch (e) {
       failed = true;
-      developer.log(
-        '取得掃描輪次失敗', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
+      appLogSink(
+        AppLogEvent.watchRoundFetchFailed,
+        LogFields.empty,
+        level: LogLevel.error,
+        source: ErrorSource.internal,
         error: e,
-        stackTrace: st,
       );
     }
     // 排程已被使用者取消（含首輪等待就緒期間）：不發完成事件。

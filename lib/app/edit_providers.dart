@@ -10,6 +10,7 @@ import 'package:graph_project_docs_manager/components/app_shell.dart'
     show ReadonlyWorkspaceReason;
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
+import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_workspace.dart';
 import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
 import 'package:graph_project_docs_manager/edit/type_table_field_domain_source.dart';
@@ -25,6 +26,15 @@ final editGitPortProvider = Provider<EditGitPort>(
 final editFilePortProvider = Provider<EditFilePort>(
   (ref) => const IoEditFilePort(),
 );
+
+/// 驗證器 driven port（`doc validate`、`doc uc verify`）；以工作區根為工作
+/// 目錄，工作區未就緒時為 null（不驗證）。測試覆寫為替身。
+final editValidatorPortProvider = Provider<EditValidatorPort?>((ref) {
+  final workspace = ref.watch(currentWorkspaceStateProvider);
+  return workspace is WorkspaceReady
+      ? IoEditValidatorPort(workingDirectory: workspace.path)
+      : null;
+});
 
 /// 值域來源：讀最近一輪完成的型別表；尚無輪次時為空來源。
 final fieldDomainSourceProvider = Provider<FieldDomainSource>((ref) {
@@ -43,6 +53,7 @@ final editWorkspaceProvider = FutureProvider<EditWorkspace?>((ref) async {
     root: workspace.path,
     git: ref.watch(editGitPortProvider),
     files: ref.watch(editFilePortProvider),
+    validator: ref.watch(editValidatorPortProvider),
   );
 });
 

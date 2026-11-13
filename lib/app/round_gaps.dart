@@ -3,9 +3,10 @@
 /// id 規則在 `diagnostics/gap_item_ids.dart`；本檔屬編排層，可依賴 app 與 schema。
 library;
 
-import 'dart:developer' as developer;
-
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/diagnostics/event_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_detector.dart';
 import 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart';
@@ -15,8 +16,6 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 import 'package:graph_project_docs_manager/schema/schema_source_resolver.dart';
-
-const String _tag = 'RoundGaps';
 
 /// 輪次結果的各類破洞與供投影查詢的節點。
 typedef RoundGaps = ({
@@ -120,11 +119,10 @@ UndeterminedGapReason? _pathQueryUnavailableReason(PathPatternSource source) =>
 UndeterminedGapReason undeterminedReasonFromGraph(
   EdgeTypeUnavailableReason reason,
 ) {
-  developer.log(
-    // i18n-exempt: 開發者診斷 log
-    'graph unavailable reason=${reason.name}',
-    name: _tag,
-    level: 900,
+  appLogSink(
+    AppLogEvent.graphUnavailableUndetermined,
+    LogFields({AppLogKeys.reason: LogValue.enumValue(reason)}),
+    level: LogLevel.error,
   );
   return switch (reason) {
     EdgeTypeUnavailableReason.projectVersionOutOfKnownRange ||

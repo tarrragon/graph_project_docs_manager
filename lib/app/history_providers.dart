@@ -1,10 +1,11 @@
 // SPEC-008 FR-09：History 的惰性載入、快取、取消與切換專案清除。
 //
 // Riverpod 只在此層；lib/history 保持純 Dart。
-import 'dart:developer' as developer;
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/app/app_log_event.dart';
 import 'package:graph_project_docs_manager/app/degraded_schema.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/app/domain_view_providers.dart';
 import 'package:graph_project_docs_manager/app/domain_view_state.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
@@ -22,8 +23,6 @@ import 'package:graph_project_docs_manager/history/parse/scan_stream_parser.dart
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
-
-const String _tag = 'HistoryNotifier';
 
 /// git 程序執行器；預設為真實程序，測試以 fake 覆寫。
 final historyProcessRunnerProvider = Provider<GitProcessRunner>(
@@ -93,33 +92,40 @@ HistoryScanInputs _inputsFromSchemaState(Ref ref) {
 /// 回傳 `false`：輪次結束而沒有結果（失敗，或被取消且沒有後續輪次）。
 Future<bool> _awaitTypeTable(Ref ref) async {
   if (ref.read(lastCompletedRoundProvider) != null) {
-    developer.log(
-      // i18n-exempt: 開發者 log
-      'history waits no round: reuse last completed round',
-      name: _tag,
+    appLogSink(
+      AppLogEvent.historyReusedLastRound,
+      LogFields.empty,
+      level: LogLevel.debug,
     );
     return true;
   }
   final notifier = ref.read(scanRoundProvider.notifier);
   final watch = Stopwatch()..start();
-  // i18n-exempt: 開發者 log
-  developer.log('history waits for first round: start', name: _tag);
+  appLogSink(
+    AppLogEvent.historyWaitStarted,
+    LogFields.empty,
+    level: LogLevel.debug,
+  );
   while (true) {
     final result = await notifier.ensureRound();
-    if (result != null) return _logWaitEnd(watch, 'completed', true);
+    if (result != null) {
+      return _logWaitEnd(watch, HistoryWaitOutcome.completed, true);
+    }
     // 等待中的輪次被重掃取代：接續等新輪次；否則輪次不可用。
     if (ref.read(scanRoundProvider) is! ScanRoundRunning) {
-      return _logWaitEnd(watch, 'unavailable', false);
+      return _logWaitEnd(watch, HistoryWaitOutcome.unavailable, false);
     }
   }
 }
 
-bool _logWaitEnd(Stopwatch watch, String outcome, bool ok) {
-  developer.log(
-    // i18n-exempt: 開發者 log
-    'history waits for first round: end outcome=$outcome waitedMs=${watch.elapsedMilliseconds}',
-    name: _tag,
-    level: ok ? 500 : 900,
+bool _logWaitEnd(Stopwatch watch, HistoryWaitOutcome outcome, bool ok) {
+  appLogSink(
+    AppLogEvent.historyWaitEnded,
+    LogFields({
+      AppLogKeys.outcome: LogValue.enumValue(outcome),
+      AppLogKeys.waitedMs: LogValue.integer(watch.elapsedMilliseconds),
+    }),
+    level: ok ? LogLevel.debug : LogLevel.error,
   );
   return ok;
 }
@@ -161,11 +167,14 @@ EdgeEventBuilder _newBuilder(TypeTable? table, EdgeTypeResolution? resolution) {
       .where((e) => declared == null || declared.contains(e.name))
       .toList();
   if (active.isEmpty) {
-    developer.log(
-      // i18n-exempt: 開發者 log
-      'no active edge types: reason=${resolution?.unavailableReason?.name ?? 'resolution-missing'}',
-      name: _tag,
-      level: 900,
+    final reason = resolution?.unavailableReason;
+    appLogSink(
+      AppLogEvent.historyNoActiveEdgeTypes,
+      LogFields({
+        AppLogKeys.resolutionMissing: LogValue.boolean(resolution == null),
+        if (reason != null) AppLogKeys.reason: LogValue.enumValue(reason),
+      }),
+      level: LogLevel.error,
     );
   }
   final nodeTypes = table?.nodeTypes ?? const <String, NodeTypeEntry>{};
@@ -395,10 +404,10 @@ class HistoryNotifier extends Notifier<HistoryViewState> {
       DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
 
   void _finishWithoutResult(GitScanResult result) {
-    developer.log(
-      // i18n-exempt: 開發者 log
-      'scan ended without result: ${result.runtimeType}',
-      name: _tag,
+    appLogSink(
+      AppLogEvent.historyScanEndedWithoutResult,
+      LogFields({AppLogKeys.failed: LogValue.boolean(result is GitScanFailed)}),
+      level: LogLevel.debug,
     );
     final cached = _cache;
     state = switch (result) {

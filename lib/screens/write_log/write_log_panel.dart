@@ -20,14 +20,27 @@ import '../../edit/write_result.dart';
 import '../../l10n/app_localizations.dart';
 import '../../state/state_holder.dart';
 import '../../tokens/tokens.dart';
+import '../../workspace/current_workspace_provider.dart';
+import '../../workspace/workspace_types.dart';
 
 /// 面板開合；`true` 時由組裝根掛載 [WriteLogPanel]。
 final writeLogOpenProvider = stateHolderProvider<bool>((ref) => false);
 
-/// 需求：[SPEC-001 §12 列的內容] 清單列對應的 [FieldWriteState]：清單只記錄
-/// 受理為 `written` 的寫入；尚無驗證狀態時顯示「驗證中」。
+/// 需求：[SPEC-001 §12 列的內容] 清單列對應的 [FieldWriteState]：發出後到
+/// 受理前為寫入中，`blocked`、`ioFailed` 各自呈現；`written` 尚無驗證狀態
+/// 時顯示「驗證中」。
 FieldWriteState writeStateOf(WriteListEntry entry) {
   final hasSnapshot = entry.snapshotSha != null;
+  switch (entry.result) {
+    case null:
+      return const FieldWriteState.writing();
+    case Blocked(:final reason):
+      return FieldWriteState.blocked(_blockedReasonOf(reason));
+    case IoFailed():
+      return const FieldWriteState.ioFailed();
+    case Written():
+      break;
+  }
   return switch (entry.validationStatus) {
     null || ValidationRunning() => FieldWriteState.written(
       validation: FieldValidation.running,
@@ -49,6 +62,12 @@ FieldWriteState writeStateOf(WriteListEntry entry) {
     ),
   };
 }
+
+FieldBlockedReason _blockedReasonOf(BlockedReason r) => switch (r) {
+  BlockedReason.externallyModified => FieldBlockedReason.externallyModified,
+  BlockedReason.snapshotFailed => FieldBlockedReason.snapshotFailed,
+  BlockedReason.rewriteNotIsolated => FieldBlockedReason.rewriteNotIsolated,
+};
 
 /// 元件庫的原因枚舉沒有 `baselineNotReady`，暫以最接近的「非預期結束碼」呈現。
 FieldValidationUnavailableReason _unavailableReasonOf(UnavailableReason r) =>
@@ -83,7 +102,8 @@ class WriteLogPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final entries = ref.watch(writeListEntriesProvider);
-    final projectName = ref.watch(currentProjectNameProvider) ?? '';
+    final workspace = ref.watch(currentWorkspaceStateProvider);
+    final currentRoot = workspace is WorkspaceReady ? workspace.path : null;
     final nodeIds = ref.watch(writeListNodeIdByPathProvider);
     return CallbackShortcuts(
       bindings: {
@@ -114,7 +134,7 @@ class WriteLogPanel extends ConsumerWidget {
               if (entries.isEmpty)
                 AppText.multiLine(l10n.writeLogEmptyMessage, maxLines: null),
               for (var i = entries.length - 1; i >= 0; i--)
-                _row(ref, i, entries[i], projectName, nodeIds),
+                _row(ref, i, entries[i], currentRoot, nodeIds),
             ],
           ),
         ),
@@ -126,20 +146,25 @@ class WriteLogPanel extends ConsumerWidget {
     WidgetRef ref,
     int index,
     WriteListEntry e,
-    String project,
+    String? currentRoot,
     Map<String, String> nodeIds,
   ) {
-    final nodeId = nodeIds[e.relativePath];
+    // SPEC-001 §12〈切換專案〉：非目前專案的列路徑不可點。
+    final nodeId = e.workspaceRoot == currentRoot
+        ? nodeIds[e.relativePath]
+        : null;
     return WriteLogRow(
       index: index,
       path: e.relativePath,
       fieldKey: e.field,
-      projectName: project,
+      projectName: folderNameOf(e.workspaceRoot),
       writeState: writeStateOf(e),
-      restoreCommand: restoreInstruction(
-        relativePath: e.relativePath,
-        snapshotSha: e.snapshotSha,
-      ),
+      restoreCommand: e.result is Written
+          ? restoreInstruction(
+              relativePath: e.relativePath,
+              snapshotSha: e.snapshotSha,
+            )
+          : null,
       onPathTap: nodeId == null ? null : () => _gotoNode(ref, nodeId),
       testKey: Key('card-writeLog-row-$index'),
     );

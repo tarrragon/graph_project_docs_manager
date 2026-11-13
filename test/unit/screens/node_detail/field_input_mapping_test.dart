@@ -2,7 +2,7 @@
 // 畫面狀態層純函式，不經元件。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/edit/field_domain_source.dart';
-import 'package:graph_project_docs_manager/screens/edit/field_input_mapping.dart';
+import 'package:graph_project_docs_manager/screens/node_detail/field_input_mapping.dart';
 
 /// 值域來源 fake：[enumFields] 為「節點型別.欄位」集合，[completeness] 為必填集合。
 class _FakeSource implements FieldDomainSource {

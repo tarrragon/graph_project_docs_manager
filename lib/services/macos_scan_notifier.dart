@@ -10,30 +10,35 @@
 /// 權限 gate 三路徑「其他」列），不外洩至畫面層。
 ///
 /// 可觀測性（observability 規則 5）：授權查詢／請求入口與結果、發送與撤回
-/// 的入口與成功／失敗，皆以 `developer.log` 記錄（開發者診斷字串，非
-/// 使用者可見文字，不進 i18n）。
+/// 的入口與成功／失敗，皆經 `LogSink<ServicesLogEvent>` 記錄（SPEC-010；
+/// 負載只用白名單型別，平台例外走 `error:`）。
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/services.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/services/services_log_event.dart';
 
 import 'scan_notifier.dart';
-
-const String _tag = 'MacosScanNotifier';
 
 /// `MethodChannel` 名稱：實作票與 macOS 原生端共用的契約識別。
 const String scanNotifierChannelName =
     'graph_project_docs_manager/scan_notifier';
 
 class MacosScanNotifier implements ScanNotifier {
-  MacosScanNotifier({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel(scanNotifierChannelName) {
+  MacosScanNotifier({
+    MethodChannel? channel,
+    LogSink<ServicesLogEvent>? logSink,
+  }) : _channel = channel ?? const MethodChannel(scanNotifierChannelName),
+       _log = logSink ?? defaultServicesLogSink() {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
   final MethodChannel _channel;
+  final LogSink<ServicesLogEvent> _log;
   final StreamController<void> _activatedController =
       StreamController<void>.broadcast();
 
@@ -85,60 +90,62 @@ class MacosScanNotifier implements ScanNotifier {
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (call.method == 'onActivated') {
-      developer.log('通知被點擊', name: _tag); // i18n-exempt: 開發者診斷 log
+      _log(ServicesLogEvent.notificationActivated, LogFields.empty);
       _activatedController.add(null);
     }
     return null;
   }
 
+  /// 平台失敗（PlatformException／MissingPluginException）統一記錄：
+  /// 例外走 `error:`（只留型別），來源為平台 I/O。
+  void _logPlatformFailure(ServicesLogEvent event, Object error) {
+    _log(
+      event,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
+      error: error,
+    );
+  }
+
   @override
   Future<NotificationAuthorization> authorizationStatus() async {
-    developer.log('查詢授權狀態', name: _tag); // i18n-exempt: 開發者診斷 log
+    _log(ServicesLogEvent.authorizationQueried, LogFields.empty);
     try {
       final result = await _channel.invokeMethod<String>('authorizationStatus');
       final status = _parseAuthorization(result);
-      developer.log('授權狀態：$status', name: _tag); // i18n-exempt: 開發者診斷 log
+      _log(
+        ServicesLogEvent.authorizationResolved,
+        LogFields({ServicesLogKeys.status: LogValue.enumValue(status)}),
+      );
       return status;
     } on PlatformException catch (error) {
-      developer.log(
-        '查詢授權狀態失敗（視為 denied）：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.authorizationQueryFailed, error);
       return NotificationAuthorization.denied;
     } on MissingPluginException catch (error) {
-      developer.log(
-        '查詢授權狀態失敗，原生端未註冊 handler（視為 denied）：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.authorizationQueryFailed, error);
       return NotificationAuthorization.denied;
     }
   }
 
   @override
   Future<NotificationAuthorization> requestAuthorization() async {
-    developer.log('請求授權', name: _tag); // i18n-exempt: 開發者診斷 log
+    _log(ServicesLogEvent.authorizationRequested, LogFields.empty);
     try {
       final result = await _channel.invokeMethod<String>(
         'requestAuthorization',
       );
       final status = _parseAuthorization(result);
-      developer.log('請求授權結果：$status', name: _tag); // i18n-exempt: 開發者診斷 log
+      _log(
+        ServicesLogEvent.authorizationRequestResolved,
+        LogFields({ServicesLogKeys.status: LogValue.enumValue(status)}),
+      );
       return status;
     } on PlatformException catch (error) {
-      developer.log(
-        '請求授權失敗（視為 denied）：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.authorizationRequestFailed, error);
       return NotificationAuthorization.denied;
     } on MissingPluginException catch (error) {
-      developer.log(
-        '請求授權失敗，原生端未註冊 handler（視為 denied）：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.authorizationRequestFailed, error);
       return NotificationAuthorization.denied;
     }
   }
@@ -148,9 +155,9 @@ class MacosScanNotifier implements ScanNotifier {
     ScanCompleteNotification notification,
   ) async {
     final gapCount = notification.gapCount;
-    developer.log(
-      '發送通知：gapCount=$gapCount', // i18n-exempt: 開發者診斷 log
-      name: _tag,
+    _log(
+      ServicesLogEvent.notificationShowRequested,
+      LogFields({ServicesLogKeys.gapCount: LogValue.integer(gapCount)}),
     );
     final title = notification.isWatchRound
         ? watchTitleBuilder()
@@ -169,40 +176,24 @@ class MacosScanNotifier implements ScanNotifier {
       });
       return ScanNotificationDelivery.delivered;
     } on PlatformException catch (error) {
-      developer.log(
-        '發送通知失敗：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.notificationShowFailed, error);
       return ScanNotificationDelivery.failed;
     } on MissingPluginException catch (error) {
-      developer.log(
-        '發送通知失敗，原生端未註冊 handler：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.notificationShowFailed, error);
       return ScanNotificationDelivery.failed;
     }
   }
 
   @override
   Future<void> withdraw() async {
-    developer.log('撤回通知', name: _tag); // i18n-exempt: 開發者診斷 log
+    _log(ServicesLogEvent.notificationWithdrawRequested, LogFields.empty);
     try {
       await _channel.invokeMethod<void>('withdraw');
     } on PlatformException catch (error) {
       // SPEC-003 §2.2「不重複發送」列：撤回失敗不阻擋、不轉狀態，只記 log。
-      developer.log(
-        '撤回通知失敗（不阻擋、不轉狀態）：${error.code} ${error.message}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.notificationWithdrawFailed, error);
     } on MissingPluginException catch (error) {
-      developer.log(
-        '撤回通知失敗，原生端未註冊 handler（不阻擋）：$error', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logPlatformFailure(ServicesLogEvent.notificationWithdrawFailed, error);
     }
   }
 

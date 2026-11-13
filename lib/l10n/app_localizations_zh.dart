@@ -1093,6 +1093,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '無法顯示本文：檔案在上次掃描後已改動或無法讀取，下次掃描完成後會更新';
 
   @override
+  String get editFieldsAction => '編輯欄位';
+
+  @override
+  String get nodeDetailEditReadFailedMessage => '無法讀取這個檔案，未進入編輯';
+
+  @override
   String fieldValueOutOfDomain(String value) {
     return '目前值「$value」不在可選值內';
   }

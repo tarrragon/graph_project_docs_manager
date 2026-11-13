@@ -104,7 +104,9 @@ void main() {
     );
   });
 
-  test('未受理的寫入不進清單', () async {
+  // 1.0.0-W3-553.17.1：原「未受理的寫入不進清單」與 SPEC-001 §12「列出所有
+  // 發出過的寫入」相悖，改為 blocked 成列、無驗證狀態。
+  test('未受理（blocked）的寫入同樣成列，且無驗證狀態', () async {
     final h = await EditHarness.create();
     final session = await h.begin();
     h.files.files[h.path.absolute] = flipLastByte(h.target!);
@@ -112,7 +114,9 @@ void main() {
       await session.writeField(field: 'title', newValue: 'a'),
       isA<Blocked>(),
     );
-    expect(h.workspace.writeList.entries, isEmpty);
+    final row = h.workspace.writeList.entries.single;
+    expect(row.result, isA<Blocked>());
+    expect(row.validationStatus, isNull);
   });
 }
 

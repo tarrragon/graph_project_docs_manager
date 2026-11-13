@@ -86,6 +86,7 @@ class EditWorkspace {
         now: now ?? DateTime.now,
         rewriter: rewriter ?? rewriteFrontmatterField,
         writeList: SessionWriteList(),
+        workspaceRoot: root,
         validator: validator == null
             ? null
             : EditValidatorRunner(port: validator, timer: editTimer),

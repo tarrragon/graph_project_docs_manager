@@ -2,7 +2,10 @@
 // 寫入與驗證結果重建；失敗計數只計 `failed`／`unavailable`（SPEC-001 §12）。
 library;
 
+import 'dart:typed_data';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/write_list_providers.dart';
@@ -86,6 +89,35 @@ void main() {
     await session.validationIdle;
 
     expect(container.read(writeListFailureCountProvider), 1);
+  });
+
+  test('blocked、ioFailed 的寫入成列並計入失敗（written 未失敗不計，寫入中不計）', () async {
+    final h = await EditHarness.create(validator: FakeValidatorPort());
+    final session = await h.begin();
+    final container = ProviderContainer(
+      overrides: [
+        editWorkspaceProvider.overrideWith((ref) async => h.workspace),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(editWorkspaceProvider.future);
+    final entries = container.listen(writeListEntriesProvider, (_, _) {});
+    container.listen<int>(writeListFailureCountProvider, (_, _) {});
+
+    await session.writeField(field: 'title', newValue: 'a');
+    await session.validationIdle;
+    expect(container.read(writeListFailureCountProvider), 0);
+
+    h.files.resetCounters();
+    h.files.readScript[1] = const EditFileException(errorCode: 13);
+    await session.writeField(field: 'title', newValue: 'b');
+    expect(container.read(writeListFailureCountProvider), 1);
+
+    h.files.resetCounters();
+    h.files.readScript[1] = Uint8List.fromList([1]);
+    await session.writeField(field: 'title', newValue: 'c');
+    expect(container.read(writeListFailureCountProvider), 2);
+    expect(entries.read().length, 3);
   });
 
   test('節點表：建圖不可用或尚無輪次時為空', () {
