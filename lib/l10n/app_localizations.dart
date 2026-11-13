@@ -2023,6 +2023,12 @@ abstract class AppLocalizations {
   /// **'驗證超過 30 秒，已停止'**
   String get validationUnavailableTimedOut;
 
+  /// SPEC-004 unavailable(baselineNotReady) 的原因
+  ///
+  /// In zh, this message translates to:
+  /// **'寫入前的驗證基準尚未完成'**
+  String get validationUnavailableBaselineNotReady;
+
   /// SPEC-004 4.47 布林欄位選項
   ///
   /// In zh, this message translates to:

@@ -1157,6 +1157,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get validationUnavailableTimedOut => '驗證超過 30 秒，已停止';
 
   @override
+  String get validationUnavailableBaselineNotReady => '寫入前的驗證基準尚未完成';
+
+  @override
   String get radioYes => '是';
 
   @override
