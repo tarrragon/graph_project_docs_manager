@@ -1,12 +1,11 @@
-import 'dart:developer' as developer;
-
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/validation_baseline.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
-const String _tag = 'edit.validation';
-const int _infoLevel = 800;
-const int _warningLevel = 900;
 final RegExp _nodeIdPattern = RegExp(r'^[A-Z]+(?:-[A-Z]+)*-\d+(?:\.\d+)*');
 
 /// 需求：[SPEC-009 FR-05] 一個編輯 session 的寫入後驗證：開始編輯時量 baseline，
@@ -18,8 +17,10 @@ class ValidationCoordinator {
     required this._runner,
     required this._relativePath,
     required this._onStatus,
-  });
+    LogSink<EditLogEvent>? logSink,
+  }) : _log = logSink ?? defaultEditLogSink();
 
+  final LogSink<EditLogEvent> _log;
   final EditValidatorRunner _runner;
   final String _relativePath;
   final void Function(ValidationStatus) _onStatus;
@@ -54,13 +55,9 @@ class ValidationCoordinator {
       if (epoch != _epoch) return; // 已被丟棄：之後才完成的結果不採用
       _baseline = measure;
       _baselinePending = false;
-      _logMeasure('baseline', measure);
+      _logBaselineMeasured(measure);
     } on Object catch (error) {
-      developer.log(
-        'baseline failed: ${error.runtimeType}', // i18n-exempt
-        name: _tag,
-        level: _warningLevel,
-      );
+      _logInternalFailure(EditLogEvent.baselineFailed, error);
     }
   }
 
@@ -115,30 +112,59 @@ class ValidationCoordinator {
 
   void _enqueue(Future<void> Function() job) {
     _tail = _tail.then((_) => job()).catchError((Object error) {
-      developer.log(
-        'validation job failed: ${error.runtimeType}', // i18n-exempt
-        name: _tag,
-        level: _warningLevel,
-      );
+      _logInternalFailure(EditLogEvent.validationJobFailed, error);
     });
   }
 
-  void _logMeasure(String what, ValidationMeasure measure) {
-    developer.log(
-      '$what: ${measure.runtimeType} $_relativePath', // i18n-exempt
-      name: _tag,
-      level: _infoLevel,
-    );
-  }
+  /// 未預期例外：App 自身缺陷，歸 internal。
+  void _logInternalFailure(EditLogEvent event, Object error) => _log(
+    event,
+    LogFields.empty,
+    level: LogLevel.warning,
+    source: ErrorSource.internal,
+    error: error,
+  );
 
-  void _logStatus(ValidationStatus status) {
-    developer.log(
-      'validationCompleted: $status $_relativePath', // i18n-exempt
-      name: _tag,
-      level: status is ValidationPassed ? _infoLevel : _warningLevel,
-    );
-  }
+  /// `_relativePath` 已是工作區相對路徑；以 `/` 為根轉成白名單路徑值。
+  LogValue get _pathValue => LogValue.path('/', '/$_relativePath');
+
+  void _logBaselineMeasured(ValidationMeasure measure) => _log(
+    EditLogEvent.baselineMeasured,
+    LogFields({
+      EditLogKeys.path: _pathValue,
+      EditLogKeys.measure: LogValue.enumValue(
+        measure is MeasureReady
+            ? EditMeasureKind.ready
+            : EditMeasureKind.unavailable,
+      ),
+    }),
+  );
+
+  /// 失敗與無法判定不帶 error_source：驗證器端已各記一次（FR-02）。
+  void _logStatus(ValidationStatus status) => _log(
+    EditLogEvent.validationCompleted,
+    LogFields({
+      EditLogKeys.path: _pathValue,
+      EditLogKeys.outcome: LogValue.enumValue(_outcomeOf(status)),
+      ...switch (status) {
+        ValidationFailed(:final newIssueCount) => {
+          EditLogKeys.newIssueCount: LogValue.integer(newIssueCount),
+        },
+        ValidationUnavailable(:final reason) => {
+          EditLogKeys.unavailableReason: LogValue.enumValue(reason),
+        },
+        _ => const <String, LogValue>{},
+      },
+    }),
+    level: status is ValidationPassed ? LogLevel.info : LogLevel.warning,
+  );
 }
+
+EditValidationOutcome _outcomeOf(ValidationStatus status) => switch (status) {
+  ValidationPassed() => EditValidationOutcome.passed,
+  ValidationFailed() => EditValidationOutcome.failed,
+  _ => EditValidationOutcome.unavailable,
+};
 
 /// 節點 ID：取檔名開頭的 `<前綴>-<編號>`（如 `SPEC-900.md`、
 /// `EVT-X-001-a.md`）；取不到時回傳 null。

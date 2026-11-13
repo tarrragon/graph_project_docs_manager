@@ -1,21 +1,21 @@
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/field_rewrite.dart';
 import 'package:graph_project_docs_manager/edit/session_write_list.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart'
+    hide WorkspaceRelativePath;
 
 export 'package:graph_project_docs_manager/edit/edit_git_runner.dart'
     show EditTimer;
-
-const String _tag = 'edit.workspace';
-const int _errorLevel = 900;
 
 /// 工作區的編輯模式（由 Edit 在工作區開啟時判定，不放進 Workspace）。
 enum EditMode { writable, readOnly }
@@ -71,12 +71,19 @@ class EditWorkspace {
     DateTime Function()? now,
     FieldRewriter? rewriter,
     EditValidatorPort? validator,
+    LogSink<EditLogEvent>? logSink,
   }) async {
+    final sink = logSink ?? defaultEditLogSink();
     final editTimer = timer ?? (duration) => Future<void>.delayed(duration);
-    final runner = EditGitRunner(port: git, timer: editTimer, root: root);
+    final runner = EditGitRunner(
+      port: git,
+      timer: editTimer,
+      root: root,
+      logSink: sink,
+    );
     final reason = await _probeReadonlyReason(runner);
     final mode = reason == null ? EditMode.writable : EditMode.readOnly;
-    developer.log('edit mode: ${mode.name}', name: _tag); // i18n-exempt
+    _logMode(sink, mode, reason);
     return EditWorkspace._(
       mode,
       reason,
@@ -84,15 +91,48 @@ class EditWorkspace {
         files: files,
         git: runner,
         now: now ?? DateTime.now,
-        rewriter: rewriter ?? rewriteFrontmatterField,
+        rewriter: rewriter ?? _rewriterWith(sink),
         writeList: SessionWriteList(),
         workspaceRoot: root,
         validator: validator == null
             ? null
-            : EditValidatorRunner(port: validator, timer: editTimer),
+            : EditValidatorRunner(
+                port: validator,
+                timer: editTimer,
+                logSink: sink,
+              ),
+        logSink: sink,
       ),
     );
   }
+
+  /// 預設改寫函式：把 [sink] 帶進 [rewriteFrontmatterField]。
+  static FieldRewriter _rewriterWith(LogSink<EditLogEvent> sink) =>
+      ({
+        required original,
+        required field,
+        required newValue,
+        required today,
+      }) => rewriteFrontmatterField(
+        original: original,
+        field: field,
+        newValue: newValue,
+        today: today,
+        logSink: sink,
+      );
+
+  static void _logMode(
+    LogSink<EditLogEvent> sink,
+    EditMode mode,
+    EditReadonlyReason? reason,
+  ) => sink(
+    EditLogEvent.editModeDetermined,
+    LogFields({
+      EditLogKeys.mode: LogValue.enumValue(mode),
+      if (reason != null)
+        EditLogKeys.readonlyReason: LogValue.enumValue(reason),
+    }),
+  );
 
   static Future<EditReadonlyReason?> _probeReadonlyReason(
     EditGitRunner runner,
@@ -118,10 +158,14 @@ class EditWorkspace {
         EditSession(_context, path, baseline, corpusParsed: corpusParsed),
       );
     } on EditFileException catch (error) {
-      developer.log(
-        'beginEditing read failed: code=${error.errorCode}', // i18n-exempt
-        name: _tag,
-        level: _errorLevel,
+      final errorCode = error.errorCode;
+      (_context.logSink ?? defaultEditLogSink())(
+        EditLogEvent.beginEditingReadFailed,
+        errorCode == null
+            ? LogFields.empty
+            : LogFields({EditLogKeys.errorCode: LogValue.integer(errorCode)}),
+        level: LogLevel.error,
+        source: ErrorSource.platformIo,
       );
       return EditingReadFailed(
         IoFailure(IoOperation.readTarget, errorCode: error.errorCode),

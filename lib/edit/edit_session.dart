@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io' show pid;
 import 'dart:math';
 import 'dart:typed_data';
@@ -7,15 +6,18 @@ import 'dart:typed_data';
 import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/edit_validation.dart';
 import 'package:graph_project_docs_manager/edit/edit_validator_port.dart';
 import 'package:graph_project_docs_manager/edit/field_rewrite.dart';
 import 'package:graph_project_docs_manager/edit/session_write_list.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart'
+    hide WorkspaceRelativePath;
 
-const String _tag = 'edit.session';
-const int _errorLevel = 900;
 const int _randomTailRange = 1 << 32; // magic-exempt
 final RegExp _shaPattern = RegExp(r'^(?:[0-9a-f]{40}|[0-9a-f]{64})$');
 
@@ -37,6 +39,7 @@ class EditGateContext {
     required this.writeList,
     required this.workspaceRoot,
     this.validator,
+    this.logSink,
   });
 
   /// 所屬專案（工作區根），寫入清單的列據此標示所屬專案。
@@ -52,6 +55,9 @@ class EditGateContext {
 
   /// 寫入後驗證（SPEC-009 FR-05）；null 表示不驗證。
   final EditValidatorRunner? validator;
+
+  /// edit domain 日誌 sink；null 表示用共用 writer 的預設 sink。
+  final LogSink<EditLogEvent>? logSink;
 }
 
 class _Step<T> {
@@ -81,6 +87,7 @@ class EditSession {
         runner: runner,
         relativePath: _path.relative,
         onStatus: _onValidationStatus,
+        logSink: _context.logSink,
       )..startBaseline();
     }
   }
@@ -229,9 +236,7 @@ class EditSession {
       if (error.notFound) {
         return const _Step.stop(Blocked(BlockedReason.externallyModified));
       }
-      _log(
-        'read failed: ${operation.name} code=${error.errorCode}',
-      ); // i18n-exempt
+      _logIoFailed(operation, error.errorCode);
       return _Step.stop(
         IoFailed(IoFailure(operation, errorCode: error.errorCode)),
       );
@@ -317,9 +322,7 @@ class EditSession {
       await action();
       return null;
     } on EditFileException catch (error) {
-      _log(
-        'io failed: ${operation.name} code=${error.errorCode}',
-      ); // i18n-exempt
+      _logIoFailed(operation, error.errorCode);
       return IoFailed(IoFailure(operation, errorCode: error.errorCode));
     }
   }
@@ -333,8 +336,17 @@ class EditSession {
         '.${absolute.substring(slash + 1)}.$pid.$tail.tmp';
   }
 
-  void _log(String message) =>
-      developer.log(message, name: _tag, level: _errorLevel);
+  void _logIoFailed(IoOperation operation, int? errorCode) =>
+      (_context.logSink ?? defaultEditLogSink())(
+        EditLogEvent.ioFailed,
+        LogFields({
+          EditLogKeys.operation: LogValue.enumValue(operation),
+          if (errorCode != null)
+            EditLogKeys.errorCode: LogValue.integer(errorCode),
+        }),
+        level: LogLevel.error,
+        source: ErrorSource.platformIo,
+      );
 }
 
 bool _sameBytes(Uint8List a, Uint8List b) {

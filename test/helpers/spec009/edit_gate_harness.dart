@@ -4,9 +4,11 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/edit/edit_workspace.dart';
 import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
 
 import 'fake_edit_file_port.dart';
 import 'fake_edit_git_port.dart';
@@ -42,6 +44,7 @@ class EditHarness {
     FieldRewriter? rewriter,
     FakeValidatorPort? validator,
     ManualEditTimer? timer,
+    LogSink<EditLogEvent>? logSink,
   }) async {
     final dir = Directory.systemTemp.createTempSync('edit_gate_');
     final root = dir.resolveSymbolicLinksSync();
@@ -68,6 +71,7 @@ class EditHarness {
       now: () => DateTime(2026, 11, 10),
       rewriter: rewriter,
       validator: validator,
+      logSink: logSink,
     );
     harness.probeCalls = List.of(harness.git.calls);
     addTearDown(() => dir.deleteSync(recursive: true));

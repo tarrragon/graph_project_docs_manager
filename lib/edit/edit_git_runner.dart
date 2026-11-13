@@ -1,10 +1,10 @@
-import 'dart:developer' as developer;
 import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
-
-const String _tag = 'edit.git';
-const int _warningLevel = 900;
+import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// SPEC-009 FR-01：`git` 子行程各自計時，自啟動起算的逾時秒數。
 const int gitTimeoutSeconds = 5; // magic-exempt
@@ -22,6 +22,7 @@ class EditGitRunner {
     required this.port,
     required this.timer,
     required this.root,
+    this._logSink,
   });
 
   static const Duration timeout = Duration(seconds: gitTimeoutSeconds);
@@ -30,6 +31,7 @@ class EditGitRunner {
   final EditGitPort port;
   final EditTimer timer;
   final String root;
+  final LogSink<EditLogEvent>? _logSink;
 
   Future<EditGitResult?> run(
     List<String> subcommand, {
@@ -41,34 +43,40 @@ class EditGitRunner {
       stdin: stdin,
     );
     final call = await _start(invocation);
-    return call == null ? null : _awaitOrKill(call, subcommand.first);
+    return call == null ? null : _awaitOrKill(call);
   }
 
   Future<EditGitCall?> _start(EditGitInvocation invocation) async {
     try {
       return await port.start(invocation);
     } on EditGitLaunchException catch (error) {
-      _log('git launch failed: ${error.message}'); // i18n-exempt
+      _log(EditLogEvent.gitLaunchFailed, error);
       return null;
     }
   }
 
-  Future<EditGitResult?> _awaitOrKill(EditGitCall call, String name) async {
+  Future<EditGitResult?> _awaitOrKill(EditGitCall call) async {
     call.result.ignore();
     final expired = timer(timeout).then<EditGitResult?>((_) => null);
     try {
       final result = await Future.any<EditGitResult?>([call.result, expired]);
       if (result == null) {
         call.kill();
-        _log('git $name timed out, process killed'); // i18n-exempt
+        _log(EditLogEvent.gitTimedOut);
       }
       return result;
     } on Object catch (error) {
-      _log('git $name failed: ${error.runtimeType}'); // i18n-exempt
+      _log(EditLogEvent.gitRunFailed, error);
       return null;
     }
   }
 
-  void _log(String message) =>
-      developer.log(message, name: _tag, level: _warningLevel);
+  void _log(EditLogEvent event, [Object? error]) =>
+      (_logSink ?? defaultEditLogSink())(
+        event,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.externalProcess,
+        error: error,
+      );
 }
