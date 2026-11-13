@@ -1,8 +1,6 @@
 /// SPEC-007 FR-04～FR-06 建邊、`relatedTo` 聯集與建圖入口。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/domain_name_resolver.dart';
 import 'package:graph_project_docs_manager/graph/flow_subgraph_builder.dart';
@@ -70,7 +68,9 @@ GraphBuiltEvent buildGraphFromInputs({
   required Iterable<EdgeTypeEntry> edgeTypes,
   required Map<String, NodeTypeEntry> nodeTypes,
   void Function()? onIdLookup,
+  LogSink<GraphLogEvent>? logSink,
 }) {
+  final log = logSink ?? defaultGraphLogSink;
   final edgeList = edgeTypes.toList();
   final classified = classifyGraphReferences(
     rawNodes: rawNodes,
@@ -80,6 +80,7 @@ GraphBuiltEvent buildGraphFromInputs({
     ],
     nodeTypes: nodeTypes,
     onIdLookup: onIdLookup,
+    logSink: log,
   );
   final nodeIds = {for (final n in classified.lightNodes) n.id};
   final resolver = DomainNameResolver.fromRawNodes(rawNodes, nodeIds);
@@ -109,7 +110,7 @@ GraphBuiltEvent buildGraphFromInputs({
       ),
     ..._nodeLevelDefects(classified.lightNodes, edges, {
       for (final t in edgeList) t.name,
-    }),
+    }, log),
   ];
   return GraphBuiltEvent(
     nodes: classified.lightNodes,
@@ -139,16 +140,20 @@ const List<_RequiredEdge> _requiredEdges = [
 
 /// 使用中邊型不含某條要求的任何邊型時，該條要求跳過並記一筆日誌
 /// （SPEC-007 FR-09〈孤島與缺必要邊〉；該條件下要求無從滿足，不構成缺陷）。
-List<_RequiredEdge> _activeRequirements(Set<String> activeEdgeTypes) {
+List<_RequiredEdge> _activeRequirements(
+  Set<String> activeEdgeTypes,
+  LogSink<GraphLogEvent> log,
+) {
   final result = <_RequiredEdge>[];
   for (final r in _requiredEdges) {
     if (r.edgeTypes.any(activeEdgeTypes.contains)) {
       result.add(r);
       continue;
     }
-    developer.log(
-      'required edge skipped: ${r.edgeTypes.join(',')} not active', // i18n-exempt: debug log
-      name: 'GraphBuilder',
+    log(
+      GraphLogEvent.requiredEdgeSkipped,
+      LogFields.empty,
+      level: LogLevel.debug,
     );
   }
   return result;
@@ -162,8 +167,9 @@ List<GraphDefect> _nodeLevelDefects(
   List<LightNode> nodes,
   List<GraphEdge> edges,
   Set<String> activeEdgeTypes,
+  LogSink<GraphLogEvent> log,
 ) {
-  final requirements = _activeRequirements(activeEdgeTypes);
+  final requirements = _activeRequirements(activeEdgeTypes, log);
   final touched = <String>{
     for (final e in edges) ...[e.from, e.to],
   };

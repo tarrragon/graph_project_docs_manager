@@ -1,6 +1,6 @@
 /// SPEC-008 FR-10 日誌事件：事件名是測試斷言綁定的穩定契約，`message` 可自由改寫。
 ///
-/// 形態沿用 `GraphLogEvent` 的注入接縫；生產預設轉呼 `developer.log`。
+/// 形態沿用 `GraphLogEvent` 的注入接縫；生產預設經共用 writer 輸出。
 library;
 
 import 'package:graph_project_docs_manager/observability/log_sink.dart';

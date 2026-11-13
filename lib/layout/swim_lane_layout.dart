@@ -6,12 +6,12 @@
 /// 共用同一個 [SwimLaneLayout]，不另算欄號。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/graph/flow_subgraph.dart';
 import 'package:graph_project_docs_manager/layout/lane_order.dart';
-
-const _tag = 'SwimLaneLayout';
+import 'package:graph_project_docs_manager/layout/layout_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// 邊的形狀類別：前向直線、回指弧線。
 enum EdgeShape { straight, arc }
@@ -89,7 +89,9 @@ class SwimLaneLayout {
 SwimLaneLayout buildSwimLaneLayout({
   required FlowSubgraph flow,
   required List<BundleOrderEntry> bundleOrder,
+  LogSink<LayoutLogEvent>? logSink,
 }) {
+  final log = logSink ?? defaultLayoutLogSink;
   final steps = flow.steps;
   final lanes = assembleSwimLanes(
     bundleOrder: bundleOrder,
@@ -100,7 +102,7 @@ SwimLaneLayout buildSwimLaneLayout({
   for (var column = 0; column < order.length; column++) {
     columnOfStep[order[column]] = column;
   }
-  final nodesOfStep = _nodesPerStep(steps, lanes, columnOfStep);
+  final nodesOfStep = _nodesPerStep(steps, lanes, columnOfStep, log);
   return SwimLaneLayout._(
     lanes: lanes,
     columnOfStep: columnOfStep,
@@ -143,11 +145,12 @@ List<List<LayoutNode>> _nodesPerStep(
   List<FlowStepNode> steps,
   List<SwimLane> lanes,
   List<int> columnOfStep,
+  LogSink<LayoutLogEvent> log,
 ) {
   return [
     for (final s in steps)
       [
-        for (final lane in _lanesOf(s, lanes))
+        for (final lane in _lanesOf(s, lanes, log))
           LayoutNode(
             stepIndex: s.index,
             column: columnOfStep[s.index],
@@ -162,10 +165,14 @@ List<List<LayoutNode>> _nodesPerStep(
 ///
 /// 不變式（文件化）：Graph 解析出的名稱必在 FR-13 列序內（兩者出自同一批
 /// DomainBundle）。違反屬程式錯誤、不是資料狀態（PM 處置 (a)）：先記一筆
-/// warning（level 900，含步驟 id 與名稱），再 `assert`；release 下該名稱沒有
+/// warning（經 sink，帶缺漏名稱數），再 `assert`；release 下該名稱沒有
 /// 對應列、節點不輸出，若因此一個節點也沒有，退落「未定位」列使步驟不消失
 /// （release 落點不屬測試契約）。
-List<SwimLane> _lanesOf(FlowStepNode step, List<SwimLane> lanes) {
+List<SwimLane> _lanesOf(
+  FlowStepNode step,
+  List<SwimLane> lanes,
+  LogSink<LayoutLogEvent> log,
+) {
   final resolution = step.traversesResolution;
   if (isUnplacedResolution(resolution)) return const [UnplacedLane()];
   final named = {for (final r in resolution.resolved) BundleLane(r.name)};
@@ -177,19 +184,23 @@ List<SwimLane> _lanesOf(FlowStepNode step, List<SwimLane> lanes) {
     for (final lane in named)
       if (!placed.contains(lane)) lane.domain,
   ];
-  if (missing.isNotEmpty) _reportInvariantViolation(step, missing);
+  if (missing.isNotEmpty) _reportInvariantViolation(step, missing, log);
   if (placed.isNotEmpty) return placed;
   return resolution.resolved.isEmpty
       ? const [ScreenLane()]
       : const [UnplacedLane()];
 }
 
-void _reportInvariantViolation(FlowStepNode step, List<String> names) {
-  developer.log(
-    // i18n-exempt: 開發者 debug log
-    '解析名稱不在 FR-13 列序內：step=${step.id}, names=$names',
-    name: _tag,
-    level: 900,
+void _reportInvariantViolation(
+  FlowStepNode step,
+  List<String> names,
+  LogSink<LayoutLogEvent> log,
+) {
+  log(
+    LayoutLogEvent.laneInvariantViolated,
+    LogFields({LayoutLogKeys.missingCount: LogValue.integer(names.length)}),
+    level: LogLevel.warning,
+    source: ErrorSource.internal,
   );
   assert(
     false,
