@@ -4,7 +4,7 @@ title: "SPEC-009 Phase 2 紅燈測試規格"
 type: test-design
 status: draft
 source_spec: SPEC-009
-spec_version: "1.12"
+spec_version: "1.13"
 ticket: 1.0.0-W3-553.4
 created: "2026-11-10"
 updated: "2026-11-13"
@@ -377,7 +377,7 @@ FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）
 
 | # | Given | When | Then |
 |---|---|---|---|
-| L-1 | `EditLogEvent` 的全部值 | 列出值名稱 | 集合恰為 SPEC-009 FR-07 表的 8 個事件；表增減成員時本案紅燈 |
+| L-1 | `EditLogEvent` 的全部值 | 列出值名稱 | 集合恰等於 SPEC-009 FR-07 事件表的成員；表增減成員時本案紅燈 |
 | L-2 | W = M = H | 修正 | 依序記 `writeIssued`、`writeAccepted`，皆 info、無 `error_source`，fields 為路徑與欄位名 |
 | L-3 | W ≠ H | 修正 | 另記 `snapshotTaken`（info），`blob_sha` 為 40 字元小寫十六進位 |
 | L-4 | 外部已改；改寫不隔離 | 修正 | 各記一筆 `writeBlocked`，warning、`gate_blocked`，fields 帶原因 |
@@ -412,7 +412,7 @@ FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類�
 | C-8（1.1） | `spec_sp_scalar`、`prop_empty_refs`（PROP-B）；PROP-B 為 W ≠ H | 對 `source_proposal` 加入 PROP-B 得 `written`，驗證以 `passed` 完成 | 清單恰一列（不是兩列）；列內附 SPEC-900 與 PROP-B 兩個路徑，PROP-B 的取回說明為 `git cat-file -p <sha> > <路徑>`，SPEC-900 的為 `git checkout HEAD -- <路徑>`；驗證狀態只有一個且屬 SPEC-900（SPEC-009 FR-08〈多檔寫入的列法（1.1）〉） |
 | C-9（1.1） | 同 W-25（`partiallyWritten`） | 讀取清單 | 該列結局為 `partiallyWritten`，列內只附未還原的檔（PROP-B）與其取回說明，沒有驗證狀態 |
 | C-10（1.1） | 移除 PROP-A 後再加入 PROP-B（兩次寫入） | 讀取清單 | 兩列，各自結局 `written`（操作單位：改成另一值是兩次寫入，FR-03〈多值欄位的加入與移除（1.1）〉） |
-| C-11（1.1） | `spec_related_flow`；對 `related_specs` 加入已在清單中的 `SPEC-2`（寫入層直接收到） | 讀取清單 | 清單無新列（FR-08 驗收 #5 的 1.1 同類情形；檔案與快照部分見 M-12） |
+| C-11（1.1） | `spec_related_flow`；呼叫端對 `related_specs` 加入已在清單中的 `SPEC-2` | 讀取清單 | 清單無新列（FR-08 驗收 #5 的 1.1 同類情形；呼叫端不發出寫入，見 M-12） |
 
 C-6、C-7 的測試檔：`test/unit/edit/session_write_list_issued_test.dart`（C-6 全部、C-7 的資料層）、`test/widget/screens/write_log_panel_test.dart`（C-6 的寫入中與失敗列呈現、C-7 的畫面層）、`test/widget/app/shell_test.dart`（失敗計數徽章計入 `blocked`、`ioFailed`），皆由 `1.0.0-W3-553.17.1` 建立；C-6 的「未發出不成列」對照由 `1.0.0-W3-553.15` 的 `test/unit/screens/node_detail/node_detail_edit_test.dart`（必填空白不發出寫入）涵蓋。
 
@@ -427,13 +427,13 @@ FR-08 驗收第 1 條由 C-5 與 IT-E2-1、IT-E2-2 涵蓋；第 2 條由 C-2 與
 | F-1 | FR-09 兩張表中「自」為 1.0 的每一列 | 以（節點型別、欄位）查對照函式 | 回傳該列的「現行元件」；全部列逐一列舉，表增減時本案紅燈 |
 | F-2（守衛） | 值域來源 fake 對 SPEC `status` 回傳「無機器定義」 | 查對照 | 單行文字（正向對照：對 PROP `status` 回傳機器定義的列舉時為下拉） |
 | F-3（守衛） | 值域來源 fake 對所有欄位都回傳「無機器定義」 | 查全部 1.0 欄位 | 沒有任何欄位為下拉或單選鈕組。這證明 App 沒有內建值域表：若有，值域來源回傳「無」時仍會產生下拉 |
-| F-4 | 「自」為 1.1 以後或為 `—` 的欄位 | 查對照 | 回傳「不可編輯」 |
+| F-4 | 「自」晚於當前 build 所屬 minor 的欄位，或「自」為 `—` 的欄位 | 查對照 | 回傳「不可編輯」（1.1 build 的實例見 F-10；「自」等於或早於當前 minor 的欄位可編輯，見 F-8） |
 | F-5 | 可清空欄位（PROP proposed_by、EVT payload）；草稿為 `""`、`"   "`；另一案草稿為 `"  x "` | 判定送出內容 | 前兩案寫入值為 `null`；第三案寫入值逐字為 `"  x "`（非空值不修剪）（v1.4 FR-09〈可否清空〉） |
 | F-6（守衛） | 必填欄位（PROP title、EVT name），草稿 trim 後為空 | 判定送出內容 | 不發出寫入；提示為 `fieldRequiredEmpty`；`FakeEditFilePort` 零寫入。正向對照：F-5 的可清空欄位同樣輸入時發出寫入 |
 | F-7（守衛） | 值域來源 fake 的 `completeness_fields` 對 PROP 只列 `id`、`status`（拿掉 `title`） | 以 PROP title、草稿 `""` 判定送出內容 | 寫入值為 `null`（title 改判可清空）。證明必填集合讀自 `tracking_schema.json`，App 沒有內建清單。正向對照：F-6 |
 | F-8（1.1） | FR-09 各型別特有欄位表中「自」為 1.1 的每一列：PROP related_proposals、supersedes；SPEC source_proposal、related_usecases、related_specs、implements_requirements、depends_on_domains；UC source_proposal、related_specs、related_usecases、ticket_refs；DomainBundle source_specs、related_usecases、depends_on_bundles；EVT source_proposal、producers、consumers | 以（節點型別、欄位）查對照函式 | 回傳該列的「目標元件」（1.1 新開欄位沒有「現行元件」，以目標元件為準）：chips 加搜尋、核取清單或可搜尋下拉（可空）；全部列逐一列舉，表增減時本案紅燈 |
 | F-9（1.1，守衛） | PROP `outputs` | 查對照 | 回傳「不可編輯」：1.1 只作為多檔寫入的反向檔，不提供直接編輯（FR-09 PROP outputs 列）。正向對照：F-8 的 SPEC `source_proposal` 可編輯 |
-| F-10（1.1） | 「自」為 1.2 以後或為 `—` 的欄位（例：UC secondary_actors、DomainBundle path_patterns、UC flow 區塊、PROP proposed_date） | 查對照 | 回傳「不可編輯」（F-4 在 1.1 build 的對應案例，見 §6 第 8 項） |
+| F-10（1.1） | 「自」為 1.2 以後或為 `—` 的欄位（例：UC secondary_actors、DomainBundle path_patterns、UC flow 區塊、PROP proposed_date） | 查對照 | 回傳「不可編輯」（F-4 在 1.1 build 的實例） |
 
 F-5～F-10 的落點與 F-1～F-4 相同（`field_input_mapping_test.dart`）；判定在畫面狀態層，不經元件（SPEC-004 4.44 `onSubmitted` 對空白照常呼叫，元件不判斷必填）。
 
@@ -465,10 +465,11 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | M-9（F4） | `spec_sp_dup`；另一案 `spec_related_dup` | 前者移除 `PROP-A`；後者移除 `SPEC-2` | 前者得純量 `PROP-C`；後者得 `[SPEC-1]`。兩案改寫後的值都不含被移除值的任何出現（只刪一筆的實作會留下一筆，本案因此紅燈） |
 | M-10（守衛） | `spec_unsupported` 七個變體 | 各加入 `SPEC-9` 與移除 `SPEC-1`（變體中存在的項） | 十四案皆 `blocked(rewriteNotIsolated)`；`FakeEditFilePort` 無暫存檔寫入與 rename；目標檔不變。正向對照：M-1、M-2 |
 | M-11（守衛） | `spec_related_flow` | 加入值 `a,b`、`x:y`、`p#q`、`[z]`、` lead`（前導空白） | 五案皆 `blocked(rewriteNotIsolated)`，目標檔不變。正向對照：M-1 的 `SPEC-4` |
-| M-12 | `spec_related_flow`；寫入層直接收到「加入 `SPEC-2`」 | 修正 | `FakeEditFilePort` 零寫入、零 rename；`FakeEditGitPort` 零 `hash-object`；session 清單不新增列（C-11）。目標檔不變 |
+| M-12 | `spec_related_flow`；呼叫端（編輯狀態）對 `related_specs` 加入已在清單中的 `SPEC-2` | 送出 | 不發出寫入：寫入層零呼叫，因此沒有 `WriteResult`；`FakeEditFilePort` 零寫入、零 rename；`FakeEditGitPort` 零 `hash-object`；`RecordingEditLogSink` 零事件；session 清單不新增列（C-11）。目標檔不變（v1.13 FR-03，比照 F-6 的必填空白） |
+| M-12b（守衛） | `spec_related_flow`；繞過呼叫端，寫入層直接收到「加入 `SPEC-2`」 | 修正（debug build） | 前置條件 assert 失敗（`throwsA(isA<AssertionError>())`），檔案不變。正向對照：M-1 加入不在清單中的 `SPEC-4` 時不觸發 assert |
 | M-13 | `spec_related_flow` | 呼叫端把 `SPEC-1` 改成 `SPEC-9`：移除 `SPEC-1`、再加入 `SPEC-9` | 兩次各自經過閘門（`FakeEditFilePort` 記錄兩輪步驟 1 讀取與兩次 rename）；最終值為 `[SPEC-2, SPEC-3, SPEC-9]`。寫入 API 只接受單一加入或單一移除，沒有「取代」操作（以型別判定：操作參數為二值封閉型別） |
 
-FR-03 驗收 #10 由 M-1～M-4 涵蓋；#11 由 M-5；#12～#15 分別由 M-6～M-9（F1～F4）；#16 由 M-10、M-11；#17 由 M-12、C-11。
+FR-03 驗收 #10 由 M-1～M-4 涵蓋；#11 由 M-5；#12～#15 分別由 M-6～M-9（F1～F4）；#16 由 M-10、M-11；#17 由 M-12、M-12b、C-11。
 
 ### W provenance 多檔寫入（FR-03〈多檔寫入（1.1）〉）
 
@@ -577,7 +578,7 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | FR-03 | #14 F3：剩零項得 `null`、鍵仍在 | M-8 | domain unit |
 | FR-03 | #15 F4：重複值全部移除（正向檔與其他欄位） | M-9 | domain unit |
 | FR-03 | #16 block 序列、跨多行 flow 序列 → `rewriteNotIsolated`（v1.10） | M-10、M-11 | domain unit |
-| FR-03 | #17 加入已在清單中的值：不改檔、不成列（v1.10） | M-12、C-11 | domain unit |
+| FR-03 | #17 加入已在清單中的值：呼叫端不發出寫入，不改檔、不成列、不記事件；寫入層 debug assert（v1.10，v1.13 定案判定點） | M-12、M-12b、C-11 | domain unit |
 | FR-03 | #18 加入時反向檔缺反向清單鍵 → 整批 `rewriteNotIsolated`（v1.6；v1.11 限加入） | W-3、W-4、W-7 | domain unit |
 | FR-03 | #19 任一檔步驟 1～4 不通過 → 所有檔不變、無暫存檔（v1.6） | W-21、W-28 | domain unit |
 | FR-03 | #20 第 2 個檔 `rename` 失敗、還原成功 → 原結果、已 rename 者還原（v1.6） | W-24 | domain unit（注入） |
@@ -649,6 +650,7 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 依賴方向：Edit 不讀 Graph（1.1） | `lib/edit/` import `lib/graph/` | E-DEP-2 | E-DEP-2 的樣本 |
 | 多值改寫：不支援的寫法（1.1） | block 序列、跨行、含註解、anchor、alias、非純量項 | M-10 | M-1、M-2 |
 | 多值改寫：需引號的值（1.1） | `a,b`、`x:y` 等 | M-11 | M-1 |
+| 多值改寫：加入已在清單中的值，寫入層前置條件（1.1，v1.13） | 寫入層直接收到「加入 `SPEC-2`」 | M-12b | M-1 |
 | 多值改寫：重複值全部移除（1.1） | 只刪一筆的實作 | M-9 | — |
 | 寫入集合：缺反向清單鍵（1.1） | 缺 `usecase_refs`／`event_refs` | W-3、W-4 | W-2、W-4 前案 |
 | 子鍵形狀：加入端 `null`／純量（1.1） | `spec_refs: null`、`spec_refs: SPEC-X` | W-7 | `spec_refs: []` |
@@ -715,9 +717,9 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 4. **畫面錨點**：X、C、F 只斷言畫面狀態層的狀態值。編輯狀態、外部已改預警、session 寫入清單、快照回饋與取回說明的 widget 錨點案例，由 `1.0.0-W3-553.3` 定稿後的畫面票補上，並回填本文件 §4.2 的測試層欄。
 5. **IT-E6 與 P-9 的環境需求**：IT-E6 需要 `uv` 與 doc CLI，P-9 需要 fvm。找不到時以說明訊息判為失敗，不跳過，不改呼叫 PATH 上的其他版本（CLAUDE.md §6）。
 6. **「備份」一詞的文案約束**（FR-02 約束第 2 條）不是驗收條件，本文件不設自動測試；由寫 l10n 文案的畫面票在審查時核對。
-7. **L-1 的事件數字（1.1）**：L-1 的 Then 寫「8 個事件」，SPEC-009 v1.6 起 FR-07 表為 10 個（新增 `writeRolledBack`、`writePartiallyWritten`）。L-1 的判準是「與規格表相等」，1.1 實作時 L-1 的列舉隨表更新；本文件不改 L-1 案例本文，由 L-15 補 1.1 的兩個事件。
-8. **F-4 在 1.1 build 的射程（1.1）**：F-4 的 Given 寫「自為 1.1 以後」回傳不可編輯，1.1 起「自」為 1.1 的欄位可編輯（F-8）。1.1 實作時 F-4 的射程改由 F-10（「自」為 1.2 以後）承擔；F-4 案例本文不改。
-9. **加入已存在值的回傳（1.1）**：SPEC-009 FR-03〈多值欄位的加入與移除（1.1）〉只規定「不改檔案、不建快照、不成列」，未規定寫入層回傳哪個 `WriteResult`、是否記日誌。M-12 只斷言這三項可觀測結果，不斷言回傳值；缺口已記入 `1.1.0-W1-111.1` NeedsContext。
+7. **L-1 的事件數字（已解決，0.8）**：L-1 原寫「8 個事件」，與 FR-07 表自 v1.6 起的成員數不符。0.8 改為引用 FR-07 事件表、不寫數量（主控准許改寫既有案例）。
+8. **F-4 的射程（已解決，0.8）**：F-4 原寫「自為 1.1 以後」不可編輯，與 F-8 矛盾。0.8 改為「晚於當前 build 所屬 minor」，F-10 為其 1.1 實例（主控准許改寫既有案例）。
+9. **加入已存在值的回傳（已解決，0.8）**：SPEC-009 v1.13 定案判定點在呼叫端，不發出寫入，沒有 `WriteResult`、不成列、不記 FR-07 事件；寫入層以 debug assert 守前置條件。M-12 改為呼叫端案例，新增 M-12b 守衛。
 
 ## 變更歷史
 
@@ -730,3 +732,4 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 0.5 | 2026-11-12 | `1.0.0-W3-553.11.1`，對應 SPEC-009 v1.7（執行期澄清，用戶裁定 2026-11-12，經主控 AUQ）：<br>- V 組新增 V-19（守衛：baseline 未完成即寫入 → `unavailable(baselineNotReady)`，丟棄延遲的 baseline，該次寫入後的問題集合成為下一次 baseline）、V-20（寫入後驗證 `unavailable` 時保留原 baseline）、V-21（沒有可用 baseline 時，第一個取得的寫入後問題集合成為下一次 baseline）。V-19 的延遲 baseline 在兩次寫入之間完成並回報零個問題，用以分辨它是否被丟棄。<br>- IT-E6-1 改為先等 baseline 完成再寫入。<br>- §2.6 補真實 CLI 測試的前置條件（PATH 上的 `doc` 與 `uv`、doc 符號連結、UC 白名單），基準文件改為 UC 型（`doc validate` 依檔名取 ID）。<br>- §4.2 補 FR-05〈baseline 與寫入的先後〉。<br>- 原因值名稱 `baselineNotReady`（L56 提案，主控審查通過）。 |
 | 0.6 | 2026-11-13 | `1.0.0-W3-553.17.1`，對應 SPEC-009 v1.12 FR-08（執行期澄清，用戶裁定 2026-11-13，經主控 AUQ）：<br>- C 組新增 C-6（每次發出的寫入都成列，含寫入中與三種 `blocked`、`ioFailed`；對照：v1.11 以前只有 `written` 成列；未發出不成列）、C-7（列附所屬專案，切換專案後保留）。<br>- §4.2 補 FR-08 #5、#6，追溯到 553.17.1 的測試檔與 553.15 的對照測試。<br>- `spec_version` 未改：v1.8～v1.11 屬 1.1 的條文，本文件尚未涵蓋，只補 v1.12 的 FR-08。 |
 | 0.7 | 2026-11-13 | `1.1.0-W1-111.1`，對應 SPEC-009 v1.11 的 1.1 條文（version-bootstrap Step 5）；只增案例，不改既有案例：<br>- 新增 M 群組（M-1～M-13，多值欄位加入與移除，F1～F4）、W 群組（W-1～W-28，provenance 寫入集合、反向清單鍵、子鍵形狀、`outputs` 非 map、整批閘門、`rename` 順序、回復、`partiallyWritten`）、外圈 IT-E7（真實 git 與真實圖重建）、E-DEP-2（Edit 不 import Graph）。<br>- 既有群組追加：V-22（驗證只套正向檔）、L-13～L-16（`writeRolledBack`、`writePartiallyWritten`）、C-8～C-11（多檔一列、加入已存在值不成列）、F-8～F-10（FR-09 1.1 列）。<br>- §1.4 新增 `FakeCorpusNodeIndex`、多檔注入、`provenanceFixture`；§1.5 新增 R11、R11b；§1.6.1 新增樣本表。<br>- §4.1～§4.4、§5 補列；§6 新增第 7～9 項。`spec_version` 改為 1.12。 |
+| 0.8 | 2026-11-13 | `1.1.0-W1-111.1`，對應 SPEC-009 v1.13（主控審查 0.7 回報的 NeedsContext 後裁定）：<br>- M-12 改為呼叫端案例：加入已在清單中的值時不發出寫入，沒有 `WriteResult`、零事件、不成列；新增 M-12b（守衛：寫入層直接收到時 debug assert 失敗，正向對照 M-1）。C-11、§4.2 FR-03 #17、§4.3 同步。<br>- 改寫既有案例（主控准許）：L-1 改為引用 FR-07 事件表、不寫數量，理由是成員數會隨 FR-07 增減，寫死的數字在 v1.6 已失效；F-4 改為「晚於當前 build 所屬 minor」，理由是原寫法「1.1 以後」在 1.1 build 與 F-8 矛盾，F-10 改標為其 1.1 實例。<br>- §6 第 7～9 項改為已解決 |
