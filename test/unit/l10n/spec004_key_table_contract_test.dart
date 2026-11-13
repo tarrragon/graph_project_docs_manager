@@ -15,10 +15,7 @@ import '../../helpers/spec_first_marker.dart';
 /// 成員必須仍在表中且尚不在 ARB；ARB 一加入即紅，迫使移除豁免。
 /// 1.113 三個 nodeDetail key 已由 0.6.0-W1-155 補入 ARB，當時為空。
 /// 1.140～1.146 起 §4.0.6 新增規格先行 key（1.0 編輯功能票實作時補 ARB 並移出）。
-const Set<String> pendingAdditionExemptions = <String>{
-  'editFieldsAction',
-  'nodeDetailEditReadFailedMessage',
-};
+const Set<String> pendingAdditionExemptions = <String>{};
 
 /// 表列仍保留、但 ARB 已刻意移除的淘汰 key（SPEC-004 該列註明「ARB 實檔已移除」）。
 /// 這些 key 不比對；一旦重新出現在 ARB 即紅。

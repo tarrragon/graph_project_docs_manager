@@ -12,6 +12,12 @@
 /// 一致）。
 library;
 
+import 'package:flutter/foundation.dart' show immutable;
+import 'package:graph_project_docs_manager/components/field_block.dart'
+    show FieldWriteState;
+import 'package:graph_project_docs_manager/edit/edit_session.dart';
+import 'package:graph_project_docs_manager/edit/workspace_relative_path.dart';
+
 import '../../app/graph_status.dart';
 
 /// 節點詳情的五個畫面狀態（SPEC-001 §6）。
@@ -65,3 +71,88 @@ class NodeDetailMissing extends NodeDetailState {
   /// 最後已知路徑（`MissingSourceState` 訊息 slot）。
   final String lastKnownPath;
 }
+
+/// 編輯模式的三個子狀態（SPEC-001 §6〈編輯模式〉）：編輯中、外部已改預警、
+/// 外部已改阻擋。
+enum NodeDetailEditPhase { editing, warning, blocked }
+
+/// 編輯模式的畫面狀態；`null`（無此物件）代表不在編輯模式。
+///
+/// 需求：[SPEC-003 §3.6 / §4 #58–#60] 持有 Edit domain 的 [session]（M 在其
+/// 內）、各欄目前值（磁碟上的值，不做樂觀更新）與各欄寫入呈現資料。
+@immutable
+class NodeDetailEditState {
+  const NodeDetailEditState({
+    required this.nodeId,
+    required this.nodeType,
+    required this.session,
+    required this.path,
+    required this.fieldKeys,
+    required this.values,
+    this.phase = NodeDetailEditPhase.editing,
+    this.writeStates = const {},
+    this.requiredEmpty = const {},
+    this.dirty = const {},
+    this.writingField,
+    this.generation = 0,
+  });
+
+  final String nodeId;
+  final String nodeType;
+  final EditSession session;
+
+  /// 正在編輯的檔案（供重讀比較 M 與磁碟）。
+  final WorkspaceRelativePath path;
+
+  /// 可編輯欄位鍵，依 SPEC-009 FR-09 表列序。
+  final List<String> fieldKeys;
+
+  /// 欄位目前值（磁碟上的值；空值為空字串）。
+  final Map<String, String> values;
+
+  final NodeDetailEditPhase phase;
+
+  /// 各欄最近一次寫入的呈現資料。
+  final Map<String, FieldWriteState> writeStates;
+
+  /// 必填欄位送出空白、未發出寫入者。
+  final Set<String> requiredEmpty;
+
+  /// 有未送出草稿的欄位。
+  final Set<String> dirty;
+
+  /// 寫入進行中的欄位；非 null 時全部欄位鎖定。
+  final String? writingField;
+
+  /// 草稿捨棄計數：變動時各欄輸入元件重建，草稿清空。
+  final int generation;
+
+  bool get writeInProgress => writingField != null;
+
+  NodeDetailEditState copyWith({
+    NodeDetailEditPhase? phase,
+    Map<String, String>? values,
+    Map<String, FieldWriteState>? writeStates,
+    Set<String>? requiredEmpty,
+    Set<String>? dirty,
+    String? writingField,
+    bool clearWriting = false,
+    int? generation,
+  }) => NodeDetailEditState(
+    nodeId: nodeId,
+    nodeType: nodeType,
+    session: session,
+    path: path,
+    fieldKeys: fieldKeys,
+    values: values ?? this.values,
+    phase: phase ?? this.phase,
+    writeStates: writeStates ?? this.writeStates,
+    requiredEmpty: requiredEmpty ?? this.requiredEmpty,
+    dirty: dirty ?? this.dirty,
+    writingField: clearWriting ? null : (writingField ?? this.writingField),
+    generation: generation ?? this.generation,
+  );
+}
+
+/// 開始編輯的結果（供畫面層決定後續）。
+enum NodeDetailEditBeginResult { started, missing, readFailed, unavailable }

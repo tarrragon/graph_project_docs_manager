@@ -310,6 +310,8 @@
   "readonlyWorkspaceGitMissingBadge": "git was not found, so files cannot be edited in the app",
   "writeLogTitle": "Write Log",
   "nodeDetailBodyUnavailableMessage": "Cannot show the body: the file changed or became unreadable after the last scan. It will update after the next scan",
+  "editFieldsAction": "Edit fields",
+  "nodeDetailEditReadFailedMessage": "Could not read this file, so editing did not start",
   "fieldValueOutOfDomain": "Current value \"{value}\" is not an allowed value",
   "fieldDraftUnsentHint": "Not sent yet (Enter to send, Esc to revert)",
   "fieldDraftUnsentHintMultiLine": "Not sent yet (⌘Enter to send, Esc to revert)",

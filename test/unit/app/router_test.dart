@@ -13,6 +13,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 
 void main() {
+  group('returnEventProvider：返回事件可與 rail 區分', () {
+    test('consumeReturnTo 產生事件，記錄來源與去向', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+      consumeReturnTo(container.read);
+
+      final event = container.read(returnEventProvider)!;
+      expect(event.from, AppDestination.nodeDetail);
+      expect(event.to, AppDestination.domain);
+      expect(event.sequence, 1);
+    });
+
+    test('對照：rail 切到的目的地等於 returnTo，不算返回', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      navigateTo(container.read, AppDestination.nodeDetail, NavIntent.jump);
+      navigateTo(container.read, AppDestination.domain, NavIntent.rail);
+
+      expect(container.read(returnEventProvider), isNull);
+      expect(
+        container.read(selectedDestinationProvider),
+        AppDestination.domain,
+      );
+    });
+
+    test('連續兩次返回序號遞增；returnTo 為 null 時不產生事件', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      consumeReturnTo(container.read);
+      expect(container.read(returnEventProvider), isNull);
+      for (var i = 1; i <= 2; i++) {
+        navigateTo(container.read, AppDestination.tickets, NavIntent.jump);
+        consumeReturnTo(container.read);
+        expect(container.read(returnEventProvider)!.sequence, i);
+      }
+    });
+  });
+
   group('returnToProvider 單槽（SPEC-003 §2.3 四條規則）', () {
     test('rail 切換後 returnTo 為 null', () {
       final container = ProviderContainer();

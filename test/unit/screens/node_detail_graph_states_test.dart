@@ -3,6 +3,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:graph_project_docs_manager/app/domain_view_schema_version.dart';
+import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/graph_status.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/scan_round.dart';
@@ -46,6 +47,8 @@ Future<dynamic> _pump(
     overrides: [
       scanRoundProvider.overrideWith(() => fake),
       builtinSchemaVersionProvider.overrideWith((ref) async => '0.0.1'),
+      // 正常態的編輯入口會讀唯讀降級旗標；此檔不測編輯，隔離真實 git 探測。
+      readonlyWorkspaceReasonProvider.overrideWithValue(null),
       nodeDetailStateProvider.overrideWithInitial(
         (ref) => NodeDetailReady(nodeId: nodeId),
       ),
