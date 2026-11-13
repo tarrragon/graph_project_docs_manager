@@ -3,10 +3,6 @@ import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/corpus/frontmatter_classifier.dart';
 import 'package:graph_project_docs_manager/corpus/parse_outcome.dart';
-import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
-import 'package:graph_project_docs_manager/observability/log_enums.dart';
-import 'package:graph_project_docs_manager/observability/log_sink.dart';
-import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:yaml/yaml.dart';
 
 const String _updatedKey = 'updated';
@@ -42,14 +38,13 @@ FieldRewriteResult rewriteFrontmatterField({
   required String field,
   required String? newValue,
   required DateTime today,
-  LogSink<EditLogEvent>? logSink,
 }) {
   final located = _locate(original);
   final replacements = located == null
       ? null
       : _replacementsFor(located, field, newValue, today);
   if (located == null || replacements == null) {
-    return _notIsolated(EditRewriteRejection.targetNotRewritable, logSink);
+    return const FieldRewriteNotIsolated();
   }
   final rewritten = _splice(located, replacements);
   final verdict = checkRewriteIsolation(
@@ -58,11 +53,7 @@ FieldRewriteResult rewriteFrontmatterField({
     allowedKeys: {field, _updatedKey},
   );
   if (verdict != RewriteIsolationVerdict.isolated) {
-    return _notIsolated(switch (verdict) {
-      RewriteIsolationVerdict.parseLayerFailed =>
-        EditRewriteRejection.parseLayerFailed,
-      _ => EditRewriteRejection.byteLayerFailed,
-    }, logSink);
+    return const FieldRewriteNotIsolated();
   }
   return FieldRewritten(rewritten);
 }
@@ -83,19 +74,6 @@ RewriteIsolationVerdict checkRewriteIsolation({
     return RewriteIsolationVerdict.byteLayerFailed;
   }
   return RewriteIsolationVerdict.isolated;
-}
-
-FieldRewriteResult _notIsolated(
-  EditRewriteRejection reason,
-  LogSink<EditLogEvent>? logSink,
-) {
-  (logSink ?? defaultEditLogSink())(
-    EditLogEvent.rewriteNotIsolated,
-    LogFields({EditLogKeys.reason: LogValue.enumValue(reason)}),
-    level: LogLevel.error,
-    source: ErrorSource.gateBlocked,
-  );
-  return const FieldRewriteNotIsolated();
 }
 
 bool _parseLayerIsolated(

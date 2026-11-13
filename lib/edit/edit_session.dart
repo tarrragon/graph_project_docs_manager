@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:graph_project_docs_manager/edit/corpus_parsed_source.dart';
 import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
+import 'package:graph_project_docs_manager/edit/edit_git_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart';
 import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/edit_validation.dart';
@@ -179,6 +180,7 @@ class EditSession {
       workspaceRoot: _context.workspaceRoot,
     );
     final result = await _gatedWrite(field, newValue);
+    _logGateOutcome(result, field);
     _context.writeList.settle(entry, result);
     _observations.add(WriteAccepted(result));
     if (result is Written) {
@@ -225,6 +227,7 @@ class EditSession {
     }
     final snapshot = await _snapshotUnlessInHead(current);
     if (snapshot.stop != null) return snapshot.stop!;
+    _logWriteIssued(field);
     _observations.add(const WriteInProgress());
     return _commit(current, rewritten.bytes, snapshot.value);
   }
@@ -236,7 +239,7 @@ class EditSession {
       if (error.notFound) {
         return const _Step.stop(Blocked(BlockedReason.externallyModified));
       }
-      _logIoFailed(operation, error.errorCode);
+      _logIoFailed(EditLogEvent.readIoFailed, operation, error.errorCode);
       return _Step.stop(
         IoFailed(IoFailure(operation, errorCode: error.errorCode)),
       );
@@ -244,29 +247,58 @@ class EditSession {
   }
 
   /// H 存在且與 W 逐位元組相同時不快照；其餘（H 不存在、無法判定、逾時、
-  /// git 無法啟動）一律走快照。
+  /// git 無法啟動）一律走快照。`git show` 失敗不記失敗事件（SPEC-009 FR-07）。
   Future<_Step<String?>> _snapshotUnlessInHead(Uint8List current) async {
     final head = await _context.git.run(['show', 'HEAD:./${_path.relative}']);
-    if (head != null &&
-        head.exitCode == 0 &&
-        _sameBytes(head.stdout, current)) {
+    if (head is EditGitCompleted &&
+        head.result.exitCode == 0 &&
+        _sameBytes(head.result.stdout, current)) {
       return const _Step.ok(null);
     }
-    final sha = await _hashObject(current);
-    return sha == null
-        ? const _Step.stop(Blocked(BlockedReason.snapshotFailed))
-        : _Step.ok(sha);
+    final hashed = await _hashObject(current);
+    final failure = hashed.failure;
+    if (failure != null) {
+      _logSnapshotFailed(failure);
+      return const _Step.stop(Blocked(BlockedReason.snapshotFailed));
+    }
+    _logSnapshotTaken(hashed.sha!);
+    return _Step.ok(hashed.sha);
   }
 
-  Future<String?> _hashObject(Uint8List current) async {
-    final result = await _context.git.run([
+  /// `hash-object` 的結局：成功帶 [sha]，失敗帶三擇一的 [failure]
+  /// （SPEC-009 FR-07〈`snapshotFailed` 的三擇一〉）。
+  Future<({String? sha, Map<String, LogValue>? failure})> _hashObject(
+    Uint8List current,
+  ) async {
+    final outcome = await _context.git.run([
       'hash-object',
       '-w',
       '--stdin',
     ], stdin: current);
-    if (result == null || result.exitCode != 0) return null;
+    return switch (outcome) {
+      EditGitLaunchFailed() || EditGitRunFailed() => (
+        sha: null,
+        failure: {EditLogKeys.executableMissing: const LogValue.boolean(true)},
+      ),
+      EditGitTimedOut() => (
+        sha: null,
+        failure: {EditLogKeys.timedOut: const LogValue.boolean(true)},
+      ),
+      EditGitCompleted(:final result) => _hashResult(result),
+    };
+  }
+
+  ({String? sha, Map<String, LogValue>? failure}) _hashResult(
+    EditGitResult result,
+  ) {
     final sha = String.fromCharCodes(result.stdout).trim();
-    return _shaPattern.hasMatch(sha) ? sha : null;
+    if (result.exitCode == 0 && _shaPattern.hasMatch(sha)) {
+      return (sha: sha, failure: null);
+    }
+    return (
+      sha: null,
+      failure: {EditLogKeys.exitCode: LogValue.integer(result.exitCode)},
+    );
   }
 
   Future<WriteResult> _commit(
@@ -322,7 +354,7 @@ class EditSession {
       await action();
       return null;
     } on EditFileException catch (error) {
-      _logIoFailed(operation, error.errorCode);
+      _logIoFailed(EditLogEvent.writeIoFailed, operation, error.errorCode);
       return IoFailed(IoFailure(operation, errorCode: error.errorCode));
     }
   }
@@ -336,17 +368,71 @@ class EditSession {
         '.${absolute.substring(slash + 1)}.$pid.$tail.tmp';
   }
 
-  void _logIoFailed(IoOperation operation, int? errorCode) =>
-      (_context.logSink ?? defaultEditLogSink())(
-        EditLogEvent.ioFailed,
-        LogFields({
-          EditLogKeys.operation: LogValue.enumValue(operation),
-          if (errorCode != null)
-            EditLogKeys.errorCode: LogValue.integer(errorCode),
-        }),
-        level: LogLevel.error,
-        source: ErrorSource.platformIo,
-      );
+  /// 每次呼叫才取 sink，不在建立時捕捉 writer（553.2.3.4.4）。
+  void _emit(
+    EditLogEvent event,
+    Map<String, LogValue> fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
+  }) => (_context.logSink ?? defaultEditLogSink())(
+    event,
+    LogFields({EditLogKeys.path: editLogPath(_path.relative), ...fields}),
+    level: level,
+    source: source,
+  );
+
+  void _logWriteIssued(String field) => _emit(EditLogEvent.writeIssued, {
+    EditLogKeys.field: LogValue.fieldName(field),
+  });
+
+  /// 受理只在位元組落檔時記；失敗結局已各記一筆失敗事件（一次失敗一筆）。
+  void _logGateOutcome(WriteResult result, String field) {
+    switch (result) {
+      case Written():
+        _emit(EditLogEvent.writeAccepted, {
+          EditLogKeys.field: LogValue.fieldName(field),
+        });
+      case Blocked(:final reason) when reason != BlockedReason.snapshotFailed:
+        _emit(
+          EditLogEvent.writeBlocked,
+          {EditLogKeys.reason: LogValue.enumValue(reason)},
+          level: LogLevel.warning,
+          source: ErrorSource.gateBlocked,
+        );
+      case _:
+        break;
+    }
+  }
+
+  void _logSnapshotTaken(String sha) => _emit(EditLogEvent.snapshotTaken, {
+    EditLogKeys.blobSha: LogValue.commitSha(sha),
+  });
+
+  void _logSnapshotFailed(Map<String, LogValue> failure) => _emit(
+    EditLogEvent.writeBlocked,
+    {
+      EditLogKeys.reason: const LogValue.enumValue(
+        BlockedReason.snapshotFailed,
+      ),
+      ...failure,
+    },
+    level: LogLevel.error,
+    source: ErrorSource.externalProcess,
+  );
+
+  void _logIoFailed(
+    EditLogEvent event,
+    IoOperation operation,
+    int? errorCode,
+  ) => _emit(
+    event,
+    {
+      EditLogKeys.operation: LogValue.enumValue(operation),
+      if (errorCode != null) EditLogKeys.errorCode: LogValue.integer(errorCode),
+    },
+    level: LogLevel.error,
+    source: ErrorSource.platformIo,
+  );
 }
 
 bool _sameBytes(Uint8List a, Uint8List b) {

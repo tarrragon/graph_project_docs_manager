@@ -6,26 +6,15 @@
 library;
 
 import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// edit domain 日誌事件（穩定契約）。
 enum EditLogEvent {
   /// 開啟工作區並判定編輯模式，負載帶 mode（唯讀時另帶 readonlyReason）。
   editModeDetermined,
 
-  /// 開始編輯讀取目標檔失敗（platform_io，error）。
-  beginEditingReadFailed,
-
   /// 刪除暫存檔失敗（platform_io，warning）。
   tempDeleteFailed,
-
-  /// `git` 無法啟動（external_process，warning）。
-  gitLaunchFailed,
-
-  /// `git` 子行程逾時並已終止（external_process，warning）。
-  gitTimedOut,
-
-  /// `git` 子行程執行期拋出例外（external_process，warning）。
-  gitRunFailed,
 
   /// 驗證器無法啟動，負載帶 tool（external_process，warning）。
   validatorLaunchFailed,
@@ -35,9 +24,6 @@ enum EditLogEvent {
 
   /// 驗證器執行期拋出例外，負載帶 tool（external_process，warning）。
   validatorRunFailed,
-
-  /// 寫入閘門的檔案操作失敗，負載帶 operation 與 errorCode（platform_io，error）。
-  ioFailed,
 
   /// baseline 量測完成，負載帶 path、measure。
   baselineMeasured,
@@ -53,8 +39,25 @@ enum EditLogEvent {
   /// 不帶 error_source：失敗已由驗證器事件各記一次，上層不重記（FR-02）。
   validationCompleted,
 
-  /// 改寫隔離檢查拒絕改寫，負載帶 reason（gate_blocked，error）。
-  rewriteNotIsolated,
+  /// 寫入發出：閘門通過、寫入呼叫發出，負載帶 path、field（info）。
+  writeIssued,
+
+  /// 寫入受理：位元組已落檔，負載帶 path、field（info）。
+  writeAccepted,
+
+  /// 取得快照，負載帶 path、blob_sha（info）。
+  snapshotTaken,
+
+  /// 閘門阻擋，負載帶 path、reason；`snapshotFailed` 另帶 exitCode、
+  /// executableMissing、timedOut 三擇一（externallyModified、rewriteNotIsolated
+  /// 為 warning／gate_blocked；snapshotFailed 為 error／external_process）。
+  writeBlocked,
+
+  /// 讀取目標檔失敗，負載帶 path、operation、errorCode（platform_io，error）。
+  readIoFailed,
+
+  /// 寫暫存檔、fsync、設定權限或 rename 失敗，負載同 [readIoFailed]。
+  writeIoFailed,
 }
 
 /// baseline 量測結果類別。
@@ -62,13 +65,6 @@ enum EditMeasureKind { ready, unavailable }
 
 /// 寫入後驗證結果類別。
 enum EditValidationOutcome { passed, failed, unavailable }
-
-/// 改寫被拒絕的原因。
-enum EditRewriteRejection {
-  targetNotRewritable,
-  parseLayerFailed,
-  byteLayerFailed,
-}
 
 /// 事件負載鍵（具名常數，測試以常數比對）。
 abstract final class EditLogKeys {
@@ -83,7 +79,18 @@ abstract final class EditLogKeys {
   static const newIssueCount = 'newIssueCount';
   static const unavailableReason = 'unavailableReason';
   static const reason = 'reason';
+  static const field = 'field';
+  static const blobSha = 'blob_sha';
+  static const exitCode = 'exitCode';
+  static const executableMissing = 'executableMissing';
+  static const timedOut = 'timedOut';
 }
+
+/// 以已驗證的工作區相對路徑（[WorkspaceRelativePath.relative]）建立日誌路徑值。
+///
+/// 以 `/` 為根包成絕對路徑再交給 [LogValue.path]，避免工作區根的 symlink
+/// 差異使路徑落入 [LogLocation.other]。
+LogValue editLogPath(String relative) => LogValue.path('/', '/$relative');
 
 /// edit domain 生產預設 sink 的 domain 名。
 const String editLogDomain = 'edit';

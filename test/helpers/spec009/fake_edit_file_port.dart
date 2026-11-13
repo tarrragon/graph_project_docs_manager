@@ -34,7 +34,7 @@ class FakeEditFilePort implements EditFilePort {
   }
 
   /// 指定操作種類（write／fsync／setMode／rename）一律失敗。
-  void failOp(String kind, {int errorCode = 5}) =>
+  void failOp(String kind, {int? errorCode = 5}) =>
       _opFaults[kind] = EditFileException(errorCode: errorCode);
 
   /// 指定操作種類完成後執行 [action]（例：外部改動目標檔）。
