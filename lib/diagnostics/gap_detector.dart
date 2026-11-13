@@ -5,12 +5,14 @@
 /// Diagnostics → Schema 依賴邊），不得 import `lib/schema/`。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
 import 'package:graph_project_docs_manager/corpus/topic_files_reader.dart';
 import 'package:graph_project_docs_manager/corpus/uc_flow_extractor.dart';
+import 'package:graph_project_docs_manager/diagnostics/diagnostics_log_event.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import 'parse_failure_gap.dart';
 
@@ -37,9 +39,11 @@ GapDetectionResult detectParseFailureGaps({
   NonDomainPathsParseFailedEvent? nonDomainPathsEvent,
   List<TopicFilesParseFailedEvent> topicFilesEvents =
       const <TopicFilesParseFailedEvent>[],
+  LogSink<DiagnosticsLogEvent>? logSink,
 }) {
+  final log = logSink ?? defaultDiagnosticsLogSink;
   final independentGaps = <ParseFailureGap>[
-    ...flowEvents.map(_toFlowGap),
+    ...flowEvents.map((e) => _toFlowGap(e, log)),
     if (nonDomainPathsEvent != null) _toNonDomainPathsGap(nonDomainPathsEvent),
     ...topicFilesEvents.map(_toTopicFilesGap),
   ];
@@ -71,30 +75,21 @@ ParseFailureGap _toGap(ParseFailureEvent event) => CarrierParseFailureGap(
 
 /// 需求：[SPEC-006 v1.25 FR-08〈規則〉第 2 條、EVT-CORPUS-004] 破洞原因碼由
 /// 事件類別決定，恆為 `flowBlockMalformed`，不從 reason 解析。reason 未以
-/// 原因碼開頭（前綴比對）視為上游違反 EVT-CORPUS-004 約定：寫 warning
-/// （UC 路徑與 reason 前 [_reasonLogLimit] 字），破洞照常產生。
-ParseFailureGap _toFlowGap(FlowParseFailedEvent event) {
+/// 原因碼開頭（前綴比對）視為上游違反 EVT-CORPUS-004 約定：記一筆
+/// warning（事件碼 only，不帶 reason 與路徑），破洞照常產生。
+ParseFailureGap _toFlowGap(
+  FlowParseFailedEvent event,
+  LogSink<DiagnosticsLogEvent> log,
+) {
   if (!event.reason.startsWith(flowBlockMalformedReasonCode)) {
-    _warnFlowReasonPrefixViolation(event);
+    log(
+      DiagnosticsLogEvent.flowReasonPrefixViolation,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.internal,
+    );
   }
   return FlowBlockMalformedGap(path: event.path, reason: event.reason);
-}
-
-/// warning 日誌帶入的 reason 字數上限。
-const _reasonLogLimit = 80;
-
-void _warnFlowReasonPrefixViolation(FlowParseFailedEvent event) {
-  final reason = event.reason;
-  final excerpt = reason.length > _reasonLogLimit
-      ? reason.substring(0, _reasonLogLimit)
-      : reason;
-  developer.log(
-    // i18n-exempt: 開發者診斷 log
-    'EVT-CORPUS-004 reason 未以原因碼開頭（上游違約），破洞照常產生：'
-    '${event.path} reason=$excerpt',
-    name: 'diagnostics.gap_detector',
-    level: 900,
-  );
 }
 
 /// 需求：[SPEC-006 FR-08〈規則〉第 3 條、EVT-CORPUS-005] 破洞帶清單檔路徑、

@@ -6,11 +6,11 @@
 /// 規則 7，另一票範圍）。
 library;
 
-import 'dart:developer' as developer show log;
-
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/schema/schema_log_event.dart';
 import 'package:graph_project_docs_manager/schema/type_table.dart';
-
-const _tag = 'schema.type_table_json_codec';
 
 /// 把 `tracking_schema.json` 解碼後的頂層 [Map] 轉成 [TypeTable]。
 ///
@@ -23,7 +23,11 @@ const _tag = 'schema.type_table_json_codec';
 /// 0.3.0-W3-531）：不合法的模式在此拒收並寫警告日誌，不中止整輪掃描，
 /// 同批其他合法模式與型別照常載入；查詢階段不再因壞模式拋
 /// [FormatException]。
-TypeTable typeTableFromJson(Map<String, dynamic> json) {
+TypeTable typeTableFromJson(
+  Map<String, dynamic> json, {
+  LogSink<SchemaLogEvent>? logSink,
+}) {
+  final log = logSink ?? defaultSchemaLogSink;
   final nodeTypesJson = json['node_types'] as Map<String, dynamic>? ?? const {};
   final completenessJson =
       json['completeness_fields'] as Map<String, dynamic>? ?? const {};
@@ -36,13 +40,18 @@ TypeTable typeTableFromJson(Map<String, dynamic> json) {
       carrierPathPatterns: _parseCarrierPathPatterns(
         typeName,
         typeJson['carrier_path_patterns'],
+        log,
       ),
-      idPattern: _parseIdPattern(typeName, typeJson['id_pattern'] as String?),
+      idPattern: _parseIdPattern(
+        typeName,
+        typeJson['id_pattern'] as String?,
+        log,
+      ),
       completenessFields: _parseCompletenessFields(completenessJson[typeName]),
     );
   }
 
-  final parsedEdges = _parseEdgeTypes(json['edge_types']);
+  final parsedEdges = _parseEdgeTypes(json['edge_types'], log);
   return TypeTable(
     Map.unmodifiable(entries),
     edgeTypes: parsedEdges.edges,
@@ -62,6 +71,7 @@ String? _parseOptionalString(dynamic raw) =>
 /// SPEC-007 v1.7 FR-01）。正向基數缺席保留為 `null`。
 ({Map<String, EdgeTypeDecl>? edges, Set<String> rejected}) _parseEdgeTypes(
   dynamic raw,
+  LogSink<SchemaLogEvent> log,
 ) {
   if (raw is! Map<String, dynamic>) {
     return (edges: null, rejected: const <String>{});
@@ -69,7 +79,7 @@ String? _parseOptionalString(dynamic raw) =>
   final result = <String, EdgeTypeDecl>{};
   final rejected = <String>{};
   for (final entry in raw.entries) {
-    final decl = _parseEdgeTypeEntry(entry.key, entry.value);
+    final decl = _parseEdgeTypeEntry(entry.key, entry.value, log);
     if (decl == null) {
       rejected.add(entry.key);
     } else {
@@ -83,9 +93,13 @@ String? _parseOptionalString(dynamic raw) =>
 }
 
 /// 單一邊型條目；不合法回傳 `null` 並寫日誌。
-EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
+EdgeTypeDecl? _parseEdgeTypeEntry(
+  String name,
+  dynamic value,
+  LogSink<SchemaLogEvent> log,
+) {
   if (value is! Map) {
-    _logRejectedEdgeType(name);
+    _logRejected(log, SchemaLogEvent.edgeTypeRejected);
     return null;
   }
   final forwardField = value['forward_field'];
@@ -96,7 +110,7 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
       edgeClass is! String ||
       layer is! String ||
       (reverseField != null && reverseField is! String)) {
-    _logRejectedEdgeType(name);
+    _logRejected(log, SchemaLogEvent.edgeTypeRejected);
     return null;
   }
   // direction 缺席合法（由 resolveEdgeTypes 補值）；存在則必須是合法值。
@@ -104,10 +118,7 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
       .where((v) => v.name == value['direction'])
       .firstOrNull;
   if (value.containsKey('direction') && direction == null) {
-    _logRejectedEdgeType(
-      name,
-      '；direction 不是 directed／undirected：${value['direction']}', // i18n-exempt: 開發者診斷 log
-    );
+    _logRejected(log, SchemaLogEvent.edgeTypeRejected);
     return null;
   }
   return EdgeTypeDecl(
@@ -123,13 +134,19 @@ EdgeTypeDecl? _parseEdgeTypeEntry(String name, dynamic value) {
   );
 }
 
-void _logRejectedEdgeType(String name, [String detail = '']) {
-  developer.log(
-    '邊型 $name 不是 map，或 class／forward_field／layer 缺席或非字串，或 reverse_field 非字串，或 direction 存在但不合法，已拒收$detail', // i18n-exempt: 開發者診斷 log
-    name: _tag,
-    level: 900,
-  );
-}
+/// 拒收一律 warning、`error_source` 為 `parse`（解析器判定輸入格式不符）；
+/// 例外物件只進 `developer.log`，不進檔案（FR-06）。
+void _logRejected(
+  LogSink<SchemaLogEvent> log,
+  SchemaLogEvent event, [
+  Object? error,
+]) => log(
+  event,
+  LogFields.empty,
+  level: LogLevel.warning,
+  source: ErrorSource.parse,
+  error: error,
+);
 
 /// `null` 代表型別表中不帶 `carrier_path_patterns` 欄位（規則 3）；
 /// 非 `null` 時逐元素轉成 [CarrierPathPattern]，壞元素拒收並寫日誌，不影響
@@ -137,6 +154,7 @@ void _logRejectedEdgeType(String name, [String detail = '']) {
 List<CarrierPathPattern>? _parseCarrierPathPatterns(
   String typeName,
   dynamic raw,
+  LogSink<SchemaLogEvent> log,
 ) {
   if (raw == null) {
     return null;
@@ -150,6 +168,7 @@ List<CarrierPathPattern>? _parseCarrierPathPatterns(
       typeName,
       pattern,
       map['specificity'],
+      log,
     );
     if (specificity == null) {
       continue;
@@ -159,11 +178,7 @@ List<CarrierPathPattern>? _parseCarrierPathPatterns(
         CarrierPathPattern(pattern: pattern, specificity: specificity),
       );
     } on FormatException catch (error) {
-      developer.log(
-        '型別 $typeName 的 carrier_path_patterns 模式無法編譯，已拒收：$pattern（$error）', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
-      );
+      _logRejected(log, SchemaLogEvent.carrierPatternRejected, error);
     }
   }
   return patterns;
@@ -175,14 +190,11 @@ PathSpecificity? _parseSpecificity(
   String typeName,
   String pattern,
   dynamic raw,
+  LogSink<SchemaLogEvent> log,
 ) {
   final list = raw as List<dynamic>;
   if (list.length != 2) {
-    developer.log(
-      '型別 $typeName 的模式 $pattern specificity 長度應為 2，實得 ${list.length}，已拒收', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 900,
-    );
+    _logRejected(log, SchemaLogEvent.specificityRejected);
     return null;
   }
   return (
@@ -193,7 +205,11 @@ PathSpecificity? _parseSpecificity(
 
 /// 驗證 `id_pattern` 可被 [RegExp] 編譯；不合法者拒收為 `null` 並寫日誌
 /// （0.3.0-W3-531：消費端不應收到無法編譯的字串）。
-String? _parseIdPattern(String typeName, String? raw) {
+String? _parseIdPattern(
+  String typeName,
+  String? raw,
+  LogSink<SchemaLogEvent> log,
+) {
   if (raw == null) {
     return null;
   }
@@ -201,11 +217,7 @@ String? _parseIdPattern(String typeName, String? raw) {
     RegExp(raw);
     return raw;
   } on FormatException catch (error) {
-    developer.log(
-      '型別 $typeName 的 id_pattern 無法編譯，已拒收：$raw（$error）', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 900,
-    );
+    _logRejected(log, SchemaLogEvent.idPatternRejected, error);
     return null;
   }
 }

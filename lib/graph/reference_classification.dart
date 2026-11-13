@@ -1,12 +1,14 @@
 /// SPEC-007 FR-03 引用值有序分類：格式錯誤 → 自我引用 → 斷邊 → 解析成功。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/corpus/corpus_scanner.dart';
 import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
+import 'package:graph_project_docs_manager/graph/graph_log_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_extraction.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/schema/edge_type.dart';
 
 const _flowStepTypeName = 'FlowStep';
@@ -56,7 +58,9 @@ ReferenceClassification classifyGraphReferences({
   required Iterable<EdgeTypeEntry> edgeTypes,
   required Map<String, NodeTypeEntry> nodeTypes,
   void Function()? onIdLookup,
+  LogSink<GraphLogEvent>? logSink,
 }) {
+  final log = logSink ?? defaultGraphLogSink;
   final build = buildLightNodes(rawNodes);
   final graphIds = {for (final node in build.nodes) node.id};
   final duplicateIds = build.duplicateIds;
@@ -89,9 +93,10 @@ ReferenceClassification classifyGraphReferences({
     for (final ref in refs) {
       if (_isClosedBySkipped(ref, closedByPatterns)) {
         skipped++;
-        developer.log(
-          'closed_by skipped: ${ref.sourceId} -> ${ref.value}', // i18n-exempt: debug log
-          name: 'ReferenceClassification',
+        log(
+          GraphLogEvent.closedBySkipped,
+          LogFields.empty,
+          level: LogLevel.debug,
         );
         continue;
       }

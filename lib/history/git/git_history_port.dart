@@ -1,7 +1,7 @@
 /// History 的 git 程序 driven port（SPEC-008 FR-01、FR-08、FR-10）。
 ///
 /// 前置檢查以結束碼與結構化輸出分類，不比對 stderr 文字；掃描行程可取消；
-/// 行程啟動、結束、終止逐點記 `developer.log`（observability 規則 5）。
+/// 行程啟動、結束、終止逐點經 LogSink 記錄（observability 規則 5）。
 library;
 
 import 'dart:async';

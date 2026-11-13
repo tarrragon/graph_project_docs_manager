@@ -26,6 +26,12 @@ enum GraphLogEvent {
 
   /// FR-12 `relationOf` 查詢時圖不可用（與鄰接查詢同形），負載帶原因碼。
   domainUcRelationUnavailable,
+
+  /// FR-09 必要邊要求因其邊型皆未啟用而跳過（debug）。
+  requiredEdgeSkipped,
+
+  /// `closed_by` 引用依略過規則不分類（debug；每筆引用一次，不得高於 debug）。
+  closedBySkipped,
 }
 
 /// 圖不可用日誌的「同一 buildResult 只記一次」登記（與鄰接查詢同形）。

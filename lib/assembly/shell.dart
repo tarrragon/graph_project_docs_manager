@@ -12,7 +12,6 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart' show Icons, Scaffold;
 import 'package:flutter/widgets.dart';
@@ -22,6 +21,9 @@ import '../components/components.dart' as components;
 import '../state/state_holder.dart' show StateHolder;
 import '../l10n/app_localizations.dart';
 import '../app/domain_view_providers.dart';
+import '../observability/log_enums.dart';
+import '../observability/log_values.dart';
+import 'shell_log_event.dart';
 import '../screens/domain_view/domain_view_screen.dart';
 import '../app/domain_view_state.dart';
 import '../app/gate_detection_notifier.dart';
@@ -48,9 +50,8 @@ import '../app/workspace_selection.dart' show projectGenerationProvider;
 import 'destination_pages.dart';
 
 /// 可觀測性（observability 規則 5）：`didChangeAppLifecycleState`
-/// 屬生命週期回調，狀態轉換以 `developer.log` 記錄（開發者診斷字串，
-/// 非使用者可見文字，不進 i18n）。
-const String _tag = 'AppShell';
+/// 屬生命週期回調，狀態轉換經 [shellLogSinkProvider] 記錄（事件碼加 enum
+/// 負載，不含使用者可見文字）。
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -119,10 +120,10 @@ class _AppShellState extends ConsumerState<AppShell>
       ref.read(historyScanInputsWiredProvider.notifier).state = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      developer.log(
-        '首幀 Domain 狀態：${ref.read(domainViewStateProvider).runtimeType}', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 500,
+      ref.read(shellLogSinkProvider)(
+        ShellLogEvent.firstFrameDomainState,
+        LogFields.empty,
+        level: LogLevel.debug,
       );
     });
   }
@@ -134,10 +135,12 @@ class _AppShellState extends ConsumerState<AppShell>
     final repository = ref.read(workspaceRepositoryProvider);
     final state = await repository.restore();
     if (!mounted) return;
-    developer.log(
-      'restore 完成：${state.runtimeType}', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 500,
+    ref.read(shellLogSinkProvider)(
+      ShellLogEvent.workspaceRestored,
+      LogFields({
+        ShellLogKeys.ready: LogValue.boolean(state is WorkspaceReady),
+      }),
+      level: LogLevel.debug,
     );
     ref.read(currentWorkspaceStateProvider.notifier).state = state;
     // 最近專案清單與目前資料夾是否還原成功正交——即使 restore() 未還原到
@@ -214,10 +217,13 @@ class _AppShellState extends ConsumerState<AppShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final previous = ref.read(appLifecycleStateProvider);
-    developer.log(
-      '生命週期狀態轉換：$previous -> $state', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 500,
+    ref.read(shellLogSinkProvider)(
+      ShellLogEvent.lifecycleChanged,
+      LogFields({
+        ShellLogKeys.previous: LogValue.enumValue(previous),
+        ShellLogKeys.current: LogValue.enumValue(state),
+      }),
+      level: LogLevel.debug,
     );
     ref.read(appLifecycleStateProvider.notifier).state = state;
   }
