@@ -19,7 +19,6 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +45,7 @@ import '../../app/domain_view_schema_version.dart';
 import '../../app/domain_view_state.dart';
 import '../../app/project_switcher_providers.dart';
 import 'domain_view_providers.dart';
+import 'domain_view_screen_log_event.dart';
 
 const String _tag = 'DomainViewScreen';
 
@@ -96,18 +96,19 @@ class _DomainViewScreenState extends ConsumerState<DomainViewScreen> {
     if (ref.read(domainViewStateProvider) is! DomainReady) return;
     if (ref.read(scanRoundProvider) is! ScanRoundIdle) return;
     if (ref.read(lastCompletedRoundProvider) != null) return;
+    final log = ref.read(domainViewScreenLogSinkProvider);
     unawaited(
       ref
           .read(scanRoundProvider.notifier)
           .ensureRound()
           .then<void>(
             (_) {},
-            onError: (Object e, StackTrace st) => developer.log(
-              '投影準備中重啟輪次失敗', // i18n-exempt: 開發者 debug log
-              name: _tag,
-              level: 900,
+            onError: (Object e, StackTrace st) => log(
+              DomainViewScreenLogEvent.roundRestartFailed,
+              LogFields.empty,
+              level: LogLevel.error,
+              source: ErrorSource.internal,
               error: e,
-              stackTrace: st,
             ),
           ),
     );
@@ -297,10 +298,11 @@ class _EmptyView extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final workspace = ref.read(currentWorkspaceStateProvider);
     if (workspace is! WorkspaceReady) {
-      developer.log(
-        '未開啟 docs 目錄：workspace 非 WorkspaceReady（${workspace.runtimeType}）', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
+      ref.read(domainViewScreenLogSinkProvider)(
+        DomainViewScreenLogEvent.openDocsWorkspaceNotReady,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.gateBlocked,
       );
       return;
     }
@@ -507,21 +509,24 @@ class _GraphUnavailableBody extends ConsumerWidget {
     return '';
   }
 
-  void _rescan(WidgetRef ref) => unawaited(
-    ref
-        .read(scanRoundProvider.notifier)
-        .rescan()
-        .then<void>(
-          (_) {},
-          onError: (Object e, StackTrace st) => developer.log(
-            '圖不可用列重新掃描失敗', // i18n-exempt: 開發者 debug log
-            name: _tag,
-            level: 900,
-            error: e,
-            stackTrace: st,
+  void _rescan(WidgetRef ref) {
+    final log = ref.read(domainViewScreenLogSinkProvider);
+    unawaited(
+      ref
+          .read(scanRoundProvider.notifier)
+          .rescan()
+          .then<void>(
+            (_) {},
+            onError: (Object e, StackTrace st) => log(
+              DomainViewScreenLogEvent.rescanFailed,
+              LogFields.empty,
+              level: LogLevel.error,
+              source: ErrorSource.internal,
+              error: e,
+            ),
           ),
-        ),
-  );
+    );
+  }
 }
 
 /// `SplitRow.header` 右格內容（`lib/assembly/shell.dart` 接線，見檔頭說明）：

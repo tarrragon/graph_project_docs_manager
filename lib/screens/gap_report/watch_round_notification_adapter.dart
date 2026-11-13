@@ -6,20 +6,26 @@
 /// 判定與發送順序委派 `watch_round_notification.dart`。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/app/corpus_watch_provider.dart';
 import 'package:graph_project_docs_manager/app/scan_scheduler.dart';
 import 'package:graph_project_docs_manager/app/watch_round_notification.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
+
+import 'gap_report_log_event.dart';
 
 /// 以 [ScanNotifier] 實作 [GapsNotificationPort]：撤回走 `withdraw()`，
 /// 發送走權限 gate（SPEC-003 §2.2 權限 gate 三路徑；每次重新查詢授權，
 /// 不快取）。`denied`、請求被拒、發送失敗皆呼叫 [onFallback]（App 內 SnackBar）。
 class ScanNotifierWatchPort implements GapsNotificationPort {
-  const ScanNotifierWatchPort(this._notifier, {this.onFallback});
+  const ScanNotifierWatchPort(this._notifier, {this.onFallback, this.logSink});
 
   final ScanNotifier _notifier;
+
+  /// 日誌輸出點；`null` 用 [defaultGapReportLogSink]。
+  final LogSink<GapReportLogEvent>? logSink;
 
   /// 通知不可用時的 App 內 fallback；`null` 表示不提供。
   final void Function(ScanCompleteNotification notification)? onFallback;
@@ -43,11 +49,11 @@ class ScanNotifierWatchPort implements GapsNotificationPort {
     }
     final result = await _notifier.show(notification);
     if (result == ScanNotificationDelivery.delivered) return;
-    developer.log(
-      // i18n-exempt: 開發者診斷 log
-      '監看輪次系統通知發送失敗（count=$count），改走 SnackBar fallback',
-      name: 'WatchRoundNotification',
-      level: 900,
+    (logSink ?? defaultGapReportLogSink)(
+      GapReportLogEvent.watchNotificationDeliveryFailed,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
     );
     onFallback?.call(notification);
   }

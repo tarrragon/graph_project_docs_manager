@@ -5,8 +5,6 @@
 /// 依 O1 排序的 [GapReportCategory] 清單；空分節不產生。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:graph_project_docs_manager/corpus/node_type_names.dart';
 import 'package:graph_project_docs_manager/corpus/non_domain_paths_reader.dart';
 import 'package:graph_project_docs_manager/corpus/parse_failure_event.dart';
@@ -20,6 +18,11 @@ import 'package:graph_project_docs_manager/graph/graph_built_event.dart';
 import 'package:graph_project_docs_manager/graph/light_node.dart';
 import 'package:graph_project_docs_manager/graph/reference_classification.dart';
 
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+import 'gap_report_log_event.dart';
 import 'gap_report_models.dart';
 
 export 'package:graph_project_docs_manager/diagnostics/gap_item_ids.dart'
@@ -46,8 +49,6 @@ const gapCategoryOrder = <String>[
   gapCategoryIdEventDeclarationMismatch,
 ];
 
-const _tag = 'GapReportProjection';
-
 /// 需求：[SPEC-001 §5 表一～三、〈定案〉O1] 投影破洞為報告分節與項目。
 ///
 /// [nodes] 供查節點路徑與型別（`GraphBuiltEvent.nodes`）；
@@ -60,8 +61,13 @@ List<GapReportCategory> projectGapReport({
   required List<LightNode> nodes,
   required String nonDomainPathsKey,
   EventGapReport eventGaps = const EventGapReport.empty(),
+  LogSink<GapReportLogEvent>? logSink,
 }) {
-  final projector = _Projector(nodes, nonDomainPathsKey);
+  final projector = _Projector(
+    nodes,
+    nonDomainPathsKey,
+    logSink ?? defaultGapReportLogSink,
+  );
   final byCategory = <String, List<GapReportItem>>{
     for (final id in gapCategoryOrder) id: <GapReportItem>[],
   };
@@ -104,13 +110,14 @@ int _compareCodePoints(String a, String b) {
 }
 
 class _Projector {
-  _Projector(List<LightNode> nodes, this._nonDomainPathsKey)
+  _Projector(List<LightNode> nodes, this._nonDomainPathsKey, this._log)
     : _byId = {for (final n in nodes) n.id: n},
       _idByPath = {for (final n in nodes) n.path: n.id};
 
   final Map<String, LightNode> _byId;
   final Map<String, String> _idByPath;
   final String _nonDomainPathsKey;
+  final LogSink<GapReportLogEvent> _log;
 
   final GapItemIdAllocator _ids = GapItemIdAllocator();
 
@@ -152,7 +159,7 @@ class _Projector {
     id: _uniqueId(parseFailureIdComponents(gap)),
     filePath: gap.path,
     lineNumber: gap.lineNumber,
-    description: GapItemDescription(_carrierKind(gap)),
+    description: GapItemDescription(_carrierKind(gap, _log)),
     ambiguousTypes: gap.schemaAmbiguous ? gap.candidateTypes : const [],
   );
 
@@ -180,11 +187,11 @@ class _Projector {
   /// 降級落點（SPEC-001 §5〈定案〉）：節點查不到時，debug 下 assert 並寫
   /// warning log，release 下降為無法指向任何節點且不提供開檔。
   void _reportUnresolvedNode(String subclass, String nodeId) {
-    developer.log(
-      // i18n-exempt: 開發者診斷 log
-      'projection: node not found subclass=$subclass id=$nodeId',
-      name: _tag,
-      level: 900,
+    _log(
+      GapReportLogEvent.nodeNotFound,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.internal,
     );
     assert(false, 'projection: node not found subclass=$subclass id=$nodeId');
   }
@@ -504,15 +511,18 @@ GapDescriptionKind _malformedKind(MalformedReason reason) => switch (reason) {
 
 /// EVT-CORPUS-003 型別化原因碼 → 項目說明識別名（與七個 `gapParse*` key
 /// 一對一；`unreadable` 依子原因分三個）。
-GapDescriptionKind _carrierKind(CarrierParseFailureGap gap) {
+GapDescriptionKind _carrierKind(
+  CarrierParseFailureGap gap,
+  LogSink<GapReportLogEvent> log,
+) {
   if (gap.failureReason == CarrierParseFailureReason.unreadable &&
       gap.unreadableReason == null) {
     // 一致性 assert 已在 gap 建構時擋下；release 下退回編碼說明並記 warning。
-    developer.log(
-      // i18n-exempt: 開發者診斷 log
-      'projection: unreadable gap without sub-reason path=${gap.path}',
-      name: _tag,
-      level: 900,
+    log(
+      GapReportLogEvent.unreadableGapWithoutSubReason,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.internal,
     );
   }
   return _carrierKindOf(gap);

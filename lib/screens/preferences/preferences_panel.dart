@@ -9,11 +9,11 @@
 /// 持久化值不改寫，直到使用者點選（SPEC-001 §9〈預設值與持久化〉）。
 library;
 
-import 'dart:developer' as developer;
-
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import '../../components/attention_level.dart';
 import '../../components/components.dart';
@@ -22,8 +22,7 @@ import '../../services/macos_preferences_channel.dart';
 import '../../state/state_holder.dart';
 import '../../tokens/tokens.dart';
 import '../../workspace/editor_preference.dart';
-
-const String _tag = 'PreferencesPanel';
+import 'preferences_log_event.dart';
 
 /// 面板開合；`true` 時由組裝根掛載 [PreferencesPanel]。
 final preferencesOpenProvider = stateHolderProvider<bool>((ref) => false);
@@ -66,9 +65,12 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
       for (final spec in editorTable)
         if (await probe.hasHandler(spec.scheme)) spec,
     ];
-    developer.log(
-      '偵測完成：stored=$storedId available=${available.map((s) => s.id)}', // i18n-exempt: 開發者診斷 log
-      name: _tag,
+    ref.read(preferencesLogSinkProvider)(
+      PreferencesLogEvent.editorsDetected,
+      LogFields({
+        PreferencesLogKeys.availableCount: LogValue.integer(available.length),
+      }),
+      level: LogLevel.debug,
     );
     if (!mounted) return;
     setState(() {
@@ -91,12 +93,18 @@ class _PreferencesPanelState extends ConsumerState<PreferencesPanel> {
     final l10n = AppLocalizations.of(context);
     // await 前取得 notifier：寫入期間面板可能因 Esc 卸載，之後不可再用 ref。
     final openHolder = ref.read(preferencesOpenProvider.notifier);
+    final log = ref.read(preferencesLogSinkProvider);
     final saved = await ref.read(editorPreferenceStoreProvider).write(editorId);
-    developer.log(
-      '選定編輯器：$editorId saved=$saved', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: saved ? 800 : 900,
-    );
+    if (saved) {
+      log(PreferencesLogEvent.editorSaved, LogFields.empty);
+    } else {
+      log(
+        PreferencesLogEvent.editorSaveFailed,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+      );
+    }
     if (mounted) {
       AppSnackBar.show(
         context,

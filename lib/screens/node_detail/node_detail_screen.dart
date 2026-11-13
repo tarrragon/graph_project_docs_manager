@@ -9,12 +9,14 @@
 /// （`lib/assembly/shell.dart` 接線）。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 import '../../components/attention_level.dart';
 import '../../app/project_unready_view.dart';
@@ -36,6 +38,7 @@ import 'node_detail_edit_notifier.dart'
     show nodeDetailEditProvider, nodeDetailAcceptedValuesProvider;
 import 'node_detail_edit_view.dart';
 import 'node_detail_fixtures.dart';
+import 'node_detail_log_event.dart';
 import 'node_detail_providers.dart';
 import 'node_detail_state.dart';
 
@@ -357,13 +360,20 @@ class _MissingView extends ConsumerWidget {
   ///   SnackBar `sourceFileUnparsableMessage`。
   Future<void> _refresh(BuildContext context, WidgetRef ref) async {
     final l10n = AppLocalizations.of(context);
-    // i18n-exempt: debug log
-    developer.log('refresh start: $lastKnownPath', name: _tag);
-    final outcome = _readOutcome();
-    // i18n-exempt: debug log
-    developer.log(
-      'refresh result: ${outcome?.kind.name ?? 'missing'}',
-      name: _tag,
+    final log = ref.read(nodeDetailLogSinkProvider);
+    log(
+      NodeDetailLogEvent.refreshStarted,
+      LogFields.empty,
+      level: LogLevel.debug,
+    );
+    final outcome = _readOutcome(log);
+    log(
+      NodeDetailLogEvent.refreshClassified,
+      LogFields({
+        if (outcome != null)
+          NodeDetailLogKeys.outcomeKind: LogValue.enumValue(outcome.kind),
+      }),
+      level: LogLevel.debug,
     );
     if (outcome is Available) {
       ref.read(nodeDetailStateProvider.notifier).state = NodeDetailReady(
@@ -383,7 +393,8 @@ class _MissingView extends ConsumerWidget {
   }
 
   /// 檔案不存在回傳 null；存在則讀取位元組分類，讀取失敗視為解析失敗。
-  ParseOutcome? _readOutcome() => readRefreshOutcome(lastKnownPath);
+  ParseOutcome? _readOutcome(LogSink<NodeDetailLogEvent> log) =>
+      readRefreshOutcome(lastKnownPath, logSink: log);
 }
 
 /// 重新整理的讀檔分類；[readBytes] 為測試接縫（預設同步讀檔），讓測試能
@@ -393,14 +404,20 @@ class _MissingView extends ConsumerWidget {
 ParseOutcome? readRefreshOutcome(
   String path, {
   Uint8List Function(File file)? readBytes,
+  LogSink<NodeDetailLogEvent>? logSink,
 }) {
   final file = File(path);
   if (!file.existsSync()) return null;
   try {
     return classifyFrontmatter((readBytes ?? _readSync)(file));
   } on FileSystemException catch (error) {
-    // i18n-exempt: debug log
-    developer.log('refresh read failed: $error', name: _tag, level: 900);
+    (logSink ?? defaultNodeDetailLogSink)(
+      NodeDetailLogEvent.refreshReadFailed,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
+      error: error,
+    );
     return ParseOutcome.unreadable(reasonForFileSystemFailure(error));
   }
 }

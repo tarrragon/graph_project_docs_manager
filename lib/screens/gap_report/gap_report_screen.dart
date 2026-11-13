@@ -25,7 +25,12 @@ import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/stale_open_result.dart';
 import '../../app/uc_flow_focus.dart';
 import '../../app/jump_targets.dart';
+
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
 import 'gap_report_descriptions.dart';
+import 'gap_report_log_event.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 import 'scan_notification_controller.dart';
@@ -461,28 +466,43 @@ class _LocatableGapItemState extends ConsumerState<_LocatableGapItem> {
 
   /// 捲動至目標並請求焦點；兩個結果皆於完成後記錄實際值（非「已請求」）。
   Future<void> _locate() async {
-    final id = widget.item.id;
     if (!mounted) return;
+    // await 與 post-frame 之後元件可能已卸載，故先取得 sink。
+    final log = ref.read(gapReportLogSinkProvider);
     await Scrollable.ensureVisible(context, alignment: 0.1);
     if (!mounted) {
-      // i18n-exempt: 開發者診斷 log
-      logClickPath('locate-scroll', 'itemId=$id unmounted', _tag);
+      log(
+        GapReportLogEvent.clickLocateScroll,
+        LogFields({GapReportLogKeys.mounted: LogValue.boolean(false)}),
+        level: LogLevel.debug,
+      );
       return;
     }
-    // i18n-exempt: 開發者診斷 log
-    logClickPath('locate-scroll', 'itemId=$id visible=${_isVisible()}', _tag);
+    log(
+      GapReportLogEvent.clickLocateScroll,
+      LogFields({
+        GapReportLogKeys.mounted: LogValue.boolean(true),
+        GapReportLogKeys.visible: LogValue.boolean(_isVisible()),
+      }),
+      level: LogLevel.debug,
+    );
     _focusNode.requestFocus();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
-        // i18n-exempt: 開發者診斷 log
-        logClickPath('locate-focus', 'itemId=$id unmounted', _tag);
+        log(
+          GapReportLogEvent.clickLocateFocus,
+          LogFields({GapReportLogKeys.mounted: LogValue.boolean(false)}),
+          level: LogLevel.debug,
+        );
         return;
       }
-      logClickPath(
-        'locate-focus',
-        // i18n-exempt: 開發者診斷 log
-        'itemId=$id hasFocus=${_focusNode.hasFocus}',
-        _tag,
+      log(
+        GapReportLogEvent.clickLocateFocus,
+        LogFields({
+          GapReportLogKeys.mounted: LogValue.boolean(true),
+          GapReportLogKeys.hasFocus: LogValue.boolean(_focusNode.hasFocus),
+        }),
+        level: LogLevel.debug,
       );
     });
     WidgetsBinding.instance.ensureVisualUpdate();

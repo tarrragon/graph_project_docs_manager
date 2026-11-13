@@ -6,7 +6,6 @@
 library;
 
 import 'dart:async';
-import 'dart:developer' as developer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:graph_project_docs_manager/app/corpus_watch_provider.dart';
@@ -21,10 +20,13 @@ import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 import '../../app/graph_status.dart';
 import '../../app/router.dart';
 import '../../tokens/motion.dart';
+
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+
+import 'gap_report_log_event.dart';
 import 'gap_report_models.dart';
 import 'gap_report_round_state.dart';
-
-const String _tag = 'GapReportNotifier';
 
 /// 破洞報告畫面狀態機。
 ///
@@ -297,6 +299,7 @@ class GapReportNotifier extends Notifier<GapReportState> {
     return gapReportStateFromRound(
       round.result,
       nonDomainPathsKey: _nonDomainPathsKeyOf(round.result),
+      logSink: ref.read(gapReportLogSinkProvider),
     );
   }
 
@@ -310,10 +313,11 @@ class GapReportNotifier extends Notifier<GapReportState> {
         ? null
         : typeTableFromJson(builtin).nonDomainPathsKey;
     if (fromBuiltin == null) {
-      developer.log(
-        '專案與內建型別表都沒有 non_domain_paths_key', // i18n-exempt: 開發者 debug log
-        name: _tag,
-        level: 900,
+      ref.read(gapReportLogSinkProvider)(
+        GapReportLogEvent.nonDomainPathsKeyMissing,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.internal,
       );
     }
     return fromBuiltin ?? '';

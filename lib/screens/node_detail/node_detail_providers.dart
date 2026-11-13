@@ -4,10 +4,12 @@
 /// [NodeDetailFixtures] 只供測試以 `overrideWithValue` 注入。
 library;
 
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:graph_project_docs_manager/corpus/frontmatter_classifier.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +20,7 @@ import '../../graph/graph_built_event.dart';
 import '../../workspace/current_workspace_provider.dart';
 import '../../workspace/open_path_resolver.dart';
 import 'node_detail_fixtures.dart';
+import 'node_detail_log_event.dart';
 import 'node_detail_state.dart';
 
 /// 目前畫面狀態；預設 `NodeDetailUnset`（未選節點）。測試以 `overrideWith`
@@ -94,19 +97,23 @@ final nodeDetailBodyProvider = Provider.family<String?, String>((ref, nodeId) {
     ref.watch(currentWorkspaceStateProvider),
     node.filePath,
   );
-  return path == null ? null : _readBodyOrNull(path);
+  return path == null
+      ? null
+      : _readBodyOrNull(path, ref.read(nodeDetailLogSinkProvider));
 });
 
-String? _readBodyOrNull(String path) {
+String? _readBodyOrNull(String path, LogSink<NodeDetailLogEvent> log) {
   try {
     final file = File(path);
     if (!file.existsSync()) return null;
     return bodyLinesAfterFrontmatter(file.readAsBytesSync())?.join('\n');
   } on FileSystemException catch (error) {
-    developer.log(
-      '節點本文讀取失敗：$path（$error）', // i18n-exempt: 開發者診斷 log
-      name: 'node_detail',
-      level: 900,
+    log(
+      NodeDetailLogEvent.bodyReadFailed,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
+      error: error,
     );
     return null;
   }
