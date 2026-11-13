@@ -315,6 +315,18 @@ domain_bundle_tests:
       - test/unit/schema/edge_type_decoding_test.dart
       - test/unit/schema/edge_type_undirected_test.dart
 
+  - bundle: Observability
+    layer: L0
+    invariants:
+      - Bundle 不變式清單（docs/spec/observability/domain-map.md §3）逐條對應的案例見 docs/test-design/SPEC-010-test-design.md §4.3
+    tests:  # SPEC-010（1.0.0-W3-553.2.5 測試設計）；本列由 1.1.0-W1-111.1 補登，O3-12 為 1.1 起
+      - test/unit/observability/log_record_encoder_test.dart
+      - test/unit/observability/log_values_test.dart
+      - test/unit/observability/log_writer_test.dart
+      - test/observability_contract_test.dart
+      - test/unit/app/global_error_handling_test.dart
+      - test/integration/observability_log_rotation_test.dart
+
   - bundle: Corpus
     layer: L1
     invariants:

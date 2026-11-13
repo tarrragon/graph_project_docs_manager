@@ -4,8 +4,8 @@ title: "Structured log 與錯誤來源分類"
 status: draft
 source_proposal: null            # 來源非提案：由 1.0.0-W3-553 子決策 3 與 1.0.0-W3-553.2 八項裁定新建
 created: "2026-11-10"
-updated: "2026-11-10"
-version: "1.1"
+updated: "2026-11-13"
+version: "1.2"
 owner: star-anise-system-designer
 has_functional_requirements: true
 
@@ -116,6 +116,7 @@ depends_on_domains: []
 | 整數 | JSON number | 計數、行號、結束碼、`osError.errorCode`、耗時毫秒 |
 | 布林 | JSON boolean | 旗標 |
 | 工作區相對路徑 | 以 `/` 分隔的相對路徑字串 | 檔案識別 |
+| 工作區相對路徑清單（1.1 起） | 字串陣列，每個元素依「工作區相對路徑」序列化 | 一次操作涉及多個檔（例：SPEC-009 FR-07 多檔寫入的 `writeAccepted`、`writePartiallyWritten`） |
 | 欄位名 | 字串 | frontmatter 欄位名、邊型名 |
 | 節點 ID | 字串 | `SPEC-007`、`UC-03`、ticket ID |
 | commit SHA | 40 字元小寫十六進位字串（`0-9a-f`） | git 物件識別 |
@@ -124,6 +125,7 @@ depends_on_domains: []
 
 - **路徑一律記工作區相對路徑**。絕對路徑含 `/Users/<name>/`，使用者貼出 log 求助時會外洩帳號名稱。工作區外的路徑（例如 App 自己的設定檔、`git` 執行檔位置）不記路徑字串，只記一個 enum 說明是哪一類位置。
 - 工作區相對路徑由呼叫端以「工作區根路徑 + 絕對路徑」建構；建構時路徑不在根之下即建構失敗，改記 `LogLocation` 的值。本規格不依賴 Workspace domain，根路徑以純值傳入。
+- 工作區相對路徑清單（1.1 起）的元素逐一依「工作區相對路徑」建構與驗證，清單本身不收字串。某個元素建構失敗時，該位置改記 `LogLocation` 的值名稱，其餘元素照常記錄，元素順序與呼叫端傳入的順序相同。理由：清單若直接收字串，絕對路徑可經由清單繞過單一路徑的建構檢查進入記錄。
 - 欄位名與節點 ID 是唯二收字串的包裝型別，建構時以本規格寫明的字元集驗證，不符者建構失敗，改記 `LogIdentityRejected` 的值。字元集寫在本規格、不引用 Schema 的 `id_pattern` 或其他 domain 的定義：引用即成為 Observability 對該 domain 的依賴，而該 domain 已依賴 Observability，會形成循環（domain-map §2〈無出邊是不變式〉）。
 
 | 包裝型別 | 允許字元 | 長度 |
@@ -152,6 +154,7 @@ depends_on_domains: []
 
 - [ ] 以 `String` 作為 `fields` 值無法通過編譯
 - [ ] 工作區外的絕對路徑無法建構為工作區相對路徑
+- [ ] 工作區相對路徑清單中含工作區外的絕對路徑時，該位置記為 `LogLocation` 的值名稱，其餘元素照常記錄（1.1 起；正向對照：全部元素都在工作區內時逐一記錄相對路徑）
 - [ ] 帶例外物件的記錄，檔案內容不含例外的 `toString()` 結果（測試以內含標記字串的例外訊息作為正向對照）
 
 ---
@@ -309,5 +312,6 @@ typedef LogSink<E extends Enum> = void Function(
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
+| 1.2 | 2026-11-13 | FR-03：新增包裝型別「工作區相對路徑清單」（1.1 起），元素逐一依工作區相對路徑建構與驗證，失敗元素改記 `LogLocation`；驗收補一條。理由：SPEC-009 v1.9 起的 `writePartiallyWritten`「未還原的路徑清單」與 v1.13 多檔 `writeAccepted` 都需要清單型別，原白名單沒有（主控裁定，規劃期缺口依規則 3 本波補上，`1.1.0-W1-111.1`）。實作併入 SPEC-009 多檔整批閘門的實作票 acceptance |
 | 1.1 | 2026-11-10 | FR-03：commit SHA 限小寫，大寫建構失敗（主控裁定）；FR-05：輪替門檻與保留檔數由建構參數注入，生產預設不變（1.0.0-W3-553.2.5 測試設計審查） |
 | 1.0 | 2026-11-10 | 初始版本（1.0.0-W3-553.2.1） |
