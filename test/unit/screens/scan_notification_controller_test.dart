@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'dart:collection' show ListBase;
 
 import 'package:flutter/material.dart' show SnackBar;
 import 'package:flutter/widgets.dart';
@@ -18,15 +19,11 @@ import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/assembly/shell.dart' show AppShell;
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart'
     show UndeterminedGapReason;
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
+import 'package:graph_project_docs_manager/screens/gap_report/gap_report_log_event.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_models.dart';
 import 'package:graph_project_docs_manager/screens/gap_report/gap_report_provider.dart';
-import 'package:graph_project_docs_manager/screens/gap_report/scan_notification_controller.dart'
-    show
-        clickPathLogSink,
-        defaultClickPathLogSink,
-        defaultWithdrawLogSink,
-        withdrawLogPrefix,
-        withdrawLogSink;
 import 'package:graph_project_docs_manager/services/scan_notifier.dart';
 import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
 import 'package:graph_project_docs_manager/services/scan_notifier_provider.dart';
@@ -302,10 +299,8 @@ void main() {
     );
 
     testWidgets('點擊通知：點擊路徑日誌事件依序出現', (tester) async {
-      final logs = <String>[];
-      clickPathLogSink = (message, name) => logs.add(message);
-      addTearDown(() => clickPathLogSink = defaultClickPathLogSink);
-      final fixture = await _pumpFixture(tester);
+      final rec = _Rec();
+      final fixture = await _pumpFixture(tester, rec: rec);
       fixture.container.read(selectedDestinationProvider.notifier).state =
           AppDestination.tickets;
       fixture.gapNotifier.complete(_foundThreeItems);
@@ -317,17 +312,27 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      const expected = [
-        'click-path:activated',
-        'click-path:navigate destination=gaps returnTo=null',
-        'click-path:locate-set itemId=a',
-        'click-path:locate-scroll itemId=a visible=true',
-        'click-path:locate-focus itemId=a hasFocus=true',
-      ];
-      expect(logs.length, expected.length, reason: logs.join('\n'));
-      for (var i = 0; i < expected.length; i++) {
-        expect(logs[i], startsWith(expected[i]));
-      }
+      final clicks = rec.entries
+          .where((e) => e.event.name.startsWith('click'))
+          .toList();
+      expect(clicks.map((e) => e.event).toList(), [
+        GapReportLogEvent.clickActivated,
+        GapReportLogEvent.clickNavigate,
+        GapReportLogEvent.clickLocateSet,
+        GapReportLogEvent.clickLocateScroll,
+        GapReportLogEvent.clickLocateFocus,
+      ]);
+      expect(clicks[0].fields, {GapReportLogKeys.stateFound: true});
+      expect(clicks[1].fields, {GapReportLogKeys.destination: 'gaps'});
+      expect(clicks[3].fields, {
+        GapReportLogKeys.mounted: true,
+        GapReportLogKeys.visible: true,
+      });
+      expect(clicks[4].fields, {
+        GapReportLogKeys.mounted: true,
+        GapReportLogKeys.hasFocus: true,
+      });
+      expect(clicks.every((e) => e.level == LogLevel.debug), isTrue);
       await tester.pump();
     });
 
@@ -354,8 +359,9 @@ void main() {
     Future<_Fixture> pendingWhilePaused(
       WidgetTester tester,
       AppDestination visible,
+      _Rec rec,
     ) async {
-      final fixture = await _pumpFixture(tester);
+      final fixture = await _pumpFixture(tester, rec: rec);
       fixture.container.read(selectedDestinationProvider.notifier).state =
           visible;
       fixture.container.read(appLifecycleStateProvider.notifier).state =
@@ -374,53 +380,55 @@ void main() {
     testWidgets('非前景且可見頁為 gaps：resumed 後 withdraw 恰一次，日誌 lifecycle', (
       tester,
     ) async {
-      final logs = <String>[];
-      withdrawLogSink = (message, name) => logs.add(message);
-      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
-      final fixture = await pendingWhilePaused(tester, AppDestination.gaps);
+      final rec = _Rec();
+      final fixture = await pendingWhilePaused(
+        tester,
+        AppDestination.gaps,
+        rec,
+      );
 
       resume(fixture);
       await tester.pump();
 
       expect(fixture.fake.withdrawCalls, 1);
-      expect(logs, ['${withdrawLogPrefix}lifecycle']);
+      expect(rec.withdrawTriggers, ['lifecycle']);
     });
 
     testWidgets('可見頁為 tickets：resumed 後 withdraw 為 0（正向對照）', (tester) async {
-      final logs = <String>[];
-      withdrawLogSink = (message, name) => logs.add(message);
-      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
-      final fixture = await pendingWhilePaused(tester, AppDestination.tickets);
+      final rec = _Rec();
+      final fixture = await pendingWhilePaused(
+        tester,
+        AppDestination.tickets,
+        rec,
+      );
 
       resume(fixture);
       await tester.pump();
 
       expect(fixture.fake.withdrawCalls, 0);
-      expect(logs, isEmpty);
+      expect(rec.withdrawTriggers, isEmpty);
     });
 
     Future<List<String>> withdrawLogsAfter(
       WidgetTester tester,
       Future<void> Function(_Fixture fixture) action,
     ) async {
-      final logs = <String>[];
-      withdrawLogSink = (message, name) => logs.add(message);
-      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
-      final fixture = await _pumpFixture(tester);
+      final rec = _Rec();
+      final fixture = await _pumpFixture(tester, rec: rec);
       fixture.container.read(selectedDestinationProvider.notifier).state =
           AppDestination.tickets;
       fixture.gapNotifier.complete(_foundThreeItems);
       await tester.pump();
       await action(fixture);
       await tester.pump();
-      return logs;
+      return rec.withdrawTriggers;
     }
 
     testWidgets('撤回觸發日誌 destination', (tester) async {
       final logs = await withdrawLogsAfter(tester, (_) async {
         await tester.tap(find.byKey(const Key('nav-item-gaps')));
       });
-      expect(logs, ['${withdrawLogPrefix}destination']);
+      expect(logs, ['destination']);
     });
 
     testWidgets('撤回觸發日誌 rescan', (tester) async {
@@ -428,7 +436,7 @@ void main() {
         tester,
         (fixture) async => fixture.gapNotifier.rescan(),
       );
-      expect(logs, ['${withdrawLogPrefix}rescan']);
+      expect(logs, ['rescan']);
     });
   });
 
@@ -443,10 +451,9 @@ void main() {
       required WorkspaceState initial,
       required bool pending,
     }) async {
-      final logs = <String>[];
-      withdrawLogSink = (message, name) => logs.add(message);
-      addTearDown(() => withdrawLogSink = defaultWithdrawLogSink);
-      final fixture = await _pumpFixture(tester);
+      final rec = _Rec();
+      final fixture = await _pumpFixture(tester, rec: rec);
+      final logs = rec.withdrawTriggers;
       fixture.container.read(currentWorkspaceStateProvider.notifier).state =
           initial;
       fixture.container.read(selectedDestinationProvider.notifier).state =
@@ -475,7 +482,7 @@ void main() {
       switchTo(fixture, const WorkspaceReady('/b'));
       await tester.pump();
       expect(fixture.fake.withdrawCalls, 1);
-      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+      expect(logs, ['projectSwitch']);
     });
 
     testWidgets('Ready(A) 至 Unset 且有待撤回通知：撤回並記 projectSwitch', (tester) async {
@@ -487,7 +494,7 @@ void main() {
       switchTo(fixture, const WorkspaceUnset());
       await tester.pump();
       expect(fixture.fake.withdrawCalls, 1);
-      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+      expect(logs, ['projectSwitch']);
     });
 
     testWidgets('Ready(A) 至 Unavailable 且有待撤回通知：撤回並記 projectSwitch', (
@@ -501,7 +508,7 @@ void main() {
       switchTo(fixture, unavailable);
       await tester.pump();
       expect(fixture.fake.withdrawCalls, 1);
-      expect(logs, ['${withdrawLogPrefix}projectSwitch']);
+      expect(logs, ['projectSwitch']);
     });
 
     testWidgets('正向對照：Unset 至 Ready（首次設定）不撤回', (tester) async {
@@ -604,15 +611,69 @@ class _Fixture {
   final _ControllableGapReportNotifier gapNotifier;
 }
 
+/// 日誌記錄器：只記事件、負載、等級與來源（SPEC-010 FR-02、FR-04）。
+class _Rec {
+  final entries =
+      <
+        ({
+          GapReportLogEvent event,
+          Map<String, Object> fields,
+          LogLevel level,
+          ErrorSource? source,
+        })
+      >[];
+
+  void call(
+    GapReportLogEvent event,
+    LogFields fields, {
+    LogLevel level = LogLevel.info,
+    ErrorSource? source,
+    Object? error,
+  }) => entries.add((
+    event: event,
+    fields: fields.toJson(),
+    level: level,
+    source: source,
+  ));
+
+  /// 撤回事件的觸發條件名（依序）；`entries` 增長時此列表同步反映。
+  late final List<String> withdrawTriggers = _WithdrawView(this);
+}
+
+class _WithdrawView extends ListBase<String> {
+  _WithdrawView(this._rec);
+  final _Rec _rec;
+
+  List<String> get _items => [
+    for (final e in _rec.entries)
+      if (e.event == GapReportLogEvent.withdrawTriggered)
+        e.fields[GapReportLogKeys.trigger]! as String,
+  ];
+
+  @override
+  int get length => _items.length;
+
+  @override
+  set length(int value) => throw UnsupportedError('唯讀檢視');
+
+  @override
+  String operator [](int index) => _items[index];
+
+  @override
+  void operator []=(int index, String value) => throw UnsupportedError('唯讀檢視');
+}
+
 Future<_Fixture> _pumpFixture(
   WidgetTester tester, {
   FakeScanNotifier? fake,
+  _Rec? rec,
 }) async {
   final resolvedFake = fake ?? FakeScanNotifier();
   final gapNotifierInstance = _ControllableGapReportNotifier();
   await pumpApp(
     tester,
     overrides: [
+      if (rec != null) gapReportLogSinkProvider.overrideWithValue(rec.call),
       scanNotifierProvider.overrideWithValue(resolvedFake),
       gapReportProvider.overrideWith(() => gapNotifierInstance),
     ],

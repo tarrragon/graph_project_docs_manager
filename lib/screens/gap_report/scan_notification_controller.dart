@@ -9,9 +9,10 @@
 library;
 
 import 'dart:async' show StreamSubscription, unawaited;
-import 'dart:developer' as developer;
 
 import 'package:flutter/widgets.dart';
+import 'package:graph_project_docs_manager/observability/log_enums.dart';
+import 'package:graph_project_docs_manager/observability/log_values.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,41 +28,12 @@ import '../../services/scan_notifier.dart';
 import '../../services/scan_notifier_provider.dart';
 import '../../workspace/workspace_types.dart';
 import '../../workspace/current_workspace_provider.dart';
+import 'gap_report_log_event.dart';
 import 'gap_report_models.dart';
 import 'gap_report_provider.dart';
 
-const String _tag = 'ScanNotificationController';
-
-/// 點擊通知路徑的日誌事件前綴（SPEC-003 §2.2「點擊通知的導向」列）。
-/// 事件依序為 `activated`、`navigate`、`locate-set`（或 `locate-skip`）、
-/// `locate-scroll`、`locate-focus`。
-const String clickPathLogPrefix = 'click-path:';
-
-/// 點擊路徑日誌的輸出點；預設寫入 `developer.log`，測試可替換為記錄器
-/// 以機械驗證事件順序（結束後須還原為 [defaultClickPathLogSink]）。
-void Function(String message, String name) clickPathLogSink =
-    defaultClickPathLogSink;
-
-void defaultClickPathLogSink(String message, String name) =>
-    developer.log(message, name: name); // i18n-exempt: 開發者診斷 log
-
-/// 記錄一則點擊路徑事件。
-void logClickPath(String event, String detail, String name) =>
-    clickPathLogSink('$clickPathLogPrefix$event $detail', name);
-
-/// 撤回通知的觸發條件（SPEC-003 §2.2「可觀測性」列）。
+/// 撤回通知的觸發條件（SPEC-003 §2.2「可觀測性」列）；撤回事件負載帶本 enum。
 enum WithdrawTrigger { destination, lifecycle, rescan, projectSwitch }
-
-/// 撤回日誌前綴；事件格式為 `withdraw-trigger:<條件名>`。
-const String withdrawLogPrefix = 'withdraw-trigger:';
-
-/// 撤回觸發日誌的輸出點；預設寫入 `developer.log`，測試可替換為記錄器
-/// 斷言四值（結束後須還原為 [defaultWithdrawLogSink]）。
-void Function(String message, String name) withdrawLogSink =
-    defaultWithdrawLogSink;
-
-void defaultWithdrawLogSink(String message, String name) =>
-    developer.log(message, name: name); // i18n-exempt: 開發者診斷 log
 
 /// 命中時定位到的破洞項 id（SPEC-004 §1 locate 列）；`null` 表示無待定位
 /// 項。[GapReportScreen] 消費本值捲動並移入焦點後，清空回 `null`。
@@ -118,7 +90,11 @@ class ScanNotificationController {
     final subscription = _activatedStream.listen(_onActivated);
     _cancelActivatedSubscription = subscription.cancel;
     _watchAdapter = WatchRoundNotificationAdapter(
-      port: ScanNotifierWatchPort(notifier, onFallback: _fallbackToSnackbar),
+      port: ScanNotifierWatchPort(
+        notifier,
+        onFallback: _fallbackToSnackbar,
+        logSink: _ref.read(gapReportLogSinkProvider),
+      ),
       isForeground: () =>
           _ref.read(appLifecycleStateProvider) == AppLifecycleState.resumed,
       isOnGapsPage: () =>
@@ -279,10 +255,11 @@ class ScanNotificationController {
       _pendingWithdrawableState = completed;
       return;
     }
-    developer.log(
-      '系統通知發送失敗（gapCount=${notification.gapCount}），改走 SnackBar fallback', // i18n-exempt: 開發者診斷 log
-      name: _tag,
-      level: 900,
+    _ref.read(gapReportLogSinkProvider)(
+      GapReportLogEvent.notificationDeliveryFailed,
+      LogFields.empty,
+      level: LogLevel.warning,
+      source: ErrorSource.platformIo,
     );
     _fallbackToSnackbar(notification);
   }
@@ -302,10 +279,11 @@ class ScanNotificationController {
   void _showDeniedSnackbar(ScanCompleteNotification notification) {
     final context = _contextProvider();
     if (!context.mounted) {
-      developer.log(
-        'SnackBar fallback 略過：context 已卸載', // i18n-exempt: 開發者診斷 log
-        name: _tag,
-        level: 900,
+      _ref.read(gapReportLogSinkProvider)(
+        GapReportLogEvent.snackbarFallbackSkipped,
+        LogFields.empty,
+        level: LogLevel.warning,
+        source: ErrorSource.internal,
       );
       return;
     }
@@ -328,7 +306,11 @@ class ScanNotificationController {
   }
 
   void _withdraw(WithdrawTrigger trigger) {
-    withdrawLogSink('$withdrawLogPrefix${trigger.name}', _tag);
+    _ref.read(gapReportLogSinkProvider)(
+      GapReportLogEvent.withdrawTriggered,
+      LogFields({GapReportLogKeys.trigger: LogValue.enumValue(trigger)}),
+      level: LogLevel.debug,
+    );
     _pendingWithdrawableState = null;
     unawaited(_ref.read(scanNotifierProvider).withdraw());
   }
@@ -336,23 +318,44 @@ class ScanNotificationController {
   /// 使用者點擊系統通知本體（SPEC-003 §2.2「點擊通知的導向」列）。
   void _onActivated(void _) {
     final state = _ref.read(gapReportProvider);
-    logClickPath('activated', 'state=${state.runtimeType}', _tag);
+    final log = _ref.read(gapReportLogSinkProvider);
+    log(
+      GapReportLogEvent.clickActivated,
+      LogFields({
+        GapReportLogKeys.stateFound: LogValue.boolean(state is GapReportFound),
+      }),
+      level: LogLevel.debug,
+    );
     _pendingWithdrawableState = null;
     navigateTo(_ref.read, AppDestination.gaps, NavIntent.rail);
-    logClickPath(
-      'navigate',
-      'destination=${_ref.read(selectedDestinationProvider).name} '
-          'returnTo=${_ref.read(returnToProvider)}',
-      _tag,
+    final returnTo = _ref.read(returnToProvider);
+    log(
+      GapReportLogEvent.clickNavigate,
+      LogFields({
+        GapReportLogKeys.destination: LogValue.enumValue(
+          _ref.read(selectedDestinationProvider),
+        ),
+        if (returnTo != null)
+          GapReportLogKeys.returnTo: LogValue.enumValue(returnTo),
+      }),
+      level: LogLevel.debug,
     );
     if (state is GapReportFound &&
         state.categories.isNotEmpty &&
         state.categories.first.items.isNotEmpty) {
       final itemId = state.categories.first.items.first.id;
       _ref.read(pendingLocateGapItemProvider.notifier).state = itemId;
-      logClickPath('locate-set', 'itemId=$itemId', _tag);
+      log(
+        GapReportLogEvent.clickLocateSet,
+        LogFields.empty,
+        level: LogLevel.debug,
+      );
     } else {
-      logClickPath('locate-skip', 'state=${state.runtimeType}', _tag);
+      log(
+        GapReportLogEvent.clickLocateSkip,
+        LogFields.empty,
+        level: LogLevel.debug,
+      );
     }
     // 若專案已切換或已進入新一輪掃描，`gapReportProvider` 讀到的已非原本
     // 完成結果（`GapReportScanning` 或已重置），上式的型別檢查天然只在

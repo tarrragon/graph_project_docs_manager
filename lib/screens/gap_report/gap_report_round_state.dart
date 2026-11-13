@@ -11,6 +11,9 @@ import 'package:graph_project_docs_manager/diagnostics/graph_defect_gap.dart';
 import 'package:graph_project_docs_manager/diagnostics/parse_failure_gap.dart';
 import 'package:graph_project_docs_manager/graph/project_path_declaration.dart';
 
+import 'package:graph_project_docs_manager/observability/log_sink.dart';
+
+import 'gap_report_log_event.dart';
 import 'gap_report_models.dart';
 import 'gap_report_projection.dart';
 
@@ -26,6 +29,7 @@ export 'package:graph_project_docs_manager/app/round_gaps.dart'
 GapReportState gapReportStateFromRound(
   ScanRoundResult round, {
   required String nonDomainPathsKey,
+  LogSink<GapReportLogEvent>? logSink,
 }) {
   final resolution = round.schemaResolution;
   final RoundGaps(:parse, :defects, :nodes) = detectRoundGaps(round);
@@ -38,6 +42,7 @@ GapReportState gapReportStateFromRound(
     nodes: nodes,
     nonDomainPathsKey: nonDomainPathsKey,
     eventGaps: detectRoundEventGaps(round),
+    logSink: logSink,
   );
   final declaration = _declarationOf(round);
   final reason = _undeterminedReasonOf(parse, defects);
