@@ -7744,7 +7744,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | 欄位名 | 否 | 1 | 截斷 | `TestCopy.longToken` |
 | 所屬專案 | 否 | 1 | 截斷 | `writeLogProjectLabel` 代入 `TestCopy.longZh` |
 | 寫入結果說明 | 是 | 無上限 | 不截斷（原因說明含「改用外部編輯器」，見〈子件的渲染條件〉） | `fieldBlockedRewriteNotIsolated`（zh、en 中較長者）（1.144） |
-| 驗證不可用原因 | 是 | 無上限 | 不截斷 | `validationUnavailableTimedOut`（zh、en 中較長者）（1.144） |
+| 驗證不可用原因 | 是 | 無上限 | 不截斷 | 五種原因 key 中 zh、en 最長者（現為 `validationUnavailableBaselineNotReady` 的 en）（1.151） |
 | 取回說明小標 | 否 | 1 | 截斷 | `writeLogColumnRestore`（1.144） |
 | 取回說明 | 是 | 無上限 | 不截斷（4.1 `code`） | 有快照的指令代入 `TestCopy.filePath` |
 | 快照期限說明 | 是 | 2 | 末行截斷 | `writeLogSnapshotExpiryNote`（zh、en 較長者） |
@@ -7782,7 +7782,7 @@ editing 與 error 可並存（框色以 error 優先，焦點另以文字游標�
 | 文字 | i18n key |
 |------|---------|
 | 寫入結果 | 徽章 `fieldWriteInProgress`、`writeResultWritten`、`writeResultBlocked`、`writeResultIoFailed`；說明 `writeResultExternallyModified`、`fieldBlockedSnapshotFailed`、`fieldBlockedRewriteNotIsolated`、`fieldIoFailed` |
-| 驗證狀態 | `validationRunning`、`validationPassed`、`validationFailed`、`validationUnavailable` + 原因 `validationUnavailableExecutableMissing`、`validationUnavailableUnexpectedExitCode`、`validationUnavailableUnparsableOutput`、`validationUnavailableTimedOut` |
+| 驗證狀態 | `validationRunning`、`validationPassed`、`validationFailed`、`validationUnavailable` + 原因 `validationUnavailableExecutableMissing`、`validationUnavailableUnexpectedExitCode`、`validationUnavailableUnparsableOutput`、`validationUnavailableTimedOut`、`validationUnavailableBaselineNotReady` |
 | 所屬專案、快照期限、取回說明小標、朗讀 | `writeLogProjectLabel`、`writeLogSnapshotExpiryNote`、`writeLogColumnRestore`、`writeLogRowA11yLabel`（欄名 `writeLogColumnPath`、`writeLogColumnField`、`writeLogColumnResult`、`writeLogColumnValidation`） |
 | 多檔寫入與部分寫入（1.1） | `writeResultPartiallyWritten`、`writeLogPartiallyWrittenNote`、`writeLogBatchFilesLabel`、`writeLogUnrevertedFilesLabel` |
 
@@ -8706,7 +8706,7 @@ zh 文案較短（`編輯欄位` 4 字、`開啟原始檔` 5 字，Ahem 下兩�
 
 | 版本 | 日期 | 變更內容 |
 |------|------|---------|
-| 1.151 | 2026-11-13 | `1.0.0-W3-698`（對齊 SPEC-009 v1.7）：§4.0.6 新增 `validationUnavailableBaselineNotReady`（`unavailable(baselineNotReady)` 的原因）；4.48 提示格與狀態表、4.51 WriteLogRow〈驗證不可用原因〉的原因清單由四種改為五種。「部分寫入」列與〈同批檔案〉未動。 |
+| 1.151 | 2026-11-13 | `1.0.0-W3-698`（對齊 SPEC-009 v1.7）：§4.0.6 新增 `validationUnavailableBaselineNotReady`（`unavailable(baselineNotReady)` 的原因）；4.48 提示格與狀態表、4.51 WriteLogRow〈驗證不可用原因〉的原因清單由四種改為五種，4.51〈i18n〉驗證狀態列補新 key，〈內容政策〉最長測試文案改為五種原因 key 中最長者。「部分寫入」列與〈同批檔案〉未動。 |
 | 1.150 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 3 項（破洞報告的編輯入口，對齊 SPEC-001 v1.93、SPEC-003 v1.97）：4.40 `item` 變體新增可修正破洞項的 trailing：`ButtonRow`（`end`）[`AppButton.text`（`editFieldsAction`，不帶圖示，`action-gaps-edit-<itemId>`，唯讀降級時 disabled）, 開啟原始檔]；slot 契約 `trailing` 接受型別補 `ButtonRow`（限此情形，恰兩鈕）；i18n 朗讀列補兩鈕的 Tab 順序；§3 對照表 §5「有破洞」列與 §4.0.6 `editFieldsAction` 使用處同步；5.14 子件契約補 `ButtonRow`，新增〈可修正破洞項的寬度核對〉（en 最長文案，依通式 Ahem 下列最小寬 439 ≤ `kMinWindowSize` 列寬 724；拉丁字母實機為上界，CJK 不視為上界）與此情形的空間不足策略（primary 截斷吸收、`ButtonRow` 在列內不換行）。4.34 `ButtonRow` 新增 `wrap` 參數（預設 `true`；`false` 只用於 `ListRow.item` trailing）。用途、變體、狀態矩陣來源欄、slot 契約（`wrap` 列，`alignment` 補 `end` 用處）、尺寸契約、組合規則、測試點同步。尺寸契約定義父寬小於固有寬時維持一列，宿主違約的回報直接沿用 `RenderFlex` 的 debug 期溢位回報，不另做自訂回報（避免兩筆回報），release 不記；debug 版 App 經 `installGlobalErrorHandlers` 轉為致命錯誤狀態；不用 `developer.log`，以符合 SPEC-010 FR-04。最大尺寸列排除這種違約情形；也記下實作現況：`Wrap` 在 `ListRow` 內寬度無上限。測試點改為受限父格位下傳與不傳的 E1 對照，以 `tester.takeException()` 取回回報。5.8 空間不足策略補 `wrap: false`，〈不重疊〉的截斷排除 `wrap: false`。5.14 空間不足策略第 2 條的上界改用兩個間距的通式。4.40 測試點補可修正破洞項的形態、寬度與 Tab 順序。§3.1 總表的 `ListRow`、`ButtonRow` 兩列同步。§4.0.9 補 1.150 重驗紀錄（4.40、4.34 依〈契約齊全的定義：六條〉逐條通過）；開頭〈版本〉行補 1.150 摘要。另對齊 SPEC-009 v1.11：4.52 使用處補 UC、EVT `source_proposal`。不新增 key、不新增元件 |
 | 1.149 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 2 項（`partiallyWritten` 的畫面呈現；以 SPEC-009 v1.10 的操作單位為前提，一次寫入最多兩個檔，部分寫入只會是「反向檔已落檔且還原失敗、正向檔未動」）。<br>- 4.48 新增「部分寫入」狀態：提示格依觸發原因取 `fieldPartiallyWritten`（`ioFailed`，再送一次即可補齊）或 `fieldPartiallyWrittenReloadFirst`（`externallyModified`，各值格 disabled，須先放棄並重讀），接 `fieldSeeWriteLogHint`、錯誤色，值不變；補齊依據是已落檔的反向檔不再列入寫入集合；觸發原因為 `externallyModified` 時另進入外部已改阻擋。提示優先序、等待與結果的失敗段、狀態邊、測試點同步。<br>- 4.51 新增 `batchFiles` slot 與〈同批檔案〉子件（`written` 列出同批寫入的檔，`partiallyWritten` 列出未還原的檔，各附取回指令），寫入結果徽章與說明增 `partiallyWritten`；內容政策、焦點順序、測試點同步。多檔寫入整批一列（SPEC-009 FR-08 Q2）。<br>- 4.52 兩格待決解除（SPEC-009 v1.10 F4：移除刪除全部出現，焦點落點依新清單計算）。<br>- §4.0.6 新增六個 key，帶規格先行標記（`1.1.0-W2-003`）；§4.0.9 寫回 |
 | 1.148 | 2026-11-13 | `1.1.0-W1-111` Step 4.5 第 1 項（component-contract-design，起點判定為路徑 A：兩個新元件無實作與呼叫端，來源為 SPEC-009 FR-09 逐欄位表）。<br>- 新增 4.52 `ReferenceChips`（容器，5.20）：FR-09「多值引用（節點 ID）」；加入與移除各為一次立即提交（套用時點四問，與 `1.0.0-W3-675` 同一判法）；找不到的值為值對映參數，提示 `fieldReferenceNotFound`；重複值逐筆顯示，chip 與移除鈕的 key 依位置推導；正向檔多值的寫法待決（SPEC-009 v1.10），`partiallyWritten` 呈現待決（第 2 項）。<br>- 新增 4.53 `AppCheckboxGroup`（容器，5.21）：FR-09「多值引用（domain）」；一次切換為一次立即提交；值域外的值接在最後。<br>- 4.43 `AppCheckbox` 增 `locked`、`enabled`（僅在 4.53 內）。<br>- 4.48 值格清單、`editable`／`readOnly` 判定改為依 FR-09「自」與目前版本，提示格優先序補兩則；5.17 子件類型與最小寬表；4.46〈何時不用〉；§3 兩列；§6 `Chip`、`Checkbox` 兩列。<br>- §4.0.6 新增五個 key，帶規格先行標記（`1.1.0-W2-001`、`1.1.0-W2-002`）。<br>- §4.0.9 寫回重驗結果：4.52 待 SPEC-009 v1.10 與第 2 項。<br>- frontmatter 版號原停在 1.146（1.147 漏改），本版一併更正 |
