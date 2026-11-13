@@ -1274,7 +1274,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get writeLogEmptyMessage =>
-      'No files have been written in the App since it was opened';
+      'No files have been written in the app since it was opened';
 
   @override
   String get writeLogColumnPath => 'Path';
