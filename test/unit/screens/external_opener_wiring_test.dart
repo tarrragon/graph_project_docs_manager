@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'
     show ProviderContainer, ProviderScope;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:graph_project_docs_manager/app/edit_providers.dart';
 import 'package:graph_project_docs_manager/app/router.dart';
 import 'package:graph_project_docs_manager/app/selected_uc.dart';
 import 'package:graph_project_docs_manager/app/workspace_selection.dart';
@@ -207,6 +208,8 @@ void main() {
       await pumpApp(
         tester,
         overrides: [
+          // 不測編輯：隔離正常態編輯入口觸發的真實 git 探測。
+          readonlyWorkspaceReasonProvider.overrideWithValue(null),
           nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
           nodeDetailStateProvider.overrideWithInitial(
             (ref) =>
@@ -333,6 +336,7 @@ void main() {
         await pumpApp(
           tester,
           overrides: [
+            readonlyWorkspaceReasonProvider.overrideWithValue(null),
             nodeDetailNodesProvider.overrideWithValue(NodeDetailFixtures.nodes),
             nodeDetailStateProvider.overrideWithInitial(
               (ref) => const NodeDetailReady(

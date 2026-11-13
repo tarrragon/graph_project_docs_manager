@@ -1096,7 +1096,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editFieldsAction => '編輯欄位';
 
   @override
-  String get nodeDetailEditReadFailedMessage => '無法讀取這個檔案，沒有進入編輯。請稍後再試';
+  String get nodeDetailEditReadFailedMessage => '無法讀取這個檔案，未進入編輯';
 
   @override
   String fieldValueOutOfDomain(String value) {

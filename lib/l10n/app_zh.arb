@@ -1982,7 +1982,7 @@
   "@editFieldsAction": {
     "description": "SPEC-003 §3.6 action-nodeDetail-edit 的標籤"
   },
-  "nodeDetailEditReadFailedMessage": "無法讀取這個檔案，沒有進入編輯。請稍後再試",
+  "nodeDetailEditReadFailedMessage": "無法讀取這個檔案，未進入編輯",
   "@nodeDetailEditReadFailedMessage": {
     "description": "SPEC-003 §3.6 badge-nodeDetail-edit-read-failed：開始編輯讀取失敗（notFound 以外）的說明"
   },

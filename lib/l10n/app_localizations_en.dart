@@ -1180,7 +1180,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nodeDetailEditReadFailedMessage =>
-      'Could not read this file, so editing did not start. Try again later';
+      'Could not read this file, so editing did not start';
 
   @override
   String fieldValueOutOfDomain(String value) {

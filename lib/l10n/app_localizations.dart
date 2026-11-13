@@ -1912,7 +1912,7 @@ abstract class AppLocalizations {
   /// SPEC-003 §3.6 badge-nodeDetail-edit-read-failed：開始編輯讀取失敗（notFound 以外）的說明
   ///
   /// In zh, this message translates to:
-  /// **'無法讀取這個檔案，沒有進入編輯。請稍後再試'**
+  /// **'無法讀取這個檔案，未進入編輯'**
   String get nodeDetailEditReadFailedMessage;
 
   /// SPEC-004 4.48 提示格（4.45、4.46、4.47 的 outOfDomain）
