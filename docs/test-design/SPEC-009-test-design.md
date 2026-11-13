@@ -446,8 +446,8 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | FR-04 | #5 寫入函式不收 `String` | P-9 | 契約（靜態） |
 | FR-05 | #1～#7（#7 為 v1.2 驗證逾時） | 見 V 群組末段 | domain unit；integration |
 | FR-05 | 〈baseline 與寫入的先後〉：baseline 未完成即寫入 → `unavailable(baselineNotReady)`，該次寫入後的問題集合成為下一次 baseline；寫入後驗證 `unavailable` 時保留原 baseline；沒有可用 baseline 時以第一個取得的寫入後問題集合為下一次 baseline（v1.7） | V-19、V-20、V-21；IT-E6-1 改為先等 baseline | domain unit；integration |
-| FR-06 | #1 EVT-CORPUS-001 到達、重讀內容與 M 不同 → 外部已改預警（含重讀得 `notFound`，v1.3） | X-1、X-8、X-9 | domain unit（application 層） |
-| FR-06 | #2 EVT-CORPUS-001 到達、內容與 M 相同時狀態不變（v1.3） | X-2 | domain unit（application 層） |
+| FR-06 | #1 EVT-CORPUS-001 到達、重讀內容與 M 不同 → 外部已改預警（含重讀得 `notFound`，v1.3） | X-1、X-8、X-9 | domain unit（application 層）；widget（畫面層預警橫幅與轉換，`1.0.0-W3-553.16`：`test/unit/screens/node_detail/node_detail_edit_test.dart`） |
+| FR-06 | #2 EVT-CORPUS-001 到達、內容與 M 相同時狀態不變（v1.3） | X-2 | domain unit（application 層）；widget（同上檔） |
 | FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
 | FR-07 | #1、#2；`timedOut` 欄位（v1.2） | 見 L 群組末段；L-11、L-12 | domain unit |
 | FR-08 | #1～#4 | 見 C 群組末段 | domain unit；integration；widget（寫入清單面板與側欄項，`1.0.0-W3-553.17`：`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`、`test/unit/app/write_list_providers_test.dart`） |
