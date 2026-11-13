@@ -3,7 +3,12 @@
 // 面板只讀取。
 library;
 
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
+import 'package:graph_project_docs_manager/app/project_switcher_providers.dart'
+    show folderNameOf;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,7 +20,10 @@ import 'package:graph_project_docs_manager/components/components.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/l10n/app_localizations_zh.dart';
 import 'package:graph_project_docs_manager/screens/write_log/write_log_panel.dart';
+import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
+import 'package:graph_project_docs_manager/workspace/current_workspace_provider.dart';
+import 'package:graph_project_docs_manager/workspace/workspace_types.dart';
 
 import '../../helpers/helpers.dart';
 import '../../helpers/spec009/edit_gate_harness.dart';
@@ -38,6 +46,7 @@ Future<(ProviderContainer, EditHarness, EditSession)> _pumpOpen(
   WidgetTester tester, {
   FakeValidatorPort? validator,
   Map<String, String> nodeIds = const {},
+  String? currentRoot,
 }) async {
   final h = await tester.runAsync(
     () => EditHarness.create(validator: validator ?? FakeValidatorPort()),
@@ -50,6 +59,9 @@ Future<(ProviderContainer, EditHarness, EditSession)> _pumpOpen(
       editWorkspaceProvider.overrideWith((ref) async => h.workspace),
       writeListNodeIdByPathProvider.overrideWithValue(nodeIds),
       writeLogOpenProvider.overrideWithInitial((_) => true),
+      currentWorkspaceStateProvider.overrideWithInitial(
+        (_) => WorkspaceReady(currentRoot ?? h.root),
+      ),
     ],
   );
   await tester.runAsync(() => container.read(editWorkspaceProvider.future));
@@ -194,6 +206,77 @@ void main() {
     );
     expect(container.read(nodeDetailTargetProvider), 'SPEC-900');
     expect(container.read(returnToProvider), AppDestination.gaps);
+  });
+
+  testWidgets('#62 失敗列：blocked、ioFailed 成列並顯示結果與說明，無取回說明', (tester) async {
+    final (_, h, session) = await _pumpOpen(tester);
+    await tester.runAsync(() async {
+      h.files.resetCounters();
+      h.files.readScript[1] = const EditFileException(errorCode: 13);
+      await session.writeField(field: 'title', newValue: 'a');
+      h.files.resetCounters();
+      h.files.readScript[1] = Uint8List.fromList([1, 2, 3]);
+      await session.writeField(field: 'title', newValue: 'b');
+    });
+    await tester.pump();
+
+    expect(find.byType(WriteLogRow), findsNWidgets(2));
+    expect(find.text(_l10n.writeResultIoFailed), findsOneWidget);
+    expect(find.text(_l10n.writeResultBlocked), findsOneWidget);
+    expect(find.text(_l10n.writeResultExternallyModified), findsOneWidget);
+    expect(find.byKey(WriteLogRow.validationBadgeKey), findsNothing);
+    expect(find.textContaining('git checkout HEAD'), findsNothing);
+  });
+
+  testWidgets('#62 寫入中：發出後到受理前該列顯示寫入中，受理後原地更新', (tester) async {
+    final (_, h, session) = await _pumpOpen(tester);
+    final gate = Completer<Uint8List>();
+    h.files.resetCounters();
+    h.files.readScript[1] = gate.future;
+    late Future<Object?> pending;
+    await tester.runAsync(() async {
+      pending = session.writeField(field: 'title', newValue: 'a');
+      await Future<void>.delayed(Duration.zero);
+    });
+    await tester.pump();
+    expect(find.text(_l10n.fieldWriteInProgress), findsOneWidget);
+
+    await tester.runAsync(() async {
+      gate.complete(h.target);
+      await pending;
+      await session.validationIdle;
+    });
+    await tester.pump();
+    expect(find.text(_l10n.fieldWriteInProgress), findsNothing);
+    expect(find.text(_l10n.writeResultWritten), findsOneWidget);
+  });
+
+  testWidgets('#62 每列附所屬專案名稱；切換專案後保留，非目前專案列的路徑不可點', (tester) async {
+    final (container, h, session) = await _pumpOpen(
+      tester,
+      nodeIds: {targetRelative: 'SPEC-900'},
+    );
+    await _write(tester, session, 'title', 'x');
+    expect(
+      find.text(_l10n.writeLogProjectLabel(folderNameOf(h.root))),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('action-writeLog-goto-node-0')),
+      findsOneWidget,
+    );
+
+    container.read(currentWorkspaceStateProvider.notifier).state =
+        const WorkspaceReady('/elsewhere/other-project');
+    await tester.pump();
+
+    expect(find.byType(WriteLogRow), findsOneWidget);
+    expect(
+      find.text(_l10n.writeLogProjectLabel(folderNameOf(h.root))),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('action-writeLog-goto-node-0')), findsNothing);
+    expect(find.text(targetRelative), findsWidgets);
   });
 
   testWidgets('#62 路徑查不到節點：不渲染為可點（正向對照：查得時有按鈕）', (tester) async {

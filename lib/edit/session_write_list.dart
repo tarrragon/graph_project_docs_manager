@@ -9,15 +9,26 @@ class WriteListEntry {
     required this.relativePath,
     required this.field,
     required this.nodeId,
-    required this.snapshotSha,
+    required this.workspaceRoot,
   });
 
   final String relativePath;
   final String field;
   final String nodeId;
-  final String? snapshotSha;
 
-  /// 尚無驗證器時為 null；否則 `running` 之後為終態。
+  /// 所屬專案：寫入發出時的工作區根（SPEC-001 §12〈切換專案〉）。
+  final String workspaceRoot;
+
+  /// 寫入的受理結果；發出後到受理前為 null（寫入中），之後為終態。
+  WriteResult? result;
+
+  /// `written` 且有快照時的快照 SHA；其餘為 null。
+  String? get snapshotSha {
+    final r = result;
+    return r is Written ? r.snapshotSha : null;
+  }
+
+  /// 尚無驗證器或結果不是 `written` 時為 null；否則 `running` 之後為終態。
   ValidationStatus? validationStatus;
 
   @override
@@ -25,7 +36,7 @@ class WriteListEntry {
       // i18n-exempt
       'WriteListEntry($relativePath, $field, $nodeId, '
       // i18n-exempt
-      'snapshot: ${snapshotSha ?? '-'}, status: ${validationStatus ?? '-'})';
+      'result: ${result ?? 'writing'}, status: ${validationStatus ?? '-'})';
 }
 
 /// 需求：[SPEC-009 FR-08] 本 App session 內寫過的檔案與欄位清單，跨編輯
@@ -42,20 +53,27 @@ class SessionWriteList {
   /// 清單內容或某列狀態變動。
   Stream<void> get changes => _changes.stream;
 
-  WriteListEntry record({
+  /// 寫入發出即建列（寫入中，[WriteListEntry.result] 為 null）。
+  WriteListEntry begin({
     required String relativePath,
     required String field,
-    required String? snapshotSha,
+    required String workspaceRoot,
   }) {
     final entry = WriteListEntry(
       relativePath: relativePath,
       field: field,
       nodeId: nodeIdOf(relativePath),
-      snapshotSha: snapshotSha,
+      workspaceRoot: workspaceRoot,
     );
     _entries.add(entry);
     _changes.add(null);
     return entry;
+  }
+
+  /// 受理結果回來：就地更新同一列。
+  void settle(WriteListEntry entry, WriteResult result) {
+    entry.result = result;
+    _changes.add(null);
   }
 
   void updateStatus(WriteListEntry entry, ValidationStatus status) {

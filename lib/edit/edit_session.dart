@@ -35,8 +35,12 @@ class EditGateContext {
     required this.now,
     required this.rewriter,
     required this.writeList,
+    required this.workspaceRoot,
     this.validator,
   });
+
+  /// 所屬專案（工作區根），寫入清單的列據此標示所屬專案。
+  final String workspaceRoot;
 
   final EditFilePort files;
   final EditGitRunner git;
@@ -162,24 +166,21 @@ class EditSession {
     required String field,
     required String? newValue,
   }) async {
+    final entry = _context.writeList.begin(
+      relativePath: _path.relative,
+      field: field,
+      workspaceRoot: _context.workspaceRoot,
+    );
     final result = await _gatedWrite(field, newValue);
+    _context.writeList.settle(entry, result);
     _observations.add(WriteAccepted(result));
     if (result is Written) {
-      _recordWrite(field, result);
+      if (_validation != null) _awaitingValidation.add(entry);
       _validation?.validateAfterWrite(
         baselineWasPending: _baselinePendingAtRename,
       );
     }
     return result;
-  }
-
-  void _recordWrite(String field, Written written) {
-    final entry = _context.writeList.record(
-      relativePath: _path.relative,
-      field: field,
-      snapshotSha: written.snapshotSha,
-    );
-    if (_validation != null) _awaitingValidation.add(entry);
   }
 
   /// 驗證依序完成：`running` 屬最新一次寫入，終態依先進先出對應各列。

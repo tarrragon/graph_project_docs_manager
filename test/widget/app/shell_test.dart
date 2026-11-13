@@ -35,6 +35,7 @@ import 'package:graph_project_docs_manager/services/macos_preferences_channel.da
 import 'package:graph_project_docs_manager/screens/shortcuts/shortcuts_panel.dart';
 import 'package:graph_project_docs_manager/screens/write_log/write_log_panel.dart';
 import 'package:graph_project_docs_manager/app/edit_providers.dart';
+import 'package:graph_project_docs_manager/edit/edit_file_port.dart';
 import 'package:graph_project_docs_manager/edit/edit_session.dart';
 import 'package:graph_project_docs_manager/state/state_holder.dart';
 import 'package:graph_project_docs_manager/tokens/tokens.dart';
@@ -549,6 +550,7 @@ void _registerWriteLogTests() {
     final h = (await tester.runAsync(
       () => EditHarness.create(validator: validator ?? FakeValidatorPort()),
     ))!;
+    _lastHarness = h;
     final session = (await tester.runAsync(h.begin))!;
     late ProviderContainer container;
     await _pumpShell(
@@ -667,8 +669,39 @@ void _registerWriteLogTests() {
         findsOneWidget,
       );
     });
+
+    testWidgets('寫入被阻擋與讀寫失敗各計入徽章（1.0.0-W3-553.17.1）', (tester) async {
+      final (_, session) = await pump(tester);
+      final h = _lastHarness!;
+      final badge = find.byKey(const Key('badge-writeLog-failure-count'));
+      expect(badge, findsNothing);
+
+      await tester.runAsync(() async {
+        h.files.resetCounters();
+        h.files.readScript[1] = const EditFileException(errorCode: 13);
+        await session.writeField(field: 'title', newValue: 'a');
+      });
+      await tester.pump();
+      expect(
+        find.descendant(of: badge, matching: find.text('1')),
+        findsOneWidget,
+      );
+
+      await tester.runAsync(() async {
+        h.files.resetCounters();
+        h.files.readScript[1] = Uint8List.fromList([1, 2, 3]);
+        await session.writeField(field: 'title', newValue: 'b');
+      });
+      await tester.pump();
+      expect(
+        find.descendant(of: badge, matching: find.text('2')),
+        findsOneWidget,
+      );
+    });
   });
 }
+
+EditHarness? _lastHarness;
 
 Future<void> _pumpShell(
   WidgetTester tester, {
