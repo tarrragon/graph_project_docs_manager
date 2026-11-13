@@ -13,30 +13,24 @@ enum EditLogEvent {
   /// 開啟工作區並判定編輯模式，負載帶 mode（唯讀時另帶 readonlyReason）。
   editModeDetermined,
 
-  /// 刪除暫存檔失敗（platform_io，warning）。
+  /// 刪除暫存檔失敗，負載帶 path（目標檔）、errorCode（platform_io，warning）。
   tempDeleteFailed,
 
-  /// 驗證器無法啟動，負載帶 tool（external_process，warning）。
-  validatorLaunchFailed,
-
-  /// 驗證器逾時並已終止，負載帶 tool（external_process，warning）。
-  validatorTimedOut,
-
-  /// 驗證器執行期拋出例外，負載帶 tool（external_process，warning）。
-  validatorRunFailed,
-
-  /// baseline 量測完成，負載帶 path、measure。
+  /// baseline 量測完成，負載帶 path、measure；unavailable 另帶 exitCode 或
+  /// unavailableReason 二擇一（unavailable 為 warning／external_process）。
   baselineMeasured,
 
-  /// baseline 量測拋出未預期例外（internal，warning）。
+  /// baseline 量測拋出未預期例外，負載帶 path（internal，warning）。
   baselineFailed,
 
-  /// 驗證佇列工作拋出未預期例外（internal，warning）。
+  /// 驗證佇列工作拋出未預期例外，負載帶 path（internal，warning）。
   validationJobFailed,
 
-  /// 寫入後驗證有結果，負載帶 path、outcome（Passed 為 info，其餘 warning）。
+  /// 寫入後驗證有結果，負載帶 path、nodeId（可得時）、outcome（Passed 為
+  /// info，其餘 warning）；unavailable 另帶 exitCode 或 unavailableReason 二擇一。
   ///
-  /// 不帶 error_source：失敗已由驗證器事件各記一次，上層不重記（FR-02）。
+  /// error_source 只有寫入後量測本身失敗的 unavailable 為 external_process；
+  /// 沿用 baseline 原因與 baselineNotReady 不帶（FR-07 v1.14）。
   validationCompleted,
 
   /// 寫入發出：閘門通過、寫入呼叫發出，負載帶 path、field（info）。
@@ -71,7 +65,7 @@ abstract final class EditLogKeys {
   static const mode = 'mode';
   static const readonlyReason = 'readonlyReason';
   static const errorCode = 'errorCode';
-  static const tool = 'tool';
+  static const nodeId = 'nodeId';
   static const operation = 'operation';
   static const path = 'path';
   static const measure = 'measure';

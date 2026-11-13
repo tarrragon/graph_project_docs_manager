@@ -9,12 +9,8 @@ import 'dart:io';
 
 import 'package:graph_project_docs_manager/edit/edit_git_runner.dart'
     show EditTimer;
-import 'package:graph_project_docs_manager/edit/edit_log_event.dart';
 import 'package:graph_project_docs_manager/edit/validation_baseline.dart';
 import 'package:graph_project_docs_manager/edit/write_result.dart';
-import 'package:graph_project_docs_manager/observability/log_enums.dart';
-import 'package:graph_project_docs_manager/observability/log_sink.dart';
-import 'package:graph_project_docs_manager/observability/log_values.dart';
 
 /// SPEC-009 FR-05：每個驗證子行程各自計時，自啟動起算的逾時秒數。
 const int validatorTimeoutSeconds = 30; // magic-exempt
@@ -116,27 +112,22 @@ class _IoValidatorCall implements EditValidatorCall {
 
 /// 需求：[SPEC-009 FR-05] 驗證子行程的統一入口：各子行程自啟動起算 30 秒
 /// 逾時，逾時即終止並回報 `timedOut`；無法啟動回報 `executableMissing`；
-/// 其餘依結束碼與輸出解讀為 [ToolOutcome]。
+/// 其餘依結束碼與輸出解讀為 [ToolOutcome]。失敗細節（結束碼、原因）交回呼叫端，
+/// 本類別不記日誌（FR-07 v1.14：由語意層記錄，下層不重記）。
 class EditValidatorRunner {
-  const EditValidatorRunner({
-    required this.port,
-    required this.timer,
-    this._logSink,
-  });
+  const EditValidatorRunner({required this.port, required this.timer});
 
   static const Duration timeout = Duration(seconds: validatorTimeoutSeconds);
 
   final EditValidatorPort port;
   final EditTimer timer;
-  final LogSink<EditLogEvent>? _logSink;
 
   Future<ToolOutcome> run(ValidatorTool tool, String target) async {
     final invocation = EditValidatorInvocation(tool: tool, target: target);
     final EditValidatorCall call;
     try {
       call = await port.start(invocation);
-    } on EditValidatorLaunchException catch (error) {
-      _log(EditLogEvent.validatorLaunchFailed, tool, error);
+    } on EditValidatorLaunchException {
       return const ToolUnavailable(UnavailableReason.executableMissing);
     }
     return _awaitOrKill(call, tool);
@@ -155,22 +146,12 @@ class EditValidatorRunner {
       ]);
       if (result == null) {
         call.kill();
-        _log(EditLogEvent.validatorTimedOut, tool);
         return const ToolUnavailable(UnavailableReason.timedOut);
       }
       return interpretToolOutput(tool, result.exitCode, result.stdout);
-    } on Object catch (error) {
-      _log(EditLogEvent.validatorRunFailed, tool, error);
+    } on Object {
+      // 執行期例外歸入 executableMissing；失敗細節由呼叫端的語意層事件記錄。
       return const ToolUnavailable(UnavailableReason.executableMissing);
     }
   }
-
-  void _log(EditLogEvent event, ValidatorTool tool, [Object? error]) =>
-      (_logSink ?? defaultEditLogSink())(
-        event,
-        LogFields({EditLogKeys.tool: LogValue.enumValue(tool)}),
-        level: LogLevel.warning,
-        source: ErrorSource.externalProcess,
-        error: error,
-      );
 }

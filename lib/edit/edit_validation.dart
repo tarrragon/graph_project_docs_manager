@@ -71,27 +71,36 @@ class ValidationCoordinator {
     }
     _onStatus(const ValidationRunning());
     _enqueue(() async {
-      final status = await _judge(_baseline);
-      _logStatus(status);
-      _onStatus(status);
+      final judgement = await _judge(_baseline);
+      _logStatus(judgement);
+      _onStatus(judgement.status);
     });
   }
 
   /// 沒有可用 baseline：結果為 `baselineNotReady`，並以寫入後問題集合接替；
   /// baseline 為 unavailable：不量測；其餘做差集，寫入後無法判定時保留原
   /// baseline。
-  Future<ValidationStatus> _judge(ValidationMeasure? baseline) async {
+  Future<_Judgement> _judge(ValidationMeasure? baseline) async {
     if (baseline is MeasureUnavailable) {
-      return ValidationUnavailable(baseline.reason);
+      return _Judgement(
+        ValidationUnavailable(baseline.reason),
+        exitCode: baseline.exitCode,
+      );
     }
     final after = await _measure();
-    final status = baseline == null
-        ? const ValidationUnavailable(UnavailableReason.baselineNotReady)
-        : judgeAgainstBaseline(baseline, after);
     if (after is MeasureReady) {
       _baseline = after;
     }
-    return status;
+    if (baseline == null) {
+      return const _Judgement(
+        ValidationUnavailable(UnavailableReason.baselineNotReady),
+      );
+    }
+    return _Judgement(
+      judgeAgainstBaseline(baseline, after),
+      exitCode: after is MeasureUnavailable ? after.exitCode : null,
+      measuredAfterFailed: after is MeasureUnavailable,
+    );
   }
 
   /// 兩個驗證器依序量測；任一無法判定即停止。
@@ -119,7 +128,7 @@ class ValidationCoordinator {
   /// 未預期例外：App 自身缺陷，歸 internal。
   void _logInternalFailure(EditLogEvent event, Object error) => _log(
     event,
-    LogFields.empty,
+    LogFields({EditLogKeys.path: _pathValue}),
     level: LogLevel.warning,
     source: ErrorSource.internal,
     error: error,
@@ -128,37 +137,81 @@ class ValidationCoordinator {
   /// `_relativePath` 已是工作區相對路徑；以 `/` 為根轉成白名單路徑值。
   LogValue get _pathValue => LogValue.path('/', '/$_relativePath');
 
-  void _logBaselineMeasured(ValidationMeasure measure) => _log(
-    EditLogEvent.baselineMeasured,
-    LogFields({
-      EditLogKeys.path: _pathValue,
-      EditLogKeys.measure: LogValue.enumValue(
-        measure is MeasureReady
-            ? EditMeasureKind.ready
-            : EditMeasureKind.unavailable,
-      ),
-    }),
-  );
+  /// ready 為 info；unavailable 為 warning／external_process，帶 CLI 結束碼或
+  /// 原因 enum 二擇一（FR-07）。
+  void _logBaselineMeasured(ValidationMeasure measure) {
+    final unavailable = measure is MeasureUnavailable ? measure : null;
+    _log(
+      EditLogEvent.baselineMeasured,
+      LogFields({
+        EditLogKeys.path: _pathValue,
+        EditLogKeys.measure: LogValue.enumValue(
+          unavailable == null
+              ? EditMeasureKind.ready
+              : EditMeasureKind.unavailable,
+        ),
+        if (unavailable != null)
+          ..._unavailableFields(unavailable.reason, unavailable.exitCode),
+      }),
+      level: unavailable == null ? LogLevel.info : LogLevel.warning,
+      source: unavailable == null ? null : ErrorSource.externalProcess,
+    );
+  }
 
-  /// 失敗與無法判定不帶 error_source：驗證器端已各記一次（FR-02）。
-  void _logStatus(ValidationStatus status) => _log(
-    EditLogEvent.validationCompleted,
-    LogFields({
-      EditLogKeys.path: _pathValue,
-      EditLogKeys.outcome: LogValue.enumValue(_outcomeOf(status)),
-      ...switch (status) {
-        ValidationFailed(:final newIssueCount) => {
-          EditLogKeys.newIssueCount: LogValue.integer(newIssueCount),
+  /// 只有寫入後量測本身失敗的 unavailable 帶 external_process；沿用 baseline
+  /// 原因（已由 baselineMeasured 記過）與 baselineNotReady 不帶；failed 不帶。
+  void _logStatus(_Judgement judgement) {
+    final status = judgement.status;
+    final nodeId = _nodeIdOf(_relativePath);
+    _log(
+      EditLogEvent.validationCompleted,
+      LogFields({
+        EditLogKeys.path: _pathValue,
+        if (nodeId != null) EditLogKeys.nodeId: LogValue.nodeId(nodeId),
+        EditLogKeys.outcome: LogValue.enumValue(_outcomeOf(status)),
+        ...switch (status) {
+          ValidationFailed(:final newIssueCount) => {
+            EditLogKeys.newIssueCount: LogValue.integer(newIssueCount),
+          },
+          ValidationUnavailable(:final reason) => _unavailableFields(
+            reason,
+            judgement.exitCode,
+          ),
+          _ => const <String, LogValue>{},
         },
-        ValidationUnavailable(:final reason) => {
-          EditLogKeys.unavailableReason: LogValue.enumValue(reason),
-        },
-        _ => const <String, LogValue>{},
-      },
-    }),
-    level: status is ValidationPassed ? LogLevel.info : LogLevel.warning,
-  );
+      }),
+      level: status is ValidationPassed ? LogLevel.info : LogLevel.warning,
+      source: judgement.measuredAfterFailed
+          ? ErrorSource.externalProcess
+          : null,
+    );
+  }
 }
+
+/// 一次寫入後判定與其日誌所需的失敗細節。
+class _Judgement {
+  const _Judgement(
+    this.status, {
+    this.exitCode,
+    this.measuredAfterFailed = false,
+  });
+
+  final ValidationStatus status;
+
+  /// unavailable 時的 CLI 結束碼；沒有時改記原因 enum。
+  final int? exitCode;
+
+  /// 寫入後量測本身失敗（非沿用 baseline、非 baselineNotReady）。
+  final bool measuredAfterFailed;
+}
+
+/// CLI 結束碼與原因 enum 二擇一：有結束碼記結束碼，否則記原因。
+Map<String, LogValue> _unavailableFields(
+  UnavailableReason reason,
+  int? exitCode,
+) => exitCode != null
+    ? {EditLogKeys.exitCode: LogValue.integer(exitCode)}
+    : {EditLogKeys.unavailableReason: LogValue.enumValue(reason)};
 
 EditValidationOutcome _outcomeOf(ValidationStatus status) => switch (status) {
   ValidationPassed() => EditValidationOutcome.passed,

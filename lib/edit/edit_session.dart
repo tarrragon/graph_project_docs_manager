@@ -310,11 +310,29 @@ class EditSession {
     final failure =
         await _writeTemp(temp, next) ?? await _recheckAndRename(temp, current);
     if (failure != null) {
-      await _context.files.delete(temp);
+      await _deleteTemp(temp);
       return failure;
     }
     _baseline = next;
     return Written(snapshotSha: sha);
+  }
+
+  /// 刪除暫存檔；失敗是獨立失敗（留下殘檔），另記一筆 `tempDeleteFailed`。
+  Future<void> _deleteTemp(String temp) async {
+    try {
+      await _context.files.delete(temp);
+    } on EditFileException catch (error) {
+      final errorCode = error.errorCode;
+      _emit(
+        EditLogEvent.tempDeleteFailed,
+        {
+          if (errorCode != null)
+            EditLogKeys.errorCode: LogValue.integer(errorCode),
+        },
+        level: LogLevel.warning,
+        source: ErrorSource.platformIo,
+      );
+    }
   }
 
   Future<WriteResult?> _writeTemp(String temp, Uint8List next) async {

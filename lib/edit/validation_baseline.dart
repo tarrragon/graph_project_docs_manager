@@ -31,9 +31,12 @@ final class ToolUnreadable extends ToolOutcome {
 
 /// 無法判定。
 final class ToolUnavailable extends ToolOutcome {
-  const ToolUnavailable(this.reason);
+  const ToolUnavailable(this.reason, {this.exitCode});
 
   final UnavailableReason reason;
+
+  /// CLI 結束碼；沒有行程結束碼（無法啟動、逾時）時為 null。
+  final int? exitCode;
 }
 
 final RegExp _ucLine = RegExp(r'^.+:\d+:(\S+)$');
@@ -58,12 +61,18 @@ ToolOutcome interpretToolOutput(
     case 1:
       final issues = _parseIssues(tool, stdout);
       return issues.isEmpty
-          ? const ToolUnavailable(UnavailableReason.unparsableOutput)
+          ? ToolUnavailable(
+              UnavailableReason.unparsableOutput,
+              exitCode: exitCode,
+            )
           : ToolIssues(issues);
     case 2:
       return const ToolUnreadable();
     default:
-      return const ToolUnavailable(UnavailableReason.unexpectedExitCode);
+      return ToolUnavailable(
+        UnavailableReason.unexpectedExitCode,
+        exitCode: exitCode,
+      );
   }
 }
 
@@ -94,9 +103,12 @@ final class MeasureReady extends ValidationMeasure {
 
 /// 無法判定。作為 baseline 時，該次編輯期間所有寫入的驗證皆為 `unavailable`。
 final class MeasureUnavailable extends ValidationMeasure {
-  const MeasureUnavailable(this.reason);
+  const MeasureUnavailable(this.reason, {this.exitCode});
 
   final UnavailableReason reason;
+
+  /// CLI 結束碼；無行程結束碼時為 null。
+  final int? exitCode;
 }
 
 /// 需求：[SPEC-009 FR-05] 任一驗證器無法判定即整體無法判定。
@@ -105,7 +117,7 @@ ValidationMeasure measureFromOutcomes(
 ) {
   for (final outcome in outcomes.values) {
     if (outcome is ToolUnavailable) {
-      return MeasureUnavailable(outcome.reason);
+      return MeasureUnavailable(outcome.reason, exitCode: outcome.exitCode);
     }
   }
   return MeasureReady(outcomes);
