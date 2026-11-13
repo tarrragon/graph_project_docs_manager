@@ -29,17 +29,16 @@ final writeListNodeIdByPathProvider = Provider<Map<String, String>>((ref) {
   return {for (final node in graph.event.nodes) node.path: node.id};
 });
 
-/// 需求：[SPEC-001 §12] 失敗計數：寫入結果不是 `written`、或驗證狀態為
-/// `failed`、`unavailable` 的列數。清單只記錄受理為 `written` 的寫入，
-/// 故現況只有驗證狀態兩項會計入。
+/// 需求：[SPEC-001 §12] 失敗計數：寫入結果是 `blocked`、`ioFailed`，或驗證
+/// 狀態為 `failed`、`unavailable` 的列數；寫入中與 `written` 的未失敗列不計。
 final writeListFailureCountProvider = Provider<int>((ref) {
-  return ref
-      .watch(writeListEntriesProvider)
-      .where(
-        (entry) => switch (entry.validationStatus) {
-          ValidationFailed() || ValidationUnavailable() => true,
-          _ => false,
-        },
-      )
-      .length;
+  return ref.watch(writeListEntriesProvider).where(_isFailure).length;
 });
+
+bool _isFailure(WriteListEntry entry) {
+  if (entry.result is Blocked || entry.result is IoFailed) return true;
+  return switch (entry.validationStatus) {
+    ValidationFailed() || ValidationUnavailable() => true,
+    _ => false,
+  };
+}
