@@ -75,7 +75,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | `fixedEditDate` | 同 `frontmatter_fixtures.dart` | `DateTime.utc(2026, 11, 10)`，`updated` 的預期值為 `2026-11-10` | R |
 | fixture repo 建構器 | `integration_test/helpers/edit_fixture_repo.dart` | 依 §1.5 建立 repo 變體 | IT-E1～IT-E7 |
 | `FakeCorpusNodeIndex`（1.1） | `test/helpers/spec009/fake_corpus_node_index.dart` | 以節點 id 回傳 Corpus 原始節點的工作區相對路徑，或「查不到」；替代 Corpus 公開面的原始節點查詢（SPEC-009 v1.8 〈寫入集合〉、edit domain-map §3）。不提供 Graph 的任何型別 | M、W、C |
-| `FakeEditFilePort` 的多檔注入（1.1） | 同 `FakeEditFilePort` | 在既有能力上加：以「（路徑, 操作種類, 第 n 次）」指定失敗，操作種類含寫暫存檔、fsync、步驟 5 重讀、`rename`、還原用的寫暫存檔與 `rename`；可在指定操作完成後改動指定路徑的檔案；操作序列記錄帶路徑 | W、L、C |
+| `FakeEditFilePort` 的多檔注入（1.1） | 同 `FakeEditFilePort` | 在既有能力上加：以「（路徑, 操作種類, 第 n 次）」指定失敗，操作種類含步驟 1 讀取、寫暫存檔、fsync、步驟 5 重讀、`rename`、還原用的寫暫存檔、還原時的 fsync 與還原 `rename`；可在指定操作完成後改動指定路徑的檔案；操作序列記錄帶路徑 | W、L、C |
 | `provenanceFixture`（1.1） | `test/helpers/spec009/provenance_fixtures.dart` | §1.6.1 的正向檔與反向檔位元組樣本 | M、W、L、C、V |
 
 各群組只透過 helper 取得 fixture，不共享可變狀態；每個群組可以單獨執行。
@@ -131,8 +131,8 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 | 名稱 | 內容要點 | 用途 |
 |---|---|---|
-| `spec_sp_null` | `source_proposal: null` | M-6、W-3b、W-6、W-7、W-10～W-12、W-14、W-17、W-20～W-28 |
-| `spec_sp_scalar` | `source_proposal: PROP-A` | M-5、M-8、W-1、W-8 |
+| `spec_sp_null` | `source_proposal: null` | M-6、W-3b、W-6、W-7、W-8、W-10～W-12、W-14、W-17、W-20～W-28 |
+| `spec_sp_scalar` | `source_proposal: PROP-A` | M-5、M-8、M-12b、W-1、W-5、W-8、W-9、W-12、W-15、W-16、W-19、V-22、L-16、C-8 |
 | `spec_sp_flow` | `source_proposal: [PROP-C, PROP-A]` | 備用（M-7、W-1 的 Given 另寫明其值，不引用本樣本） |
 | `spec_sp_dup` | `source_proposal: [PROP-C, PROP-A, PROP-A]` | M-9 |
 | `spec_related_flow` | `related_specs: [SPEC-1, SPEC-2, SPEC-3]` | M-1、M-2 |
@@ -140,7 +140,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | `spec_related_dup` | `related_specs: [SPEC-1, SPEC-2, SPEC-2]` | M-9 |
 | `spec_unsupported` | `related_specs` 分別為 block 序列、跨兩行的 flow 序列、flow 序列內含註解、anchor、alias、項為巢狀清單、項為 map，共七個變體 | M-10 |
 | `prop_std` | `outputs: {spec_refs: [SPEC-1, SPEC-900], usecase_refs: [UC-1], event_refs: [EVT-1], ticket_refs: [T-1]}`（以 block map 寫，各子鍵值為 flow 序列） | W-1、W-2、W-15、W-16 的基底、W-18、W-19、L-16 |
-| `prop_empty_refs` | 同 `prop_std`，但 `spec_refs: []`、`usecase_refs: []`、`event_refs: []` | W-1（加入端）、W-4、W-7 對照、W-17、W-20～W-28 |
+| `prop_empty_refs` | 同 `prop_std`，但 `spec_refs: []`、`usecase_refs: []`、`event_refs: []` | W-1（加入端）、W-2、W-4、W-7 對照、W-13、W-17、W-20～W-28、V-22、C-8 |
 | `prop_design` | `spec_refs: [SPEC-900]`、`design_refs: [SPEC-900]` | W-5、M 群組加入案 |
 | `prop_design_only` | `spec_refs: []`、`design_refs: [SPEC-900]` | W-6 |
 | `prop_dup` | `spec_refs: [SPEC-900, SPEC-1, SPEC-900]` | W-15 |
@@ -331,7 +331,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | V-1 | W = M = H；驗證器設為永不完成 | 修正並觀測狀態序列 | 依序為「寫入進行中」、受理 `written`、驗證 `running`；三者可由型別區分 |
 | V-2 | W ≠ M | 修正並觀測 | 只有受理 `blocked(externallyModified)`；沒有「寫入進行中」，也沒有驗證狀態 |
 | V-3 | `blocked`、`ioFailed`、`written` 三種結果 | 以窮舉 switch 讀取 | 型別為封閉型別；`blocked` 攜帶三種原因之一 |
-| V-3b（1.1） | `blocked`、`ioFailed`、`written`、`partiallyWritten` 四種結果 | 以窮舉 switch 讀取 | 封閉型別的成員恰為四者；`partiallyWritten` 攜帶未還原路徑清單（各附取回說明）與觸發失敗的路徑及原因。V-3 的三種窮舉在 1.1 由本案承擔 |
+| V-3b（1.1） | SPEC-009 FR-05 `WriteResult` 表列出的每一種結果 | 以窮舉 switch 讀取 | 封閉型別的成員恰等於該表列出的值；表增減成員時本案紅燈。`partiallyWritten` 攜帶未還原路徑清單（各附取回說明）與觸發失敗的路徑及原因。V-3 的 1.0 窮舉在 1.1 由本案承擔 |
 | V-4 | baseline：`uc verify` 回報 `unregisteredUc` 兩次 | 寫入後回報 `unregisteredUc` 兩次 | `passed` |
 | V-5（守衛） | baseline 同 V-4 | 寫入後回報 `unregisteredUc` 三次 | `failed`，新增問題數 1（正向對照：V-4） |
 | V-6 | baseline 同 V-4，行號 4 | 寫入後回報同樣的兩次，行號變為 5 | `passed`（比對鍵不含行號） |
@@ -395,9 +395,10 @@ FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）
 | L-14（1.1，守衛） | 同 W-25（還原失敗，`osError.errorCode` 5） | 修正 | 恰一筆 `writePartiallyWritten`：error、`platform_io`，fields 含觸發失敗的路徑、未還原路徑清單 `[PROP-B 路徑]`、errorCode 5；**沒有** `writeIoFailed`、`writeBlocked`、`writeRolledBack`（一次失敗只記一筆）。正向對照：L-13 還原成功時有原事件與 `writeRolledBack` |
 | L-15（1.1） | `EditLogEvent` 的全部值 | 列出值名稱 | 含 `writeRolledBack`、`writePartiallyWritten`；集合與 SPEC-009 FR-07 表的事件逐一相等（與 L-1 同一判準） |
 | L-16（1.1） | `spec_sp_scalar` 與 `prop_std`；W ≠ H 的只有 PROP-A | 移除 PROP-A 得 `written` | 一筆 `writeAccepted`；一筆 `snapshotTaken`，路徑為 PROP-A、`blob_sha` 等於 `written` 中 PROP-A 的 SHA；SPEC-900 沒有 `snapshotTaken` |
-| L-17（1.1） | 同 W-20（加入 PROP-B，兩檔） | 修正得 `written` | `writeIssued` 恰一筆、`writeAccepted` 恰一筆（不是兩筆）；兩筆的路徑欄都列出 SPEC-900 與 PROP-B 兩個路徑。對照：單檔寫入（L-2）的路徑欄只有一個路徑（SPEC-009 v1.13 FR-07 多檔寫入整批記一筆） |
+| L-17（1.1） | 同 W-20（加入 PROP-B，兩檔） | 修正得 `written` | `writeIssued` 恰一筆，路徑只記正向檔 SPEC-900；`writeAccepted` 恰一筆（不是兩筆），路徑欄為清單，列出 SPEC-900 與 PROP-B 兩個路徑。對照：單檔寫入（L-2）的 `writeAccepted` 路徑只有一個（SPEC-009 FR-07 多檔寫入整批記一筆） |
+| L-18（1.1，守衛） | 同 W-21 (b)（PROP-B 改寫不隔離，整批被閘門擋下） | 修正得 `blocked(rewriteNotIsolated)` | 恰一筆 `writeBlocked`（帶 PROP-B 路徑）；沒有 `writeIssued`、沒有 `writeAccepted`（整批被閘門擋下時不記 `writeIssued`，SPEC-009 FR-07）。正向對照：L-17 閘門通過時有一筆 `writeIssued` |
 
-FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。1.1 的多檔失敗記錄方式由 L-13、L-14 涵蓋，事件集合由 L-15 涵蓋，整批一筆由 L-16、L-17 涵蓋；L-13～L-17 的測試檔為 `test/unit/edit/multi_file_write_log_test.dart`。
+FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。1.1 的多檔失敗記錄方式由 L-13、L-14 涵蓋，事件集合由 L-15 涵蓋，整批一筆由 L-16、L-17 涵蓋，整批被擋時不記 `writeIssued` 由 L-18 涵蓋；L-13～L-18 的測試檔為 `test/unit/edit/multi_file_write_log_test.dart`。
 
 ### C session 寫入清單與事後追溯（FR-08）
 
@@ -469,7 +470,7 @@ NFR-01 的指標「寫入受理延遲」以量測填入規格，不作為 pass�
 | M-10（守衛） | `spec_unsupported` 七個變體 | 各加入 `SPEC-9` 與移除 `SPEC-1`（變體中存在的項） | 十四案皆 `blocked(rewriteNotIsolated)`；`FakeEditFilePort` 無暫存檔寫入與 rename；目標檔不變。正向對照：M-1、M-2 |
 | M-11（守衛） | `spec_related_flow` | 加入值 `a,b`、`x:y`、`p#q`、`[z]`、` lead`（前導空白）、`trail `（後置空白） | 六案皆 `blocked(rewriteNotIsolated)`，目標檔不變。正向對照：M-1 的 `SPEC-4` |
 | M-12（畫面狀態層） | `spec_related_flow`；呼叫端（編輯狀態）對 `related_specs` 加入已在清單中的 `SPEC-2`；另案加入不在清單中的 `SPEC-4` | 送出 | 前案不發出寫入：寫入層零呼叫，因此沒有 `WriteResult`；`FakeEditFilePort` 零寫入、零 rename；`FakeEditGitPort` 零 `hash-object`；`RecordingEditLogSink` 零事件；session 清單不新增列（C-11）；目標檔不變（v1.13 FR-03，比照 F-6 的必填空白）。**正向對照（E2）**：後案同一呼叫端恰好發出一次寫入（寫入層記錄一次呼叫，操作為加入 `SPEC-4`） |
-| M-12b（守衛） | `spec_related_flow`；繞過呼叫端，寫入層直接收到「加入 `SPEC-2`」；另案 `spec_sp_scalar`（`source_proposal: PROP-A`），寫入層直接收到「加入 `PROP-A`」 | 修正（debug build） | 兩案前置條件 assert 失敗（`throwsA(isA<AssertionError>())`），檔案不變（純量視為單項清單，`PROP-A` 已在其中）。正向對照：M-1 加入不在清單中的 `SPEC-4` 時不觸發 assert |
+| M-12b（守衛） | `spec_related_flow`；繞過呼叫端，寫入層直接收到「加入 `SPEC-2`」；另案 `spec_sp_scalar`（`source_proposal: PROP-A`），寫入層直接收到「加入 `PROP-A`」 | 修正（debug build） | 兩案前置條件 assert 失敗（`throwsA(isA<AssertionError>())`），檔案不變（純量視為單項清單，`PROP-A` 已在其中）。正向對照：M-1 加入不在清單中的 `SPEC-4` 時不觸發 assert；純量樣本的正向對照為 M-5（純量 `PROP-A` 加入不同值 `PROP-B` 時不觸發 assert） |
 | M-13 | `spec_related_flow` | 呼叫端把 `SPEC-1` 改成 `SPEC-9`：移除 `SPEC-1`、再加入 `SPEC-9` | 兩次各自經過閘門（`FakeEditFilePort` 記錄兩輪步驟 1 讀取與兩次 rename）；最終值為 `[SPEC-2, SPEC-3, SPEC-9]`。寫入 API 只接受單一加入或單一移除，沒有「取代」操作（以型別判定：操作參數為二值封閉型別） |
 
 FR-03 驗收 #10 由 M-1～M-4 涵蓋；#11 由 M-5；#12～#15 分別由 M-6～M-9（F1～F4）；#16 由 M-10、M-11；#17 由 M-12、M-12b、C-11。
@@ -519,7 +520,7 @@ FR-03 驗收 #9 由 W-1；#18 由 W-3b（W-3、W-4 為 UC、EVT 的同型）；#
 | # | Given | When | Then |
 |---|---|---|---|
 | W-20 | 無注入 | 修正 | 操作序列：兩個檔都完成步驟 1～4（讀 W、改寫、快照判定、寫暫存檔並 fsync）之後，才出現第一個 rename；rename 依序為 PROP-B（先，含其前一筆步驟 5 重讀）、SPEC-900（最後，含其前一筆步驟 5 重讀）。另案寫入集合含兩個以上反向檔的情形不會發生（操作單位），不設案 |
-| W-21（守衛） | 四案注入：(a) SPEC-900 步驟 1 讀到 W ≠ M；(b) PROP-B 改寫不隔離（`spec_refs` 為 block 序列）；(c) PROP-B 為 W ≠ H 且 `hash-object` 回傳 128；(d) SPEC-900（後處理的檔）暫存檔 fsync 失敗，注入前先斷言 PROP-B 的暫存檔已存在 | 修正 | 依序得 `blocked(externallyModified)`、`blocked(rewriteNotIsolated)`、`blocked(snapshotFailed)`、`ioFailed`，各帶觸發檔路徑；四案皆所有檔不變、零 rename、所有已寫暫存檔已刪。正向對照：W-20 |
+| W-21（守衛） | 四案注入：(a) SPEC-900 步驟 1 讀到 W ≠ M；(b) PROP-B 改寫不隔離（`spec_refs` 為 block 序列）；(c) PROP-B 為 W ≠ H 且 `hash-object` 回傳 128；(d) 無注入那次（W-20）操作序列中步驟 4 較晚的那一個檔，其暫存檔 fsync 失敗；注入前先斷言另一個檔的暫存檔已存在（FR-03 只規定依序，未規定檔案順序，所以不寫死檔名） | 修正 | 依序得 `blocked(externallyModified)`、`blocked(rewriteNotIsolated)`、`blocked(snapshotFailed)`、`ioFailed`，各帶觸發檔路徑；四案皆所有檔不變、零 rename、所有已寫暫存檔已刪。正向對照：W-20 |
 | W-22 | PROP-B 為 W ≠ H，SPEC-900 為 W = H | 修正 | git 只有 PROP-B 一次 `hash-object`，標準輸入等於 PROP-B 的 W；`written` 攜帶兩個路徑，只有 PROP-B 帶 SHA |
 | W-23 | PROP-B 在 `beginEditing` 之後、送出之前被外部改動（`ticket_refs` 多一項）；另案在 PROP-B 步驟 4 完成後被改動 | 修正 | 前案 `written`：反向檔的 M 取送出當下步驟 1 讀到的內容，外部改動保留在寫入結果中（`ticket_refs` 多的那項仍在）。後案：PROP-B 步驟 5 重讀不同 → `blocked(externallyModified)`，帶 PROP-B 路徑，所有檔不變（PROP-B 是第一個 rename，無需還原） |
 | W-24 | 注入兩案：(a) SPEC-900 的 rename 失敗；(b) SPEC-900 步驟 5 重讀不同（PROP-B rename 完成後改動 SPEC-900） | 修正 | (a) 回傳 `ioFailed`、(b) 回傳 `blocked(externallyModified)`，皆帶 SPEC-900 路徑。PROP-B 逐位元組還原為其步驟 1 的 W；SPEC-900 的暫存檔已刪；還原走「寫暫存檔、fsync、rename」，且還原期間沒有步驟 5 重讀與隔離檢查（W-26）；同目錄無暫存檔 |
@@ -542,7 +543,7 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | FR-04 | IT-E4 | P |
 | FR-05 | IT-E6 | V；W-21、W-22、W-25、V-22（1.1） |
 | FR-06 | — | X |
-| FR-07 | — | L（1.1：L-13～L-17） |
+| FR-07 | — | L（1.1：L-13～L-18） |
 | FR-08 | IT-E2-1、IT-E2-2；IT-E7-2（1.1） | C（1.1：C-8～C-11） |
 | FR-09 | — | F（1.1：F-8～F-10） |
 | NFR-01 | 量測（不斷言） | N |
@@ -616,7 +617,7 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | FR-06 | #3 EVT-CORPUS-001 未到達仍判 `externallyModified` | X-5 | domain unit |
 | FR-07 | #1、#2；`timedOut` 欄位（v1.2） | 見 L 群組末段；L-11、L-12 | domain unit |
 | FR-07 | 約束：多檔中途失敗依結局記錄（還原成功：原事件加 `writeRolledBack`；還原失敗：只記 `writePartiallyWritten`）（1.1，非驗收條目） | L-13、L-14、L-15 | domain unit |
-| FR-07 | 約束：多檔寫入 `writeIssued`、`writeAccepted` 整批各一筆、路徑欄列出各檔；`snapshotTaken` 逐檔（v1.13，非驗收條目） | L-16、L-17 | domain unit |
+| FR-07 | 約束：多檔寫入 `writeIssued` 一筆、路徑只記正向檔；`writeAccepted` 整批一筆、路徑為清單；整批被閘門擋下時不記 `writeIssued`；`snapshotTaken` 逐檔（非驗收條目） | L-16、L-17、L-18 | domain unit |
 | FR-08 | #1～#3、#6 | 見 C 群組末段 | domain unit；integration；widget（寫入清單面板與側欄項，`1.0.0-W3-553.17`：`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`、`test/unit/app/write_list_providers_test.dart`） |
 | FR-08 | #4 每次發出的寫入都成列（寫入中、`written`、`blocked` 三種原因、`ioFailed`），結局更新同一列；未發出不成列（v1.12） | C-6 | domain unit（`test/unit/edit/session_write_list_issued_test.dart`）；widget（`test/widget/screens/write_log_panel_test.dart`、`test/widget/app/shell_test.dart`，`1.0.0-W3-553.17.1`）；對照：`test/unit/screens/node_detail/node_detail_edit_test.dart`（`1.0.0-W3-553.15`） |
 | FR-08 | 〈多檔寫入的列法（1.1）〉：一列、附各檔路徑與取回說明、只顯示正向檔驗證狀態；`partiallyWritten` 列附未還原檔（非驗收條目） | C-8、C-9、C-10 | domain unit |
@@ -708,10 +709,11 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 驗證器與 baseline | V、N、IT-E6 | 閘門 |
 | 日誌事件 | L | 閘門；SPEC-010 的 writer 與 `LogSink<E>`（`1.0.0-W3-553.2.2`、`.2.3`） |
 | 外部改動預警與 session 清單 | X、C | 閘門；驗證器；Corpus 一輪解析完成的通知可供 Edit 訂閱（EVT-CORPUS-001）；畫面狀態見 SPEC-001 v1.89 §6、§12 |
-| 多值欄位改寫（1.1） | M | 局部改寫與隔離檢查 |
+| 多值欄位改寫（1.1） | M（M-12 除外） | 局部改寫與隔離檢查 |
+| 呼叫端：加入已在清單中的值不發出寫入（1.1，畫面狀態層） | M-12、C-11 | 編輯狀態（畫面狀態層）；多值欄位改寫 |
 | provenance 寫入集合與子鍵形狀（1.1） | W-1～W-19、E-DEP-2 | 多值欄位改寫；Corpus 公開面的原始節點查詢 |
-| 多檔整批閘門與回復（1.1） | W-20～W-28、V-22、L-13～L-17、IT-E7 | 寫入集合；閘門、快照、原子寫入（1.0） |
-| 多檔寫入的清單列法（1.1） | C-8～C-11 | 多檔整批閘門；畫面形式見 SPEC-004 4.51 |
+| 多檔整批閘門與回復（1.1） | W-20～W-28、V-22、L-13～L-18、IT-E7 | 寫入集合；閘門、快照、原子寫入（1.0） |
+| 多檔寫入的清單列法（1.1） | C-8～C-10 | 多檔整批閘門；畫面形式見 SPEC-004 4.51 |
 | 欄位輸入元件對照與可否清空 | F-1～F-7 | 553.3；表單元件的元件契約（SPEC-004）；`tracking_schema.json` 的 `completeness_fields` 讀取 |
 
 ## 6. 待決與交接
@@ -739,3 +741,4 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 0.7 | 2026-11-13 | `1.1.0-W1-111.1`，對應 SPEC-009 v1.11 的 1.1 條文（version-bootstrap Step 5）；只增案例，不改既有案例：<br>- 新增 M 群組（M-1～M-13，多值欄位加入與移除，F1～F4）、W 群組（W-1～W-28，provenance 寫入集合、反向清單鍵、子鍵形狀、`outputs` 非 map、整批閘門、`rename` 順序、回復、`partiallyWritten`）、外圈 IT-E7（真實 git 與真實圖重建）、E-DEP-2（Edit 不 import Graph）。<br>- 既有群組追加：V-22（驗證只套正向檔）、L-13～L-16（`writeRolledBack`、`writePartiallyWritten`）、C-8～C-11（多檔一列、加入已存在值不成列）、F-8～F-10（FR-09 1.1 列）。<br>- §1.4 新增 `FakeCorpusNodeIndex`、多檔注入、`provenanceFixture`；§1.5 新增 R11、R11b；§1.6.1 新增樣本表。<br>- §4.1～§4.4、§5 補列；§6 新增第 7～9 項。`spec_version` 改為 1.12。 |
 | 0.8 | 2026-11-13 | `1.1.0-W1-111.1`，對應 SPEC-009 v1.13（主控審查 0.7 回報的 NeedsContext 後裁定）：<br>- M-12 改為呼叫端案例：加入已在清單中的值時不發出寫入，沒有 `WriteResult`、零事件、不成列；新增 M-12b（守衛：寫入層直接收到時 debug assert 失敗，正向對照 M-1）。C-11、§4.2 FR-03 #17、§4.3 同步。<br>- 改寫既有案例（主控准許）：L-1 改為引用 FR-07 事件表、不寫數量，理由是成員數會隨 FR-07 增減，寫死的數字在 v1.6 已失效；F-4 改為「晚於當前 build 所屬 minor」，理由是原寫法「1.1 以後」在 1.1 build 與 F-8 矛盾，F-10 改標為其 1.1 實例。<br>- §6 第 7～9 項改為已解決 |
 | 0.9 | 2026-11-13 | `1.1.0-W1-111.1` 第一輪審查修正（主控清單第 1～12、20～23 項，追加 N-1～N-3、N-5）：<br>- W-12 依〈`outputs` 本身不是 map〉表改正加入案（含的變體不列入、`written`），新增 `[SPEC-1]` 變體；新增 W-3b（SPEC 缺 `spec_refs`，FR-03 #18）；W-6 改用 `prop_design_only`；W-4 補其他子鍵不變；W-21(d) 改注入後處理的檔；W-28 注入位置對齊 FR-03 步驟、計入無注入那次、補暫存檔斷言；IT-E7-1 正向對照補 `source_proposal: null`。<br>- M 群組前言分開寫移除與加入的設定；M-11 補後置空白；M-12 補呼叫端正向對照，與 C-11 一起移到畫面狀態層；M-12b 補純量樣本。<br>- E-DEP-2 補 history 樣本；L-15 刪數字括號；新增 L-17（多檔整批各一筆 `writeIssued`、`writeAccepted`）、V-3b（封閉型別含 `partiallyWritten`）。<br>- FR-08 驗收編號對齊 v1.12 條目順序；§4.4 改引用 domain-map §3，不寫條數；§6 第 7 項不留事件數字；§1.6.1 用途欄對齊案例。 |
+| 0.10 | 2026-11-13 | `1.1.0-W1-111.1` 第二輪審查修正：V-3b 改為引用 FR-05 `WriteResult` 表（規則 10）；W-21(d) 注入點改為 W-20 序列中步驟 4 較晚的檔，不寫死檔名；§1.4 多檔注入補步驟 1 讀取與還原時的 fsync；§1.6.1 用途欄補齊；§5 將 M-12、C-11 改歸畫面狀態層；M-12b 純量樣本的正向對照寫明 M-5；L-17 對齊 FR-07（`writeIssued` 只記正向檔、`writeAccepted` 路徑為清單），新增 L-18（整批被擋時無 `writeIssued`、只有 `writeBlocked`）。 |
