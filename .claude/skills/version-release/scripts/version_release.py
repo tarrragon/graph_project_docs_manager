@@ -34,7 +34,7 @@ from typing import Optional, List, Tuple, Dict
 import yaml
 
 def _resolve_claude_dir() -> Optional[Path]:
-    """定位專案 .claude 目錄（0.38.1-W1-114）。
+    """定位專案 .claude 目錄。
 
     安裝版 CLI（uv tool install）的 __file__ 位於 site-packages，其
     parent.parent.parent 不再是 .claude/skills，source layout 的相對路徑
@@ -1356,7 +1356,7 @@ def print_config_disclosure(root: Path) -> None:
     """
     印出本次執行實際載入的 .version-release.yaml 路徑，或未找到時印出偵測到的專案型別。
 
-    目的：讓 stale CLI 或錯誤 cwd 導致配置靜默未載入時有明確線索可查（0.4.0-W1-005）。
+    目的：讓 stale CLI 或錯誤 cwd 導致配置靜默未載入時有明確線索可查。
     """
     config_path = find_version_release_config_path(root)
     if config_path is not None:
@@ -1933,7 +1933,7 @@ def check_placeholder_implementations(
 def _detect_silent_placeholder(
     dart_file: Path, lines: List[str], hits: List[str]
 ) -> None:
-    """W1-117: 偵測「佔位關鍵字註解 + N 行內 return 空值」的靜默佔位模式。"""
+    """偵測「佔位關鍵字註解 + N 行內 return 空值」的靜默佔位模式。"""
     for i, line in enumerate(lines):
         if not _SILENT_PLACEHOLDER_COMMENT.search(line):
             continue
@@ -1944,6 +1944,92 @@ def _detect_silent_placeholder(
                     f"{dart_file}:{j + 1}:[silent-placeholder] {lines[j].strip()}"
                 )
                 break
+
+
+FROZEN_ZERO_BLOCKER_WARNING = (
+    "版本 v{version} 已凍結，但沒有任何一張票帶 scope_blocker；"
+    "{pending_count} 張 pending 票將全部被列為前移。"
+    "若其中有必要票，請依 version-progression〈版本生命週期〉凍結程序第二步，"
+    "逐張執行 ticket track set-scope-blocker <id> --reason <契約項>"
+)
+
+
+def detect_frozen_without_blockers(tickets_dir: Path, version: str) -> Optional[str]:
+    """已凍結版本零張票帶 scope_blocker（任何狀態）且有 pending 票時回傳警告，否則 None。"""
+    if not tickets_dir.exists():
+        return None
+    pending_count = 0
+    for ticket_file in sorted(tickets_dir.glob("*.md")):
+        if any(s in ticket_file.stem for s in TDD_ATTACHMENT_SUFFIXES):
+            continue
+        try:
+            content = ticket_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        frontmatter = parse_ticket_frontmatter(content)
+        if not frontmatter:
+            continue
+        blocker_match = re.search(r"^scope_blocker:\s*(.+)$", frontmatter, re.MULTILINE)
+        blocker = _strip_yaml_scalar_quotes(blocker_match.group(1)) if blocker_match else ""
+        if blocker and blocker.lower() not in ("null", "~"):
+            return None
+        if re.search(r"^status:\s*pending\s*$", frontmatter, re.MULTILINE):
+            pending_count += 1
+    if pending_count == 0:
+        return None
+    return FROZEN_ZERO_BLOCKER_WARNING.format(version=version, pending_count=pending_count)
+
+
+def warn_if_frozen_without_blockers(version: str) -> None:
+    """check／finish 在凍結關卡通過後呼叫；只印警告，不影響結束碼。"""
+    root = get_project_root()
+    config = load_version_release_config(root)
+    pattern = config.get(
+        "worklog_path_pattern", DEFAULT_VERSION_RELEASE_CONFIG["worklog_path_pattern"]
+    )
+    tickets_dir = resolve_worklog_dir(root, version, pattern) / "tickets"
+    message = detect_frozen_without_blockers(tickets_dir, version)
+    if message:
+        print_warning(message)
+
+
+_SYNC_BASE_PATH = ".claude/sync-base.json"
+
+
+def describe_unpushed_claude_commits(project_root: Path) -> str:
+    """回傳一行說明：本地有多少 `.claude/` commit 尚未推送到 framework canonical。
+
+    只供發版前查看，不阻擋、不計入 preflight 的通過判定。錨點是 git 歷史中最後一次
+    寫入 `.claude/sync-base.json` 的 commit（push 或 pull 後都會 commit 這個檔）；
+    計數是錨點之後動到 `.claude/` 的非 merge commit，不含 sync-base.json 本身。
+    與框架 lib 的 unpushed_claude_commits 判準相同；本套件不 import 框架 lib，
+    故另存一份，判準變更時兩處一起改。
+    """
+
+    def _git(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            ["git", *args], cwd=project_root, capture_output=True, text=True
+        )
+
+    anchor = _git("log", "-1", "--format=%H", "--", _SYNC_BASE_PATH)
+    if anchor.returncode != 0:
+        return f"未推送的 .claude/ commit：無法計算（git log 失敗：{anchor.stderr.strip()}）"
+    anchor_sha = anchor.stdout.strip()
+    if not anchor_sha:
+        return f"未推送的 .claude/ commit：無法計算（git 歷史中沒有 {_SYNC_BASE_PATH}）"
+    counted = _git(
+        "rev-list", "--count", "--no-merges", f"{anchor_sha}..HEAD",
+        "--", ".claude/", f":(exclude){_SYNC_BASE_PATH}",
+    )
+    if counted.returncode != 0:
+        return f"未推送的 .claude/ commit：無法計算（git rev-list 失敗：{counted.stderr.strip()}）"
+    count = int(counted.stdout.strip() or 0)
+    if count == 0:
+        return f"未推送的 .claude/ commit：0 個（自上次同步 {anchor_sha[:9]} 之後）"
+    return (
+        f"未推送的 .claude/ commit：{count} 個（自上次同步 {anchor_sha[:9]} 之後），"
+        "consumer 尚未取得這些變更，直到下一次 sync-push"
+    )
 
 
 def check_version_frozen(version: str) -> Tuple[bool, List[str]]:
@@ -2089,6 +2175,10 @@ def preflight_check(version: str) -> Tuple[bool, Dict[str, Tuple[bool, List[str]
     else:
         for hit in ph_hits:
             print_warning(f"佔位實作: {hit}")
+
+    # 1.8 未推送的 .claude/ commit（資訊，不計入 all_ok）
+    print_info("[OK] 檢查未推送的 .claude/ commit...")
+    print_info(describe_unpushed_claude_commits(get_project_root()), 1)
 
     all_ok = wl_ok and td_status["passed"] and td_ok and pv_ok and vs_ok
     return all_ok, results
@@ -3096,6 +3186,42 @@ def activate_next_planned_version(
 
     print_info(f"候選版本 {next_version} 將啟用（接續 {completed_version}）")
     return ensure_version_activated(next_version, dry_run, todolist_path=todolist_path)
+
+
+def advance_after_completion(
+    todolist_path: Path,
+    completed_version: str,
+    dry_run: bool = False,
+    activate_next: bool = False,
+    force_cross_major: bool = False,
+) -> bool:
+    """本版標 completed 後處置下一版：預設維持 planned，進入版本空窗。
+
+    下一版要等發版後回饋檢查決定（先發 patch 或直接開下一個 minor），
+    發版時就推進最小的 planned 版本，等於在檢查前選定下一版。空窗定義見
+    `.claude/pm-rules/version-progression.md`〈版本生命週期〉「版本空窗」。
+
+    Args:
+        todolist_path: todolist.yaml 路徑
+        completed_version: 剛標為 completed 的版本
+        dry_run: 預覽模式
+        activate_next: True 時沿用舊行為，立即推進下一個 planned 版本
+        force_cross_major: 傳給 activate_next_planned_version 的跨大版本放行
+
+    Returns:
+        是否成功；不推進時恆為 True
+    """
+    if activate_next:
+        return activate_next_planned_version(
+            todolist_path, completed_version, dry_run, force_cross_major=force_cross_major
+        )
+    print_info(
+        f"下一版維持 planned（版本空窗）：{completed_version} 已完成，"
+        "完成發版後回饋檢查、決定下一版後，以 "
+        "`version-release start --version <下一版>` 轉 active"
+    )
+    print_info("要在發版時直接推進下一個 planned 版本，加 --activate-next")
+    return True
 
 
 def create_worklog_structure(
@@ -4278,6 +4404,11 @@ def main():
     release_parser.add_argument("--dry-run", action="store_true", help="預覽模式")
     release_parser.add_argument("--force", action="store_true", help="強制執行")
     release_parser.add_argument("--defer-td", help="將待處理 TD 延後到指定版本 (例如 0.21.0)")
+    release_parser.add_argument(
+        "--activate-next",
+        action="store_true",
+        help="標 completed 後立即推進下一個 planned 版本（預設維持 planned，進入版本空窗）",
+    )
 
     # finish 子命令：發版收尾（前移非阻擋 pending Ticket 後執行既有發布流程）
     finish_parser = subparsers.add_parser("finish", help="發版收尾：前移非阻擋 pending Ticket 並執行發布流程")
@@ -4285,6 +4416,11 @@ def main():
     finish_parser.add_argument("--dry-run", action="store_true", help="預覽模式")
     finish_parser.add_argument("--force", action="store_true", help="強制執行")
     finish_parser.add_argument("--defer-td", help="將待處理 TD 延後到指定版本 (例如 0.21.0)")
+    finish_parser.add_argument(
+        "--activate-next",
+        action="store_true",
+        help="標 completed 後立即推進下一個 planned 版本（預設維持 planned，進入版本空窗）",
+    )
 
     # check 子命令
     check_parser = subparsers.add_parser("check", help="只執行檢查")
@@ -4335,6 +4471,7 @@ def main():
                 print_error("檢查失敗，請修正上述問題")
                 return 1
 
+            warn_if_frozen_without_blockers(version)
             ok, results = preflight_check(version)
 
             if ok:
@@ -4417,6 +4554,7 @@ def main():
                         print_error(error)
                     print_error("\n版本未凍結，發版收尾已中止")
                     return 1
+                warn_if_frozen_without_blockers(version)
 
             # finish：先對前移清單逐張 migrate，任一張失敗即中止（不留半搬狀態）
             overflow_mapping: List[tuple] = []
@@ -4466,11 +4604,18 @@ def main():
                     f"todolist.yaml 版本 {version} 標記 completed 失敗（不中止發布，請手動確認）"
                 )
 
-            # 自動推進下一個 planned 版本為 active
-            print_section("Step: Activate Next Version")
+            # 下一版處置：預設維持 planned（版本空窗），--activate-next 才推進
+            activate_next = getattr(args, "activate_next", False)
+            print_section(
+                "Step: Activate Next Version" if activate_next else "Step: Keep Next Version Planned"
+            )
             force_cross_major = args.force if hasattr(args, "force") else False
-            activate_ok = activate_next_planned_version(
-                todolist_path, version, dry_run, force_cross_major=force_cross_major
+            activate_ok = advance_after_completion(
+                todolist_path,
+                version,
+                dry_run,
+                activate_next=activate_next,
+                force_cross_major=force_cross_major,
             )
             if not activate_ok:
                 print_warning(
@@ -4493,7 +4638,11 @@ def main():
                 version,
                 dry_run,
                 baseline=finish_baseline,
-                commit_message=f"docs: 版本 {version} 標記完成並啟用下一版本",
+                commit_message=(
+                    f"docs: 版本 {version} 標記完成並啟用下一版本"
+                    if activate_next
+                    else f"docs: 版本 {version} 標記完成"
+                ),
                 extra_paths=resolve_activation_version_paths(finish_root),
             ):
                 print_warning("版本啟用變更提交失敗（請手動確認 todolist.yaml 狀態）")

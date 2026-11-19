@@ -2,6 +2,19 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.26.3（2026-11-19）— 對齊版號住址：`pyproject.toml` 的 `version` 與 `doc_system/__init__.py` 的 `__version__` 由 1.0.0 改為與 `metadata.version` 相同。CLI 行為不變。
+
+**Version**: 1.26.2（2026-11-14）— `doc_system/core/uc_registry.py` 的 UC 引用判定修正誤報與漏報：
+- 豁免與違規都以正規化後的形式判定。原本以原始字面判豁免，`uc-unset` 這類小寫字詞不符豁免樣式，正規化後卻成為格式違規的 `UC-UNSET`。
+- 子樹段恰為已知副檔名（`FILE_EXTENSION_SEGMENTS`：md、yaml、json 等）且其後無字母數字時視為檔名，不納入 token（`UC-02.md` 擷取為 `UC-02`）。字母偽子段（`UC-03.Login`）與數字偽子樹（`UC-01.4.20`）照舊擷取並判違規。
+- `EXEMPT_PATH_PREFIXES` 加入框架資產目錄：hook、skill、規則提及 UC- 屬示例或工具說明，不是專案程式碼對用例的引用。
+- `is_exempt_path` 的相對路徑改以專案根解析，不以行程 cwd 解析。原本 cwd 位於框架目錄之下時，產品程式碼的相對路徑會被解析進框架目錄而誤判豁免。
+
+`tests/test_uc_registry.py` 補上述各項的對照案例。CLI 命令與參數不變。
+- 移除框架檔內的專案層級票號（規則 8 存量清理），改為自足敘述或佔位符。運行時字串：`ac` 命令的 `ticket_id` help 範例改為格式 `<version>-W<wave>-<seq>`；其餘為註解與文件。行為不變。
+
+**Version**: 1.26.1（2026-11-11）— 文件：SKILL.md 的安裝段改述 shim 化後的做法（`skill-sync`、`doc` 等 CLI 由 SessionStart 安裝為 cwd-resolving shim，改原始碼即時生效），移除 `uv tool install` 指示。CLI 行為不變。
+
 **Version**: 1.26.0（2026-11-10）— 四項修正與一項新設定：
 - CLI 入口（tarrragon/claude#25）：`cli.py` 補 `if __name__ == "__main__"`，直接以路徑執行時把 skill 根目錄加進 `sys.path`；新增 `doc_system/__main__.py`，`python3 -m doc_system` 走同一個 `main`。測試 `tests/test_cli_entry.py` 以子行程執行三種入口。
 - test-map 掃描目錄（tarrragon/claude#31）：`TEST_SCAN_DIRS` 預設加入 `tests/`；`docs/traceability.yaml` 新增選填頂層鍵 `test_scan_dirs`，整份取代預設，值不合法時 stderr 警告並退回預設；改走檔案掃描的 UC 全數零命中時 stderr 警告，列出各掃描目錄的實況。

@@ -94,13 +94,19 @@ def _install_context_bundle_path_mocks(monkeypatch, tickets_dir: Path) -> None:
     )
 
 
-def _write_source_ticket_for_bundle(tickets_dir: Path, source_id: str) -> None:
-    """建立可被 extract_and_write_context_bundle 抽取的 source ticket。"""
+def _write_source_ticket_for_bundle(
+    tickets_dir: Path, source_id: str, status: str = "completed"
+) -> None:
+    """建立可被 extract_and_write_context_bundle 抽取的 source ticket。
+
+    status 預設 completed（--source-ticket 的典型來源）；當父票使用時須傳
+    非 terminal 狀態，create 會拒絕在已結案父票下建子票。
+    """
     content = (
         "---\n"
         f"id: {source_id}\n"
         "title: bundle source\n"
-        "status: completed\n"
+        f"status: {status}\n"
         "what: source-what-content\n"
         "why: source-why-content\n"
         "---\n"
@@ -165,6 +171,13 @@ def patch_paths_to_repo(git_repo: Path, monkeypatch):
     )
 
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(git_repo))
+    # 版本凍結閘讀專案根的 docs/todolist.yaml；缺檔會印 fail-open [WARNING]，
+    # 污染「stderr 不含 [WARNING]」類斷言。放一份可解析、未凍結的版本索引（不入 commit）
+    todolist = git_repo / "docs" / "todolist.yaml"
+    todolist.parent.mkdir(exist_ok=True)
+    todolist.write_text(
+        'versions:\n  - version: "0.0.0"\n    status: active\n', encoding="utf-8"
+    )
     reset_project_root_cache()
     reset_ticket_state_root_cache()
     yield git_repo

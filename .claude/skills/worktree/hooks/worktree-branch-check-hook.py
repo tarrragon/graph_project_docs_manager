@@ -105,6 +105,9 @@ TARGET_BRANCH_WARNING_CURRENT = "  當前分支: {current_branch}"
 TARGET_BRANCH_WARNING_EXPECTED = "  預期分支: main 或 master"
 TARGET_BRANCH_WARNING_SUGGESTION = "  建議執行: git checkout main"
 
+# 未提交變更 worktree 的計數單位（get_uncommitted_count 計 status --short 全部行）
+UNCOMMITTED_WORD = "個未提交變更"
+
 
 # ============================================================================
 # 資料結構
@@ -126,6 +129,7 @@ class CheckResult:
     has_unmerged_branches: bool
     uncommitted_worktrees: List[WorktreeInfo]
     unmerged_branches: List[str]
+    reserved_branches: Optional[dict] = None  # {保留分支: 保留給的票號}
 
 
 # ============================================================================
@@ -283,6 +287,16 @@ def get_unmerged_branches() -> List[str]:
     return [line.strip() for line in output.split('\n') if line.strip()]
 
 
+def _split_reserved(branches: List[str]):
+    """保留分支（票為 pending）切出；判定模組失效時退回全部強制。"""
+    try:
+        from lib.reserved_branch import split_reserved
+        return split_reserved(branches, None, logging.getLogger(HOOK_NAME))
+    except Exception as exc:  # 判定失效不得吞提醒：stderr 可見後退回現行行為
+        print(f"[{HOOK_NAME}] 保留分支判定失敗，退回全部列為未合併: {exc}", file=sys.stderr)
+        return branches, {}
+
+
 def check_git_state() -> CheckResult:
     """
     檢查所有 worktree 和未合併分支的狀態
@@ -310,12 +324,14 @@ def check_git_state() -> CheckResult:
 
     # 獲取未合併分支（來自主倉庫 git worktree，即 is_main=True 的那個）
     unmerged_branches = get_unmerged_branches()
+    unmerged_branches, reserved_branches = _split_reserved(unmerged_branches)
 
     return CheckResult(
         has_uncommitted_worktrees=len(uncommitted_worktrees) > 0,
         has_unmerged_branches=len(unmerged_branches) > 0,
         uncommitted_worktrees=uncommitted_worktrees,
-        unmerged_branches=unmerged_branches
+        unmerged_branches=unmerged_branches,
+        reserved_branches=reserved_branches,
     )
 
 
@@ -339,8 +355,8 @@ def format_warning_output(result: CheckResult) -> str:
         for wt in result.uncommitted_worktrees:
             # 提取 worktree 名稱（路徑最後一個部分）
             wt_name = Path(wt.path).name if wt.path else "unknown"
-            file_word = "個未追蹤檔案"
-            lines.append(f"  - {wt_name} [{wt.branch}]: {wt.uncommitted_count} {file_word}")
+            # 計數來自 status --short 的全部行（已修改、已暫存、未追蹤都算），不只未追蹤
+            lines.append(f"  - {wt_name} [{wt.branch}]: {wt.uncommitted_count} {UNCOMMITTED_WORD}")
         lines.append("")
 
     # 未合併分支
@@ -348,6 +364,12 @@ def format_warning_output(result: CheckResult) -> str:
         lines.append(f"未合併分支 ({len(result.unmerged_branches)}):")
         for branch in result.unmerged_branches:
             lines.append(f"  - {branch}")
+        lines.append("")
+
+    if result.reserved_branches:
+        lines.append("保留中的分支（資訊，非本次須合併的進度）：")
+        for branch, ticket_id in result.reserved_branches.items():
+            lines.append(f"  - {branch} 保留給票 {ticket_id}（票為 pending），無需合併")
         lines.append("")
 
     lines.append("建議：先處理這些變更再推送，避免遺漏進度")
@@ -457,6 +479,13 @@ def main() -> int:
     if result.has_uncommitted_worktrees or result.has_unmerged_branches:
         warnings.append(format_warning_output(result))
         logger.warning(f"偵測到未合併進度：{len(result.uncommitted_worktrees)} 個 worktree，{len(result.unmerged_branches)} 個分支")
+    elif result.reserved_branches:
+        warnings.append(
+            "保留中的分支（資訊，無需合併）：\n" + "\n".join(
+                f"  - {b} 保留給票 {t}（票為 pending）"
+                for b, t in result.reserved_branches.items()
+            )
+        )
     else:
         # 無發現，靜默通過
         logger.debug("無未提交或未合併進度，靜默通過")

@@ -5,7 +5,7 @@ Hook 日誌與基礎設施模組（SSOT）
 
 為 Hook 提供統一的日誌設定、專案路徑查詢和頂層例外處理。
 
-本模組為 lib/ 與 hook_utils/hook_logging 整併後的單一 SSOT（0.37.0-W6-005）：
+本模組為 lib/ 與 hook_utils/hook_logging 整併後的單一 SSOT：
 取代原 lib/hook_logging.py 的 DEPRECATED stub，採 hook_utils 的 UTF-8 防護版
 setup_hook_logging（入口呼叫 ensure_utf8_io），並吸收 save_check_log / run_hook_safely。
 額外保留 get_hook_log_dir 以維持向後相容。
@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional
 
-from lib.hook_base import get_project_root, ENV_PROJECT_DIR, CLAUDE_MD_SEARCH_DEPTH  # re-export for backward compatibility
+from lib.hook_base import get_project_root, get_shared_state_root, ENV_PROJECT_DIR, CLAUDE_MD_SEARCH_DEPTH  # re-export for backward compatibility
 
 # ============================================================================
 # 常數定義
@@ -67,6 +67,12 @@ CLEANUP_INTERVAL_SECONDS = 300
 # Liveness 索引子目錄：hook 已載入/未載入的正向訊號（見 mark_hook_entry）
 LIVENESS_SUBDIR = "_liveness"
 
+# 寫入帳本：未隔離的測試寫入共用根時，追加 test_run 與呼叫者（洩漏哨兵據此歸屬）。
+# 副檔名刻意非 .jsonl，避免被 session liveness 索引的 *.jsonl 彙整與清理誤納。
+WRITE_LEDGER_NAME = "_write-ledger.ndjson"
+ENV_TEST_RUN = "HOOK_LIVENESS_TEST_RUN"
+ENV_TEST_ISOLATION = "HOOK_TEST_ISOLATION"
+
 # CC runtime 曝露的 session id 環境變數，與 stdin session_id 一致
 # （見 hook-architect-technical-reference.md）。取用此 env var 可在 stdin
 # 讀取之前即取得 session_id，免除「先記進入、取得 session_id 後補綁」的
@@ -75,6 +81,34 @@ ENV_SESSION_ID = "CLAUDE_CODE_SESSION_ID"
 
 # env var 未設時的 fallback session 識別（極舊 runtime 或環境變數被清除）
 UNKNOWN_SESSION_ID = "unknown-session"
+
+
+def _default_log_root() -> Path:
+    """日誌與 liveness 的預設根：共用狀態根（linked worktree 內為主 repo）。
+
+    default_root 傳 get_project_root()（本模組綁定名，測試可替換）；
+    HOOK_TEST_ISOLATION=1 時 get_shared_state_root 回該值，隔離語意不變。
+    """
+    return get_shared_state_root(get_project_root())
+
+
+def _record_write_ledger(root: Path, caller: str) -> None:
+    """測試執行中未隔離地寫入日誌根時，於帳本追加 test_run 與呼叫者。
+
+    只在寫入路徑呼叫（唯讀解析不記帳）。無 test_run 或已隔離（HOOK_TEST_ISOLATION=1，
+    根已導向 tmp）不記帳。失敗只寫 stderr，不影響 hook 主流程。
+    """
+    test_run = os.environ.get(ENV_TEST_RUN)
+    if not test_run or os.environ.get(ENV_TEST_ISOLATION) == "1":
+        return
+    try:
+        ledger_dir = Path(root) / ".claude" / "hook-logs" / LIVENESS_SUBDIR
+        ledger_dir.mkdir(parents=True, exist_ok=True)
+        entry = {"test_run": test_run, "caller": caller}
+        with open(ledger_dir / WRITE_LEDGER_NAME, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as e:
+        sys.stderr.write("[hook-logging] 寫入帳本失敗（caller={}）: {}\n".format(caller, e))
 
 
 def _sanitize_hook_name(name: str) -> str:
@@ -285,9 +319,9 @@ def setup_hook_logging(
 
     Args:
         hook_name: Hook 識別名稱
-        project_root: 可選的專案根目錄覆寫。未傳（None，預設）時維持現行
-            get_project_root() 行為（worktree-aware 向上搜尋 CLAUDE.md）
-            逐字不變，向後相容。有傳入時直接採用該值——供狀態解析與日誌
+        project_root: 可選的專案根目錄覆寫。未傳（None，預設）時用共用狀態根
+            （get_shared_state_root：linked worktree 內為主 repo，其餘同
+            get_project_root()）。有傳入時直接採用該值——供狀態解析與日誌
             解析 root 需彼此對齊的 hook 使用：hook 若以 __file__ 導向 root
             讀寫狀態檔，但日誌另呼叫不帶參數的 get_project_root()，兩者在
             worktree 內執行時會解析出不同 root，日誌因此落在無人查閱的
@@ -305,8 +339,9 @@ def setup_hook_logging(
     ensure_utf8_io()
 
     sanitized_name = _sanitize_hook_name(hook_name)
-    root_dir = project_root if project_root is not None else get_project_root()
+    root_dir = project_root if project_root is not None else _default_log_root()
     log_base_dir = root_dir / ".claude" / "hook-logs" / sanitized_name
+    _record_write_ledger(root_dir, sanitized_name)
 
     # 建立日誌目錄
     try:
@@ -354,8 +389,9 @@ def save_check_log(
         ... )
     """
     try:
-        project_dir = get_project_root()
+        project_dir = _default_log_root()
         log_dir = project_dir / ".claude" / "hook-logs" / hook_name
+        _record_write_ledger(project_dir, hook_name)
         log_dir.mkdir(parents=True, exist_ok=True)
 
         log_file = log_dir / f"checks-{datetime.now().strftime('%Y%m%d')}.log"
@@ -381,7 +417,7 @@ def _liveness_log_dir(project_root: Optional[Path] = None) -> Path:
             get_project_root() 行為，逐字不變、向後相容。有傳入時直接
             採用，供呼叫端與業務日誌 root 需對齊的場景使用。
     """
-    root = project_root if project_root is not None else get_project_root()
+    root = project_root if project_root is not None else _default_log_root()
     return root / ".claude" / "hook-logs" / LIVENESS_SUBDIR
 
 
@@ -459,6 +495,9 @@ def mark_hook_entry(
         "pid": os.getpid(),
         "ts": datetime.now().isoformat(),
     }
+    test_run = os.environ.get("HOOK_LIVENESS_TEST_RUN")
+    if test_run:
+        entry["test_run"] = test_run  # 測試執行標記：供洩漏哨兵區分測試寫入與呼叫者正常寫入
     try:
         log_dir = _liveness_log_dir(project_root)
         log_dir.mkdir(parents=True, exist_ok=True)
@@ -547,5 +586,4 @@ def get_hook_log_dir(hook_name: str) -> Path:
     Returns:
         Path: 日誌目錄路徑
     """
-    project_root = get_project_root()
-    return project_root / ".claude" / "hook-logs" / hook_name
+    return _default_log_root() / ".claude" / "hook-logs" / hook_name

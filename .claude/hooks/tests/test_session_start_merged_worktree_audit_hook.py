@@ -81,6 +81,14 @@ def _mk_subprocess_side_effect(
         local_branches: git branch --list 輸出（0.2.1-W3-806 新增）
     """
     unmerged_per_branch = unmerged_per_branch or {}
+    # 3.3.0-W1-068：ahead=0 的 worktree 另查分支頭是否有自有提交（rev-parse 對
+    # rev-list --first-parent main）與 worktree 自身的 git status。預設模擬「有自有
+    # 提交、工作區乾淨」，即真正已合併、可清理的 worktree。
+    worktree_paths = {
+        line.split(" ", 1)[1]
+        for line in worktree_porcelain.splitlines()
+        if line.startswith("worktree ")
+    }
 
     def side_effect(cmd, **kwargs):
         result = MagicMock()
@@ -118,8 +126,17 @@ def _mk_subprocess_side_effect(
                 result.stdout = "\n".join(commits)
             return result
 
+        if "rev-parse" in parts:
+            result.stdout = "tip-" + parts[-1]
+            return result
+
+        if "rev-list" in parts:
+            result.stdout = "main-head\nmain-parent"
+            return result
+
         if "status" in parts:
-            result.stdout = status_porcelain
+            in_worktree = str(kwargs.get("cwd") or "") in worktree_paths
+            result.stdout = "" if in_worktree else status_porcelain
             return result
 
         return result
@@ -441,3 +458,36 @@ def test_main_git_failure_silent_no_exception(hook_module, capsys, tmp_path, mon
     payload = json.loads(out)
     # 接受 suppressOutput 或空 sections
     assert payload.get("suppressOutput") is True or "hookSpecificOutput" in payload
+
+
+# ============================================================
+# git status 失敗須有可見訊號（3.4.0-W1-329）
+# ============================================================
+
+def test_collect_modified_failure_is_undetermined_with_stderr(hook_module, capsys):
+    """觸發條件：git status 失敗 → 回 None（稽核 fail-open）並 stderr + 日誌留痕，
+    不得與「無 modified 票檔」同形。"""
+    import logging
+    logger = logging.getLogger("test-audit-gsf")
+    with patch.object(
+        hook_module, "get_uncommitted_files_strict",
+        side_effect=hook_module.GitStatusError("fatal: not a git repository"),
+    ):
+        assert hook_module.collect_modified_ticket_paths(Path("/repo"), logger) is None
+    err = capsys.readouterr().err
+    assert "[session-start-merged-worktree-audit] git status 失敗" in err
+    assert "fatal: not a git repository" in err
+
+
+def test_collect_modified_success_unchanged_and_silent(hook_module, capsys):
+    import logging
+    logger = logging.getLogger("test-audit-gsf")
+    from lib.git_utils import FileStatus
+    statuses = [
+        FileStatus(status=" M", file_path="docs/work-logs/v0/tickets/0.1.0-W1-001.md"),
+        FileStatus(status=" M", file_path="src/a.py"),
+    ]
+    with patch.object(hook_module, "get_uncommitted_files_strict", return_value=statuses):
+        paths = hook_module.collect_modified_ticket_paths(Path("/repo"), logger)
+    assert paths == ["docs/work-logs/v0/tickets/0.1.0-W1-001.md"]
+    assert capsys.readouterr().err == ""

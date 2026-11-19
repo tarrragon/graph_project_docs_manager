@@ -4,7 +4,6 @@ title: 稽核 hook 用寬鬆解析器讀 SSOT，對嚴格消費端會失敗的�
 severity: high
 category: implementation
 created: "2026-07-26"
-source_tickets: [0.2.1-W3-008]
 related_patterns: [IMP-APP-005, ARCH-020, IMP-006]
 ---
 
@@ -25,14 +24,14 @@ related_patterns: [IMP-APP-005, ARCH-020, IMP-006]
 - 稽核器的 warning 清單只涵蓋語意規則（欄位值是否合規），無「檔案是否可被解析」項。
 - 消費端錯誤訊息含「解析失敗，將改用 ... 方式」而 exit code 為 0。
 
-## 實證案例（flutter_balance 0.2.1-W3，2026-07-26）
+## 實證案例（BAL 0.2.1-W3，2026-07-26）
 
 `docs/todolist.yaml` 的 `0.2.1` 版本條目被誤置到檔尾 `references:` mapping 之後，
 而非 `versions:` list 內。同一 session 的兩份輸出：
 
 | 讀取方 | 解析手法 | 輸出 |
 |--------|---------|------|
-| `version-tracking-consistency-guard-hook`（SessionStart） | `VERSION_ENTRY_PATTERN.finditer(content)` | 「closed 票延後承諾稽核: 0.0.2-W1-001 closed_by 非合法 Ticket ID」——語意層具體發現，未提解析狀態 |
+| `version-tracking-consistency-guard-hook`（SessionStart） | `VERSION_ENTRY_PATTERN.finditer(content)` | 「closed 票延後承諾稽核: <ticket-id> closed_by 非合法 Ticket ID」——語意層具體發現，未提解析狀態 |
 | `ticket track dashboard` | `yaml.safe_load` | 「解析 todolist.yaml 失敗 (ParserError: line 124 ... line 133)，將使用目錄掃描方式偵測版本」 |
 
 regex 只比對 `- version: "X"` 與其後的 `status:`，對縮排歸屬完全不敏感，因此

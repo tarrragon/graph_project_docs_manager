@@ -2,7 +2,7 @@
 name: skill-design-guide
 description: "Anthropic skill spec plus this project's conventions: frontmatter, descriptions, loading budgets, and splitting an oversized skill. Use when creating a skill, editing SKILL.md, reviewing skill quality, or moving content into references/."
 metadata:
-  version: 1.23.2
+  version: 1.25.0
 ---
 
 # Skill Design Guide
@@ -45,7 +45,6 @@ metadata:
 
 **判斷標準只有一條：agent 照正文走得完嗎。** 走不完有兩種形態，修法相反——正文只給結論而把判斷條件外移，讀者選不了路，把條件搬回正文；正文塞進完整論證，讀者在該動手時還在讀理由，把論證外移只留主張句。
 
-
 ### Concise is Key — context 是公共資源
 
 **預設假設**：Claude 已經夠聰明。每段文字必須通過兩問才能保留。
@@ -58,7 +57,6 @@ metadata:
 **第一問問的是行為差異，不是知識空缺。** 「Claude 知不知道」與「Claude 預設會不會這樣做」是兩個獨立維度——**「知道但預設不會做」的內容要留**（量測指令即屬此類：Claude 會算 token，但不會主動去量）。把兩者當成一條線的兩端，這一格會被誤判成移除。
 
 **Action**：判不準時做刪除測試——把該段拿掉，在乾淨 session 對同一任務重跑，比對兩次產出。這一問可外部驗證，「Claude 知不知道」不能。
-
 
 ### Progressive Disclosure — 三層載入
 
@@ -132,7 +130,7 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 | 何時讀 | 檔案 | 涵蓋章節 |
 |--------|------|---------|
 | 寫或修 frontmatter：name、description、擴展欄位、觸發控制、命名 | `references/frontmatter-and-description.md` | 〈YAML Frontmatter〉〈Description 寫作（最重要的一節）〉〈命名規則〉〈觸發控制矩陣〉 |
-| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈Claude Code 特有功能〉〈一則完整走查：兩個判斷標準只有一個附了可執行動作〉 |
+| 寫或修 SKILL.md 正文：骨架、內容品質、引用形式、什麼不該放；進版號、並行修改同一 skill 時何時取號 | `references/writing-the-body.md` | 〈嚴禁清單 — 什麼不該放進 Skill〉〈Body 寫作〉（含〈外部引用：指名身分，不用檔案路徑〉）〈版號規則：合併時才取號〉〈Claude Code 特有功能〉〈一則完整走查：兩個判斷標準只有一個附了可執行動作〉 |
 | 從零建一個新 skill、判斷它屬哪一類型、決定內容該放 `scripts/`／`references/`／`assets/`、要廢止或遷移既有 skill、或引入他人的 skill | `references/creating-and-adopting-skills.md` | 〈檔案結構〉〈三類 bundled resource 的分工〉〈Skill 建立流程〉〈Skill 類型速查〉〈廢止與遷移〉〈安全考量〉 |
 | 既有 skill 超出第 2 層預算、要外移內容 | `references/splitting-an-existing-skill.md` | 〈為什麼需要專屬程序〉〈補範例後超標：觸發條件與處置順序〉〈外移什麼、留什麼〉〈拆分特有的必查項〉〈兩種驗證，方法不同〉〈拆分特有的高頻缺陷〉〈結構約定〉〈收尾〉〈一則最小走查〉〈走完之後〉〈相關〉 |
 | 決定工作流該給多少自由度或要不要設預設值、設計多步驟工作流、要進階範本、規劃測試方法、或 skill 行為不如預期 | `references/patterns-and-troubleshooting.md` | 〈Degrees of Freedom — 自由度匹配脆弱性〉〈Opinionated Defaults — 預設路徑引導正確做法〉〈Skill 設計模式〉（**控制流形狀**，要模板來這裡）〈選擇方法：Problem-first vs Tool-first〉〈測試方法〉〈迭代回饋指引〉〈常見問題排除〉 |
@@ -140,7 +138,6 @@ wc -l .claude/skills/<name>/SKILL.md   # 官方 500 行，超標即須外移
 | 某個設計取捨說不出理由、想理解工具設計哲學與 agent 視角的演進，或需要可貼用的進階設計模式（評估驅動開發、Feedback Loop 等）與程式碼片段 | `references/seeing-like-an-agent.md` | 〈核心哲學〉〈Claude Code 團隊的演進教訓〉〈進階 Skill 設計模式〉（**設計方法論**，不是控制流模板）〈觀察 Claude 如何使用 Skill〉〈反模式〉 |
 
 > **維護本表時**（讀者選路不需要這一段）：「涵蓋章節」欄的字串要與目標檔的 `##` 標題逐字相同且**雙向齊全**——每個名字都在目標檔存在（無死名），且目標檔的每個 `##` 都在這一欄出現（無孤兒節）。**兩個方向各驗一次**：只驗死名會漏掉無人指向的新節。
-
 
 ## 發布前檢查清單
 
@@ -199,7 +196,6 @@ LC_ALL=C comm -13 <(grep -o 'references/[a-z-]*\.md' SKILL.md | LC_ALL=C sort -u
 - [ ] 主關鍵字觸發成功
 - [ ] 改述查詢仍觸發
 - [ ] 無關主題不觸發
-
 
 ---
 

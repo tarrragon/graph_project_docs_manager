@@ -14,6 +14,8 @@ from pathlib import Path
 from unittest.mock import patch
 import importlib.util
 
+import pytest
+
 hooks_path = Path(__file__).parent.parent
 
 # 動態導入（檔名含 dash）
@@ -113,27 +115,60 @@ def test_find_uncommitted_ticket_md_detects_modified():
         _FakeFileStatus(" M", "docs/work-logs/v1/v1.0/v1.0.0/tickets/1.0.0-W8-005.md"),
         _FakeFileStatus(" M", "src/popup/popup.js"),
     ]
-    with patch.object(hook, "get_uncommitted_files", return_value=files):
+    with patch.object(hook, "get_uncommitted_files_strict", return_value=files):
         result = hook.find_uncommitted_ticket_md()
     assert result == [
         "docs/work-logs/v1/v1.0/v1.0.0/tickets/1.0.0-W8-005.md"
     ]
 
 
-def test_find_uncommitted_ticket_md_detects_staged():
-    files = [
-        _FakeFileStatus("M ", "docs/work-logs/v1/v1.0/v1.0.0/tickets/1.0.0-W8-005.md"),
-    ]
-    with patch.object(hook, "get_uncommitted_files", return_value=files):
-        result = hook.find_uncommitted_ticket_md()
-    assert len(result) == 1
+TICKET = "docs/work-logs/v1/v1.0/v1.0.0/tickets/1.0.0-W8-005.md"
+
+
+def _find(status, command='git commit -m "x"', path=TICKET):
+    with patch.object(hook, "get_uncommitted_files_strict", return_value=[_FakeFileStatus(status, path)]):
+        return hook.find_uncommitted_ticket_md(command)
+
+
+def test_fully_staged_ticket_md_not_reported_on_bare_commit():
+    """裸 commit 提交的是 index：完整暫存（M 空白）的票面必定進 commit，不提醒（修正前為紅）"""
+    assert _find("M ") == []
+    assert _find("A ") == []
+
+
+@pytest.mark.parametrize("status", ["MM", " M", "AM"])
+def test_worktree_changes_still_reported(status):
+    """E2 正向對照：worktree 欄非空白（暫存後又改、未暫存）仍提醒"""
+    assert _find(status) == [TICKET]
+
+
+def test_untracked_still_reported():
+    assert _find("??") == [TICKET]
+
+
+def test_add_then_commit_same_command_not_reported():
+    """同一命令先精確 add 該檔再 commit：PreToolUse 時尚未 add，但會被提交"""
+    cmd = f'git add {TICKET} && git commit -m "x"'
+    assert _find(" M", cmd) == []
+    assert _find("??", cmd) == []
+
+
+def test_add_other_file_still_reports_ticket():
+    cmd = 'git add src/a.py && git commit -m "x"'
+    assert _find(" M", cmd) == [TICKET]
+
+
+@pytest.mark.parametrize("cmd", ['git commit -a -m "x"', 'git commit -am "x"', 'git commit --all -m "x"'])
+def test_commit_all_covers_tracked_changes_but_not_untracked(cmd):
+    assert _find(" M", cmd) == []
+    assert _find("??", cmd) == [TICKET]
 
 
 def test_find_uncommitted_ticket_md_detects_untracked():
     files = [
         _FakeFileStatus("??", "docs/work-logs/v1/v1.0/v1.0.0/tickets/1.0.0-W8-099.md"),
     ]
-    with patch.object(hook, "get_uncommitted_files", return_value=files):
+    with patch.object(hook, "get_uncommitted_files_strict", return_value=files):
         result = hook.find_uncommitted_ticket_md()
     assert len(result) == 1
 
@@ -142,13 +177,13 @@ def test_find_uncommitted_ticket_md_empty_when_no_ticket():
     files = [
         _FakeFileStatus(" M", "src/popup/popup.js"),
     ]
-    with patch.object(hook, "get_uncommitted_files", return_value=files):
+    with patch.object(hook, "get_uncommitted_files_strict", return_value=files):
         result = hook.find_uncommitted_ticket_md()
     assert result == []
 
 
 def test_find_uncommitted_ticket_md_empty_when_clean():
-    with patch.object(hook, "get_uncommitted_files", return_value=[]):
+    with patch.object(hook, "get_uncommitted_files_strict", return_value=[]):
         result = hook.find_uncommitted_ticket_md()
     assert result == []
 
@@ -166,7 +201,7 @@ def _run_main_with(input_data, uncommitted):
 
     files = [_FakeFileStatus(s, p) for s, p in uncommitted]
     with patch.object(hook, "read_json_from_stdin", return_value=input_data), \
-         patch.object(hook, "get_uncommitted_files", return_value=files):
+         patch.object(hook, "get_uncommitted_files_strict", return_value=files):
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             exit_code = hook.main()

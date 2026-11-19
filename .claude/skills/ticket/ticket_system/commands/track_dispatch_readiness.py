@@ -1,4 +1,4 @@
-"""ticket track dispatch-readiness 命令（0.18.0-W17-053）。
+"""ticket track dispatch-readiness 命令。
 
 派發前認知負擔閾值與綜合就緒度檢查。讀取 ticket frontmatter `where.files`
 與 Context Bundle section 自動計算三項核心指標，輸出 pass/warn/fail 與
@@ -51,14 +51,14 @@ Exit code 語意（與 dispatch-check / dispatch-validate 不共享）：
 
 - 0 = 全通過
 - 1 = 軟性警告（任一項超軟上限，或第四項一致性檢查命中矛盾，但未達強制拆分）
-- 2 = 硬性失敗（任一項超強制拆分閾值 / 第六項路徑涵蓋性未過 / IO 錯誤 / ticket 不存在）
+- 2 = 硬性失敗（任一項超強制拆分閾值 / 第六項路徑涵蓋性未過 / 第七項寫入宣告缺漏 / IO 錯誤 / ticket 不存在）
 
 **Exit code 與 dispatch-check / dispatch-validate 語意不共享**：呼叫端
 必須以命令名稱判別語意，禁止以 exit code 跨命令解讀。
 
 邊界：本 CLI **不** 修改 ticket、**不** 取代 hook / scheduler；僅輸出
-結構化診斷供 PM / agent 派發前自檢使用（W17-209 ANA 方案 A 邊界）。
-不觸碰既有 `dispatch-check`（W10-017.2）與 `dispatch-validate`（W17-003）。
+結構化診斷供 PM / agent 派發前自檢使用。
+不觸碰既有 `dispatch-check`與 `dispatch-validate`。
 """
 
 from __future__ import annotations
@@ -71,6 +71,7 @@ from typing import Callable, List, Tuple
 
 from ticket_system.lib.dispatch_common import load_and_unpack
 from ticket_system.lib.field_validators import missing_where_paths
+from ticket_system.lib.file_conflict import write_files
 from ticket_system.lib.paths import get_project_root
 from ticket_system.lib.section_locator import find_section
 
@@ -78,7 +79,7 @@ from ticket_system.lib.section_locator import find_section
 _CONTEXT_BUNDLE_SECTION = "Context Bundle"
 
 # 三項核心閾值（與 cognitive-load-execution-details.md 對齊）
-# W17-213: 原 _RESPONSIBILITY_SOFT_MAX 重命名為 _RESPONSIBILITY_PASS_MAX
+# 原 _RESPONSIBILITY_SOFT_MAX 重命名為 _RESPONSIBILITY_PASS_MAX
 # 「PASS」更貼合 > N 即離開 pass 區的閘門語意（rules/cognitive-load.md 3b 派發前閾值）
 _RESPONSIBILITY_PASS_MAX = 2  # > 2 軟警告
 _RESPONSIBILITY_HARD_MAX = 4  # > 4 視為強制拆分（依據 7±2 取下限保守）
@@ -88,7 +89,7 @@ _CB_TOKENS_SOFT_MAX = 3000  # > 3000 軟上限
 _CB_TOKENS_HARD_MAX = 5000  # > 5000 強制拆分
 _CHARS_PER_TOKEN = 4  # 粗估換算（OpenAI cl100k 平均）
 
-# 第四項一致性檢查（0.2.1-W3-249）：acceptance 測試類關鍵詞 + 測試路徑判定
+# 第四項一致性檢查：acceptance 測試類關鍵詞 + 測試路徑判定
 # 啟發式限制：關鍵詞比對無法涵蓋所有表述方式，未命中不代表無矛盾；「回歸」等
 # 泛用詞亦可能在非測試語境誤判（如「回歸原設計」）——故本檢查上限為 warn。
 _TEST_KEYWORDS = ("測試", "test", "覆蓋", "回歸", "regression", "涵蓋")
@@ -462,6 +463,41 @@ def check_acceptance_path_coverage(
     return "fail", uncovered, msg
 
 
+_UNDEFINED_WHERE_VALUES = frozenset({"", "待定義"})
+
+
+def check_where_write_declaration(ticket: dict, ticket_id: str) -> Tuple[str, str]:
+    """檢查 7：where.files 寫入宣告須在派發前齊備（強制）。
+
+    收尾的 `ticket track commit` 以 where.files 寫入集為範圍判準；宣告缺漏
+    要到代理人做完工作才被拒絕。本檢查把同一判準前移到派發前：
+      - ANA：type 預設唯讀，需至少一個 `::write` 標記的路徑
+      - IMP：where.files 為空，或全為「待定義」
+    其餘 type 不檢查。
+
+    Returns:
+        (status, msg) — status ∈ {"pass", "fail"}
+    """
+    ticket_type = ticket.get("type")
+    if ticket_type == "ANA":
+        if write_files(ticket):
+            return "pass", "ANA 票已有 ::write 宣告"
+        return "fail", (
+            "ANA 票 where.files 沒有 ::write 宣告（ANA 預設唯讀），"
+            "ticket track commit 會以「未宣告任何寫入路徑」拒絕提交。修法："
+            f"ticket track set-where {ticket_id} --files \"<既有路徑>,<寫入路徑>::write\""
+        )
+    if ticket_type == "IMP":
+        declared = [p for p in write_files(ticket) if p.strip() not in _UNDEFINED_WHERE_VALUES]
+        if declared:
+            return "pass", f"IMP 票已宣告 {len(declared)} 個寫入路徑"
+        return "fail", (
+            "IMP 票 where.files 為空或只有「待定義」，ticket track commit 會拒絕提交。"
+            f"修法：ticket track set-where {ticket_id} --files \"<路徑1>,<路徑2>\""
+        )
+    return "pass", f"type {ticket_type or '未設定'} 不檢查寫入宣告"
+
+
 # ---------------------------------------------------------------------------
 # CLI 入口
 # ---------------------------------------------------------------------------
@@ -514,8 +550,10 @@ def execute_dispatch_readiness(args: argparse.Namespace, version: str) -> int:
     print(_format_result("檢查 6 acceptance 提及路徑涵蓋性（強制）", r6_status, r6_msg))
     for item in r6_items:
         print(f"      - {item}")
+    r7_status, r7_msg = check_where_write_declaration(loaded.ticket or {}, ticket_id)
+    print(_format_result("檢查 7 where.files 寫入宣告（強制）", r7_status, r7_msg))
 
-    statuses = [r1_status, r2_status, r3_status, r4_status, r5_status, r6_status]
+    statuses = [r1_status, r2_status, r3_status, r4_status, r5_status, r6_status, r7_status]
     if "fail" in statuses:
         print("[FAIL] 至少一項超強制拆分閾值，建議拆 ticket 後重新派發")
         return 2

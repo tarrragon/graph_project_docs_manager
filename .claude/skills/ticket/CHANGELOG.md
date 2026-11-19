@@ -1,6 +1,61 @@
 # ticket 版本紀錄
 
-新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。frontmatter 版號同步由後續收尾票統一處理，本檔先行遞增記錄。
+新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
+
+**Version**: 2.54.2（2026-11-18）— append-log 補寫不再落進 CLI 寫入的子節：
+- `append-log`（非 `--replace`）在章節已有實質內容時，原本把新內容附加在章節尾端。章節尾端是 dispatch 寫入的〈派發日誌〉〈Commit 規範〉或 create 寫入的〈查重紀錄〉時，沒有自己標題的補寫落進該子節：分析先行檢查點判定前剝除整個子節，補寫不被計入，照 deny 訊息的指引補寫後仍持續被擋；dispatch 冪等覆寫〈Commit 規範〉時，落在其中的補寫也會被刪除。改為插在第一個這類子節之前，與 `--replace` 的排列一致；章節沒有這類子節時仍附加在尾端。只對 Problem Analysis 生效（CLI 只在此章節寫入這三個子節），其他章節即使有人寫的同名標題也照舊附加在尾端。既有票中已落進子節的補寫不會遷移，仍會被檢查點剝除；要救回須以 `append-log --replace` 重寫該章節。
+- 插入邏輯放在 `ticket_system/lib/managed_subsections.py` 的 `insert_before_generated`，與子節清單同處，hook 環境可匯入。`references/track-command-update.md` 的 append-log 說明同步。
+- 測試：新增 `tests/test_append_log_inserts_before_generated.py`（dispatch 形態、查重紀錄形態、無子節的 E1 對照、連續兩次補寫的順序）；hooks 的檢查點測試補「補寫後放行、舊落點仍 deny」對照。
+- 對齊版號住址：`SKILL.md` frontmatter 的 `metadata.version` 由 2.54.1 補到 2.54.2，`pyproject.toml` 的 `version` 與 `ticket_system/__init__.py` 的 `__version__` 由 1.0.0 改為 2.54.2。本檔開頭「frontmatter 版號由後續收尾票統一處理」的說明移除：版號住址須同時相等，見 skill-design-guide〈版號規則〉。
+
+**Version**: 2.54.1（2026-11-17）— 修正與測試加速：
+- 寫入章節不再刪掉章節尾的 `---` 分隔線（tarrragon/claude#33）：`ticket_system/lib/section_locator.py` 的章節範圍排除尾端分隔線，`append-log`、`add-spawn-request` 等經此定位寫入的命令保留分隔線；`track acceptance` 的寫入同樣在分隔線之前截止。
+- `hooks/agent-dispatch-validation-hook.py`（tarrragon/claude#101）：派發目標全為豁免路徑時放行、不要求 worktree，豁免判定改用 branch-verify 的保護分支豁免集合。原本只放行純 `.claude/`，`docs/` 等豁免路徑被歸為非豁免，與派發位置判準表不一致。專案外的絕對路徑先去掉專案根前綴再判定；判定本身失敗（載入或例外）時落在阻擋側。
+- 測試：9 個測試檔以 monkeypatch 停用 git 提交重試的實際等待，skill:ticket 套件時間縮短約兩成，測試數與斷言不變；新增分隔線保留與豁免路徑的測試。
+
+**Version**: 2.54.0（2026-11-14）— 新增與行為變更，補記 2.50.0 之後未列入本檔的改動（2.51.0 至 2.53.0 已記者不重複）：
+- 父子關係：父票已是 completed／closed 時，`create --parent`、`track add-child`、`track set-parent` 拒絕寫入（errno `PARENT_TERMINAL`，不提供 `--force` 旁路），訊息指向 `--source-ticket` 或重開父票。原本可把未完成子票掛到已結案父票下。
+- `track claim`：成功後以 complete 閘門同一比對函式列出前 10 筆相關 error-pattern 與總數，知識在動手前送達；where.files 為空或 DOC／ANA／REF 豁免型別時不輸出，比對失敗不影響 claim（寫 stderr 與 hook-logs）。
+- `track dispatch`：實際寫入派發日誌 commit 且 `--isolation worktree` 時，stderr 提示派發前先推送 main（stdout 仍只有骨架）。CLI 寫入的子節（查重紀錄、派發日誌、Commit 規範）定義集中到 `ticket_system/lib/managed_subsections.py`，`track dispatch` 與 `track acceptance` 改從該處匯入。
+- `track hook-liveness`：新增 runtime 非阻擋錯誤筆數。`track hook-health` 的 flagged 建議改為實際存在的 `ticket create`。
+- 建票：hook 防護類 acceptance 模板補寫兩種合格證據（只有修改後分支才會產生的日誌行或輸出；同一輸入跑修改前後版本、輸出不同的對照），入口與提前回傳的判定行不算證據。放行與阻擋結果不變。
+- acceptance-gate：
+  - spawn 一致性：有規劃區段時落地確認區段不計入規劃數；部分落地由警告改為阻擋；範圍由 ANA 擴及 DOC；落地不足時另計回指本票的票。
+  - `multi_view_status` 值非法由阻擋降為警告，附修正途徑。
+  - 驗收記錄只認 frontmatter acceptance 全勾選，不再以 body 關鍵字判定（`references/ticket-lifecycle-details.md` 判準表同步）。
+  - 提前回傳時，清單不再以預設值把未執行的檢查標為已勾選，改標未評估。
+  - 同一命令鏈先 complete 全部未完成後代、再 complete 父票時，不以鏈前票面擋父票；父票走 batch-complete 或帶 `--force` 時不套用。
+  - error-pattern 衝突檢查收斂關鍵詞（排除通用目錄名）、依相關度排序，只列前 10 筆並附總數。
+  - 以子 shell 切到其他 repo 執行 ticket 命令時，依命令實際作用的 repo 判定；作用於其他 repo 即放行並寫日誌，目錄無法靜態解析時擋下並要求字面路徑。
+- 守衛：
+  - 放行時不再輸出 `permissionDecision`，只在阻擋時輸出 deny：`ticket-path-guard`、`ticket-file-access-guard`、`agent-ticket-validation`、`agent-dispatch-validation`、acceptance-gate。allow 會略過平台的權限提示，等於代使用者核可。
+  - `ticket-path-guard`：Edit／Write 傳絕對路徑時先剝除專案根再比對（原本恆放行）；Edit 禁用路徑 `.claude/tickets/` 下的既有檔由放行改為阻擋。
+  - `ticket-file-access-guard`：依 old_string 的實際位置判定是否編輯 frontmatter，任一出現位置落在 frontmatter 即 deny；deny 理由補 Edit body 章節、`append-log --replace`、`set-where`、`ticket migrate` 等合法途徑。根前綴剝除收斂為共用函式，補磁碟機代號與目錄邊界。
+  - `agent-dispatch-validation`：where.files 分類加目錄邊界與磁碟機路徑辨識；以 prompt 中票號的 where.files 補成派發目標的 fallback 只對實作類代理人名單內者套用（名單外代理人 prompt 中的票號是被分析對象）。
+- handoff：Stop hook 與 reminder hook 排除孤兒 handoff（目標或來源查無），Stop hook 歸檔不阻擋，reminder 不列入提醒；判準與 handoff GC 共用。
+- 全域 CLI 重裝：`ticket-reinstall-hook` 只在主 checkout 自動重裝全域 uv tool；linked worktree 內或判定失敗時改為提醒，不以未合併的源碼覆蓋全域 CLI。
+- linked worktree：CLI 讀框架設定改取程式碼所在的 checkout；`version`、`audit_version`、`blocker_resolution`、`handoff_utils` 讀 todolist、work-logs 與票面改用票務狀態根；handoff 系列 hook 與 stop-worklog-handoff-sync-check 的共用狀態改讀主 checkout；hook 日誌、liveness、identity_guard 讀寫與 events.jsonl／annotations.json 改經 `get_hook_log_dir`，落在主 checkout。
+- SKILL.md 命令層級慣例補一句：PC-093 延後語句守衛擋下且 ticket md 無法以 Edit 修改時，改用 `ticket track add-exempt-marker`，不改用 sed 或腳本寫檔。
+- 測試：hook-logs 洩漏哨兵改為前後快照比對；上述各項補對照測試。文件：`references/create-command.md`、`field-semantics.md`、`track-command-update.md` 同步。
+- 移除框架檔內的專案層級票號（規則 8 存量清理），改為自足敘述或佔位符。運行時字串：claim 的簡化 WRAP 標題（`ClaimWrapMessages.WRAP_SECTION_TITLE`）不再帶來源票號，部分 CLI help 與錯誤訊息的票號範例改為 `<version>-W<wave>-<seq>`；`tests/` 的對應斷言改為斷言不含票號。其餘為註解與文件。命令與參數行為不變。
+
+**Version**: 2.53.0（2026-11-13）— `ticket track dispatch-check` 新增 `--release <agent_handle|agent_id>`：PM 明示放棄恢復某個本 session 的無票代理人時，移除其派發條目並留下釋放紀錄（`state["released"]`，保留 24 小時）。之後以 SendMessage 恢復該代理人時，`active-dispatch-tracker-hook.py`（新增 PostToolUse matcher `SendMessage`）把條目放回，`dispatched_at` 重設、原值存 `first_dispatched_at`。原本代理人回合結束後仍可被恢復寫檔，條目不能自動移除，本 session 的無票條目只能等 24 小時 TTL。拒絕且不改動條目：他 session、有 `ticket_id`（改用 complete）、isolation=worktree（isolated-subagent-main-write-guard 依此判定身分）、回合進行中（`turn_ended_at` 為空）、多筆符合、找不到；參數與 SendMessage 的 `to` 剝除 `[ref]` 後綴後比對。已知缺口：背景工作完成而恢復不經 SendMessage，條目不放回，`[OK]` 後附 `[WARN]` 提醒不要在代理人仍有背景工作時釋放；取不到 session_id 或狀態檔損毀時 exit 2 不寫入。`.claude/lib/dispatch_tracker.py` 新增 `release_dispatch`、`restore_released`。`references/track-command-dispatch.md`、`SKILL.md` 同步。測試：`ticket_system/tests/test_track_dispatch_check.py` 的 `TestReleaseFlag`、`.claude/hooks/tests/test_dispatch_release.py`。
+
+**Version**: 2.52.0（2026-11-13）— 寫入點檢查兄弟前驅數（ARCH-017，tarrragon/claude#54 第 11 項）。`create --parent --blocked-by`、`set-blocked-by`（覆寫與 `--add`）、`set-parent`、`add-child` 寫入前，以寫入後的 parent_id 與 blockedBy 判定：目標票，以及同父下依賴目標票的兄弟票，若同時依賴 2 個以上兄弟票且並非全為終態，就拒絕寫入（errno `BLOCKED_BY_MULTI_SIBLING`，exit 1，票檔不變）。`--remove`、`--clear` 不檢查。判定在新模組 `lib/sibling_predecessor_guard.py`；載入票檔發生例外時寫 stderr 並放行，claim／complete 仍有 sibling-blockedby-validator 後備檢查。原本這條規則只在 claim／complete 執行，寫入點只檢查成環。`references/track-command-update.md`、`field-semantics.md` 同步。測試：`tests/test_sibling_predecessor_guard.py`。
+
+**Version**: 2.51.1（2026-11-13）— 安裝提示對齊 shim 化：模組被直接執行、套件未安裝、不在 ticket 目錄時的提示，原本指示 `cd .claude/skills/ticket && uv tool install .`，改為在專案根目錄執行 `python3 .claude/scripts/install-skill-clis.py`。照舊指示安裝會在 uv tool 環境建立一份不隨原始碼更新的副本。涵蓋 `scripts/ticket.py`、`lib/messages.py`（含 `ModuleMessages.INSTALL_COMMAND`）與 `commands/` 下 7 個模組。命令行為不變。
+
+**Version**: 2.51.0（2026-11-12）— handoff Stop hook 只對建立交接檔的 Claude 行程阻擋（tarrragon/claude#45）。交接檔新增 `creator_process`（`{pid, lstart}`，`handoff_utils.current_claude_process` 沿父行程鏈找 claude 祖先）；`handoff-auto-resume-stop-hook.py` 的阻擋分支先以 `is_other_claude_process` 比對，確定是其他行程才改列建議性任務、不阻擋。原本 hook 不分接手方，長駐的協調 session 也被要求 /clear 後 resume。以行程而非 session_id 比對：/clear 會換 session_id，而 /clear 後的新 context 正是預期接手方。pid 重用以 lstart 區分。舊格式（無欄位）、欄位損毀、ps 失敗或逾時、找不到 claude 祖先時一律照擋；hook 的 lib 載入失敗時退化實作同樣照擋。`references/resume-command.md` 補欄位說明。
+
+**Version**: 2.50.0（2026-11-11）— 新增與行為變更，彙整自 2.49.5 發佈之後的改動：
+- 新子命令 `ticket track resolve`：以舊票號查出現行票號；`migrate` 結束時列出票檔以外的舊號殘留。
+- `ticket track dispatch-readiness` 新增檢查 7（where.files 寫入宣告）；建票時對盤點表格式問題輸出警告；版本偵測失敗的 hint 改述偵測規則，不再要求 `current_version`。
+- 版本維度：ANA 落地訊息、`track query` 的 Spawned 進度改跨版本讀取；`complete` 對後續版本落地的 spawned 只印資訊，不要求 `--yes-spawned`；凍結版本 ANA 建子票的提示改用 `--source-ticket`，ANA 耦合提示改走 stdout。
+- 守衛與寫入：`set-blocked-by` 寫入前做循環偵測；`append-log --replace` 保留自動產生的子節，寫入已有內容的章節時逐行剝除舊形態可見佔位符；章節定位、H2 降級與 dedupe 切段共用 code fence 判定；`ticket_builder` 佔位符改為 HTML 註解；隔離提交納入「停止追蹤並補 .gitignore」的刪除；`get_next_seq` 取號納入 remote-tracking 主分支。
+- acceptance-gate：同命令鏈 `append-log` 後 `complete` 不再誤報缺 Phase 4；擋下串接命令時說明評估時點；防護類 hook 的 acceptance 模板與驗證端同源；handoff 孤兒判準涵蓋來源仍在、目標查無。讀檔守衛放行 Read。
+- 文件：`references/create-command.md`、`field-semantics.md`、`track-command*.md` 同步。
+
+**Version**: 2.49.6（2026-11-11）— 文件：`references/create-command.md`〈--parent vs --source-ticket 對比表〉與 `references/field-semantics.md` 加版本維度。對比表新增「版本歸屬」列（子票必與父票同版本；`--source-ticket` 由 `--version` 決定），使用時機與判別問題分出「ANA 落地屬本版範圍 → `--parent`」與「依〈兩期〉排入後續版本 → `--version <目標版本> --source-ticket <ANA-ID>`」；field-semantics 的 parent_id 屬性表、用戶情境對照表、欄位選擇決策樹（Q1a）與反模式速查同步。規則正本為 `.claude/pm-rules/ticket-lifecycle.md`〈ANA Ticket 落地下游血緣選擇〉。CLI 行為不變。
 
 **Version**: 2.49.5（2026-11-10）— CLI 入口讀回 shim 設定的 `SKILL_CLI_CALLER_CWD`，以呼叫者的工作目錄解析相對路徑與專案根目錄（tarrragon/claude#24）。`ticket_system/scripts/ticket.py` 在 import 時讀取並移除該環境變數（子行程不繼承），值為有效目錄時 chdir，無效值寫 stderr 警告並維持原 cwd。原本經 `uv --directory <skill>` 執行時 cwd 落在 skill 目錄，相對路徑解析到錯誤位置，外觀同測試紅燈。子命令與旗標語意不變。測試：`tests/test_caller_cwd_consistency.py`；skill 根目錄 `conftest.py` 新增 autouse fixture，移除該環境變數並還原 cwd，避免測試之間互相污染。同一修正也套用在 doc、worktree 的 CLI 入口。
 

@@ -376,6 +376,57 @@ class TestMarkerEscapeHatch:
         assert rc == 0
         assert err == ""
 
+    def test_marker_below_hit_line_still_blocked(
+        self, hook_mod, monkeypatch, tmp_path, capsys
+    ):
+        """正向對照（3.3.0-W1-203.1）：marker 放在命中行的下一行不生效，仍阻擋。
+
+        舊訊息「同行或下一行皆可」以命中行為基準讀，會導向這個放法。
+        """
+        target = _claude_path(tmp_path, "pm-rules", "marker-below-hit.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": (
+                    "原始內容\n"
+                    "新增引用 0.2.1-W3-324\n"
+                    "rule8-exempt: illustration:命中行下一行 marker 測試"
+                ),
+            },
+        }
+        rc = _run_main(hook_mod, monkeypatch, payload)
+        err = capsys.readouterr().err
+
+        assert rc == 2
+        assert "0.2.1-W3-324" in err
+
+    def test_block_message_marker_position_single_wording(
+        self, hook_mod, monkeypatch, tmp_path, capsys
+    ):
+        """阻擋訊息的 marker 位置敘述以命中行為基準且前後一致（3.3.0-W1-203.1）。"""
+        target = _claude_path(tmp_path, "pm-rules", "marker-wording.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": "原始內容\n新增引用 0.2.1-W3-325",
+            },
+        }
+        rc = _run_main(hook_mod, monkeypatch, payload)
+        err = capsys.readouterr().err
+
+        assert rc == 2
+        assert "放在命中行本身，或命中行的上一行" in err
+        assert "命中行本身或命中行的上一行加上逃生閥 marker" in err
+        assert "同行或下一行" not in err
+
     def test_marker_invalid_category_still_blocked(
         self, hook_mod, monkeypatch, tmp_path, capsys
     ):
@@ -946,6 +997,109 @@ class TestProjectPathWarningLayer:
         assert "WARNING" in err
         assert "docs/spec/ui/SPEC-003-interaction-response.md" in err
 
+    def test_project_path_warning_reaches_model_via_additional_context(
+        self, hook_mod, monkeypatch, tmp_path, capsys
+    ):
+        """exit 0 加 stderr 對模型不可見；提示須經 additionalContext 送達。"""
+        target = _claude_path(tmp_path, "methodologies", "ctx-methodology.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": "原始內容\n詳見 docs/spec/ui/SPEC-009.md。",
+            },
+        }
+        rc = _run_main(hook_mod, monkeypatch, payload)
+        out = json.loads(capsys.readouterr().out)
+
+        assert rc == 0
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        assert "docs/spec/ui/SPEC-009.md" in ctx
+
+    def test_project_path_warning_log_line_records_hit_values(
+        self, hook_mod, monkeypatch, tmp_path, capsys
+    ):
+        """升級判準以誤報比例計算，日誌行須含命中值，不能只記檔名。"""
+        records: list[str] = []
+
+        class _Logger:
+            def info(self, msg, *a, **kw):
+                records.append(str(msg))
+
+            def debug(self, *a, **kw):
+                pass
+
+            warning = error = debug
+
+        monkeypatch.setattr(hook_mod, "setup_hook_logging", lambda *_a, **_kw: _Logger())
+        target = _claude_path(tmp_path, "methodologies", "log-methodology.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": "原始內容\n詳見 docs/spec/ui/SPEC-011.md 與 lib/foo.dart。",
+            },
+        }
+        assert _run_main(hook_mod, monkeypatch, payload) == 0
+        capsys.readouterr()
+
+        path_lines = [r for r in records if "專案路徑類新增命中" in r]
+        assert len(path_lines) == 1
+        assert "docs/spec/ui/SPEC-011.md" in path_lines[0]
+        assert "lib/foo.dart" in path_lines[0]
+
+    @pytest.mark.parametrize(
+        "mandated_path",
+        ["docs/todolist.yaml", "docs/work-logs/v1/v1.0/v1.0.0/v1.0.0-main.md"],
+    )
+    def test_framework_mandated_project_path_not_flagged(
+        self, hook_mod, monkeypatch, tmp_path, capsys, mandated_path
+    ):
+        """框架既定、每個 consumer 都有的專案路徑不屬規則 8 識別符。
+        正向對照見 test_new_project_path_reference_triggers_warning_not_blocking
+        （docs/spec/ 仍觸發）。"""
+        target = _claude_path(tmp_path, "skills", "example", "SKILL.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": f"原始內容\n版本索引見 {mandated_path}。",
+            },
+        }
+        rc = _run_main(hook_mod, monkeypatch, payload)
+        captured = capsys.readouterr()
+
+        assert rc == 0
+        assert captured.err == ""
+        assert captured.out == ""
+
+    def test_path_warning_not_emitted_on_stdout_when_ticket_id_blocks(
+        self, hook_mod, monkeypatch, tmp_path, capsys
+    ):
+        """ticket ID 軌阻擋（exit 2）時 stdout 會被 runtime 丟棄，不輸出 JSON。"""
+        target = _claude_path(tmp_path, "methodologies", "both-tracks.md")
+        target.write_text("原始內容\n", encoding="utf-8")
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {
+                "file_path": str(target),
+                "old_string": "原始內容",
+                "new_string": "原始內容\n詳見 docs/spec/ui/SPEC-010.md 與 9.9.9-W9-999。",
+            },
+        }
+        rc = _run_main(hook_mod, monkeypatch, payload)
+        captured = capsys.readouterr()
+
+        assert rc == 2
+        assert captured.out == ""
+        assert "docs/spec/ui/SPEC-010.md" in captured.err
+
     def test_nested_claude_path_not_flagged_as_project_path(
         self, hook_mod, monkeypatch, tmp_path, capsys
     ):
@@ -1084,6 +1238,36 @@ class TestUnitFunctions:
             "實作見 .claude/skills/example/lib/foo.py。"
         )
         assert hits == []
+
+    def test_relative_path_resolving_inside_framework_not_flagged(self, hook_mod):
+        """框架內既有檔的相對寫法（.claude/lib/hook_io.py 寫成 lib/hook_io.py）不是專案路徑。
+
+        正向對照（E2）：框架內不存在的 lib/ 路徑仍命中。
+        """
+        assert (hook_mod._FRAMEWORK_DIR / "lib" / "hook_io.py").is_file()
+        hits = hook_mod.find_project_path_hits(
+            "模組見 lib/hook_io.py；consumer 的 lib/screens/home_page.dart 另計。"
+        )
+        assert hits == ["lib/screens/home_page.dart"]
+
+    def test_framework_defined_doc_files_not_flagged_but_spec_content_is(self, hook_mod):
+        """doc skill 固定檔名不算專案路徑；docs/spec/ 底下的個別規格仍算（E2）。"""
+        hits = hook_mod.find_project_path_hits(
+            "追溯表寫在 docs/traceability.yaml，用例清單在 docs/app-use-cases.md；"
+            "規格 docs/spec/billing/SPEC-012.md 屬專案內容。"
+        )
+        assert hits == ["docs/spec/billing/SPEC-012.md"]
+
+    def test_framework_walk_failure_keeps_candidates(self, hook_mod, monkeypatch):
+        """走訪失敗時不排除任何候選（誤差方向為多提示，不漏報）。"""
+        def _boom(*_a, **_kw):
+            raise OSError("walk failed")
+
+        monkeypatch.setattr(hook_mod, "_framework_rel_paths", None)
+        monkeypatch.setattr(hook_mod.os, "walk", _boom)
+        hits = hook_mod.find_project_path_hits("模組見 lib/hook_io.py。")
+        assert hits == ["lib/hook_io.py"]
+        monkeypatch.setattr(hook_mod, "_framework_rel_paths", None)
 
     def test_diff_new_hits_with_project_path_finder(self, hook_mod):
         pre = "既有引用 docs/spec/ui/SPEC-002.md"

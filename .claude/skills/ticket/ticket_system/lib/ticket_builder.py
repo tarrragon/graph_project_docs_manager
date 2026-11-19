@@ -52,7 +52,7 @@ def list_ticket_files_from_main(
 ) -> Optional[List[str]]:
     """列舉 git ref（預設 main，失敗試 master）上指定版本 tickets 目錄的檔案。
 
-    B3 方案（0.19.0-W1-037）核心輔助函式：補足 worktree 從 stale base 分叉時
+    B3 方案核心輔助函式：補足 worktree 從 stale base 分叉時
     本地工作樹掃描不到 main 上已存在 ticket 的缺口。回傳 main ref 上的 ticket
     檔路徑清單，供 get_next_seq / _scan_child_files_max_seq 與本地 glob 取聯集。
 
@@ -112,6 +112,46 @@ def list_ticket_files_from_main(
 
     # 所有候選 ref 皆無法解析（非 git 環境或無 main/master）→ fallback 純本地
     return None
+
+
+def list_ticket_files_from_remote_tracking(version: str) -> List[str]:
+    """列舉各 remote-tracking 主分支（refs/remotes/*/main、master）上的票檔。
+
+    跨 clone 撞號的補洞：另一個 clone 建票並推上 origin 後，本機 fetch 會更新
+    origin/main，但本地 main 尚未 merge，只看本地 main 會配到同號。fetch 之前
+    的撞號本機無從得知，處置見 .claude/README.md。
+
+    Returns:
+        各 ref 上票檔路徑的聯集（可能為空）。沒有 remote、非 git 環境或 git 失敗
+        時回傳空清單，取號行為與只看本地相同。
+    """
+    try:
+        result = subprocess.run(
+            ["git", "for-each-ref", "--format=%(refname) %(symref)", "refs/remotes"],
+            cwd=str(get_ticket_state_root()),
+            capture_output=True,
+            text=True,
+            timeout=GIT_TOPLEVEL_TIMEOUT,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        sys.stderr.write(
+            f"[WARNING] list_ticket_files_from_remote_tracking: git for-each-ref "
+            f"失敗（{type(exc).__name__}），略過 remote-tracking 來源\n"
+        )
+        return []
+    if result.returncode != 0:
+        return []
+
+    files: set = set()
+    for line in result.stdout.splitlines():
+        refname, _, symref = line.partition(" ")
+        # refs/remotes/<remote>/HEAD 是指向主分支的符號 ref，略過以免重複
+        if symref.strip() or refname.rsplit("/", 1)[-1] not in _MAIN_REF_CANDIDATES:
+            continue
+        listed = list_ticket_files_from_main(version, ref_candidates=(refname,))
+        if listed:
+            files.update(listed)
+    return sorted(files)
 
 
 def _parse_worktree_root_paths(porcelain_output: str, exclude: Path) -> List[Path]:
@@ -245,7 +285,7 @@ class TicketConfig(TypedDict, total=False):
     """
 
     # 基本資訊（6 個欄位）
-    ticket_id: str              # Ticket ID（如 0.31.0-W5-001）
+    ticket_id: str              # Ticket ID（如 <ticket-id>）
     version: str                # 版本號（如 0.31.0）
     wave: int                   # Wave 編號（如 5）
     title: str                  # 標題（「動詞 + 目標」格式）
@@ -317,8 +357,8 @@ def validate_create_checklist(
 
     建立前檢查必填欄位，回傳缺失欄位名稱清單。本函式為純驗證，
     不阻擋、不 print；由呼叫端決定 warning 或阻擋行為：
-    - create 命令層：缺失 + 未 --force 時阻擋（W11-003.5）
-    - batch-create / generate 路徑：warning 級不阻擋（1.0.0-W1-027）
+    - create 命令層：缺失 + 未 --force 時阻擋
+    - batch-create / generate 路徑：warning 級不阻擋
 
     讀取的是 flat config key（who/why/where_files 等），非經
     create_ticket_frontmatter 轉換後的巢狀 frontmatter。呼叫端
@@ -359,7 +399,7 @@ def validate_create_checklist(
     if config.get("when") == DEFAULT_UNDEFINED_VALUE:
         missing.append("when")
 
-    # W11-003.5: 5W1H 全欄位必填擴充
+    #5W1H 全欄位必填擴充
     # who 不可為空、"pending" 或「待定義」
     who_value = config.get("who")
     if not who_value or who_value in ("pending", DEFAULT_UNDEFINED_VALUE):
@@ -369,13 +409,13 @@ def validate_create_checklist(
     if not config.get("what"):
         missing.append("what")
 
-    # why 非空且非「待定義」（DOC 類型豁免；1.0.0-W1-043 補空字串漏判）
+    # why 非空且非「待定義」（DOC 類型豁免；補空字串漏判）
     if ticket_type != "DOC":
         why_value = config.get("why")
         if not why_value or why_value == DEFAULT_UNDEFINED_VALUE:
             missing.append("why")
 
-    # how_strategy 非空且非「待定義」（1.0.0-W1-043 補空字串漏判）
+    # how_strategy 非空且非「待定義」（補空字串漏判）
     how_strategy_value = config.get("how_strategy")
     if not how_strategy_value or how_strategy_value == DEFAULT_UNDEFINED_VALUE:
         missing.append("how_strategy")
@@ -392,15 +432,15 @@ def format_ticket_id(version: str, wave: int, seq: int) -> str:
         seq: 序號（正整數）
 
     Returns:
-        格式化的 Ticket ID（如 "0.31.0-W5-001"）
+        格式化的 Ticket ID（如 "<ticket-id>"）
 
     Examples:
         >>> format_ticket_id("v0.31.0", 5, 1)
-        '0.31.0-W5-001'
+        '<ticket-id>'
         >>> format_ticket_id("0.31.0", 5, 1)
-        '0.31.0-W5-001'
+        '<ticket-id>'
         >>> format_ticket_id("0.32.0", 10, 999)
-        '0.32.0-W10-999'
+        '<ticket-id>'
 
     Implementation:
         - 移除 version 的 "v" 前綴（若有）
@@ -416,19 +456,19 @@ def format_child_ticket_id(parent_id: str, child_seq: int) -> str:
     """格式化子任務 Ticket ID。
 
     Args:
-        parent_id: 父 Ticket ID（如 "0.31.0-W5-001"）
+        parent_id: 父 Ticket ID（如 "<ticket-id>"）
         child_seq: 子任務序號（正整數）
 
     Returns:
-        子任務 ID（如 "0.31.0-W5-001.1"）
+        子任務 ID（如 "<ticket-id>.1"）
 
     Examples:
-        >>> format_child_ticket_id("0.31.0-W5-001", 1)
-        '0.31.0-W5-001.1'
-        >>> format_child_ticket_id("0.31.0-W5-001.1", 2)
-        '0.31.0-W5-001.1.2'
-        >>> format_child_ticket_id("0.31.0-W5-001.1.1.1", 1)
-        '0.31.0-W5-001.1.1.1.1'
+        >>> format_child_ticket_id("<ticket-id>", 1)
+        '<ticket-id>.1'
+        >>> format_child_ticket_id("<ticket-id>.1", 2)
+        '<ticket-id>.1.2'
+        >>> format_child_ticket_id("<ticket-id>.1.1.1", 1)
+        '<ticket-id>.1.1.1.1'
 
     Implementation:
         - 格式：{parent_id}.{child_seq}
@@ -448,7 +488,7 @@ def get_next_seq(version: str, wave: int) -> int:
         下一個序號（正整數，從 1 開始）
 
     Examples:
-        若 0.31.0-W5-001.md 和 0.31.0-W5-002.md 已存在：
+        若 <ticket-id>.md 和 <other-id>.md 已存在：
         >>> get_next_seq("0.31.0", 5)
         3
 
@@ -462,19 +502,21 @@ def get_next_seq(version: str, wave: int) -> int:
         3. list_ticket_files_from_main 取得 main ref 上的 ticket 檔（B3 方案）
         4. list_ticket_files_from_sibling_worktrees 取得同 repo 下其他
            worktree 本地已建立、尚未 merge 進 main 的 ticket 檔
-        5. 三來源取聯集後解析所有檔名，取得最大序號
-        6. 返回 max_seq + 1（無任何來源檔案時返回 1）
+        5. list_ticket_files_from_remote_tracking 取得 remote-tracking 主分支
+           （已 fetch、本地 main 尚未 merge）上的 ticket 檔
+        6. 各來源取聯集後解析所有檔名，取得最大序號
+        7. 返回 max_seq + 1（無任何來源檔案時返回 1）
 
     注意:
         - 只計算根任務序號（不包含子任務的點號部分）
-        - 如 0.31.0-W5-001.1.md 只取 001
+        - 如 <ticket-id>.1.md 只取 001
         - main ref 掃描失敗（非 git / 無 main / 逾時）時降級為純本地掃描
         - sibling worktree 掃描失敗（非 git / git worktree list 逾時）時
           降級為不計入聯集，語意同 main ref 掃描失敗
     """
     tickets_dir = get_tickets_dir(version)
 
-    # 掃描邊界（W1-052）：正常路徑的「max+1 天然不撞」論證只認 .md ——
+    # 掃描邊界：正常路徑的「max+1 天然不撞」論證只認 .md ——
     # local glob 限 `*-W{wave}-*.md`，main ref 與 sibling worktree 掃描也只收
     # endswith(".md") 的 stem。.yaml-only ticket（無對應 .md）不在此掃描集合，
     # 理論上是「max+1 不撞」的洞。現實風險 ~0（系統只產 .md、repo 現存 0 個
@@ -505,26 +547,34 @@ def get_next_seq(version: str, wave: int) -> int:
             Path(p).stem for p in sibling_files if Path(p).name.endswith(".md")
         ]
 
+    # 來源 4：remote-tracking 主分支（補足跨 clone：他方已推上 origin、本機已
+    # fetch 但本地 main 尚未 merge 的票號；無 remote 時為空，行為不變）
+    remote_stems = [
+        Path(p).stem
+        for p in list_ticket_files_from_remote_tracking(version)
+        if Path(p).name.endswith(".md")
+    ]
+
     # 聯集解析最大根任務序號
     max_seq = 0
-    for stem in set(local_stems) | set(main_stems) | set(sibling_stems):
+    for stem in set(local_stems) | set(main_stems) | set(sibling_stems) | set(remote_stems):
         seq = _parse_root_seq(stem, wave)
         if seq is not None:
             max_seq = max(max_seq, seq)
 
     candidate = max_seq + 1
 
-    # 降級可觀測 + 內聚 collision guard（W1-042 / W1-051 / quality-baseline 規則 4）：
+    # 降級可觀測 + 內聚 collision guard（quality-baseline 規則 4）：
     # 三來源同時掃空（本地為空、main ref 與 sibling worktree 皆降級）時，
-    # candidate=1 可能誤配已存在 ID（W1-039 撞號事件）。
+    # candidate=1 可能誤配已存在 ID（撞號事件）。
     #
-    # linux caveat（W1-051）：正常路徑（任一來源有效）的 candidate = max+1 對
+    # linux caveat：正常路徑（任一來源有效）的 candidate = max+1 對
     # 已掃描集合天然不撞，故不在正常路徑做逐一 .exists() 探測；guard 緊貼降級
     # 分支——僅當降級偵測成立時，才以檔案系統探測推進至真正可用 seq，使
     # get_next_seq 回傳值內部保證可用（消除 create.py caller 層 while-loop 外洩）。
     if not local_stems and main_files is None and sibling_files is None:
         resolved = resolve_available_seq(version, wave, candidate)
-        # W1-052 措辭收斂：FS 探測看不到 main-only / sibling-only 檔（兩者皆
+        # 措辭收斂：FS 探測看不到 main-only / sibling-only 檔（兩者皆
         # 已降級），故 collision guard 僅保證「本地檔案系統可用」，對
         # main-only 或 sibling-only 撞號無保證；不過度承諾「已推進至可用序號」。
         sys.stderr.write(
@@ -542,12 +592,12 @@ def get_next_seq(version: str, wave: int) -> int:
 def resolve_available_seq(version: str, wave: int, start_seq: int) -> int:
     """從 start_seq 起遞增，回傳第一個檔案系統上不存在的根任務序號。
 
-    W1-051 內聚 collision guard 的共用 helper：把「可用性保證」收斂到單一
+    內聚 collision guard 的共用 helper：把「可用性保證」收斂到單一
     權威點，供 get_next_seq 降級分支與 bulk_create 批次配號共享，消除 caller
     層各自實作 while-loop 的特例外洩（L1）與 bulk 無 guard 的連鎖覆寫風險（R1）。
 
     可用性判定用 get_ticket_path(...).exists()——該函式對 .md 與 .yaml 皆探測
-    （優先回存在者），故同時覆蓋 .md / .yaml 兩種落盤格式的撞號（W1-051 .yaml 缺口）。
+    （優先回存在者），故同時覆蓋 .md / .yaml 兩種落盤格式的撞號（.yaml 缺口）。
 
     Args:
         version: 版本號（如 "1.0.0"）。
@@ -558,7 +608,7 @@ def resolve_available_seq(version: str, wave: int, start_seq: int) -> int:
         第一個 get_ticket_path 探測不存在的序號（>= start_seq）。
 
     Examples:
-        若 1.0.0-W1-001.md 存在、W1-002 不存在：
+        若 <ticket-id>.md 存在、<other-id>.md 不存在：
         >>> resolve_available_seq("1.0.0", 1, 1)
         2
     """
@@ -572,7 +622,7 @@ def _parse_root_seq(stem: str, wave: int) -> Optional[int]:
     """從 ticket 檔名 stem 解析指定 wave 的根任務序號。
 
     Args:
-        stem: ticket 檔名（不含副檔名），如 "0.31.0-W5-001" 或 "0.31.0-W5-001.1"。
+        stem: ticket 檔名（不含副檔名），如 "<ticket-id>" 或 "<ticket-id>.1"。
         wave: 目標 Wave 編號；stem 的 wave 不符時回傳 None。
 
     Returns:
@@ -601,8 +651,8 @@ def _extract_direct_child_seq(child_id: str, parent_id: str) -> Optional[int]:
     忽略更深層的子任務（如 001.1.1）。
 
     Args:
-        child_id: 子任務 ID（如 "0.31.0-W5-001.2"）
-        parent_id: 父任務 ID（如 "0.31.0-W5-001"）
+        child_id: 子任務 ID（如 "<ticket-id>.2"）
+        parent_id: 父任務 ID（如 "<ticket-id>"）
 
     Returns:
         直接子任務序號，若非直接子任務則返回 None
@@ -624,7 +674,7 @@ def _scan_child_files_max_seq(tickets_dir: Path, parent_id: str) -> int:
     """掃描子 Ticket 檔案找出最大直接子任務序號（本地工作樹 ∪ main ref ∪ sibling worktree）。
 
     這是防止父 Ticket 的 children 欄位未同步時的安全機制，
-    確保不會覆蓋已存在的子 Ticket 檔案。B3 方案（0.19.0-W1-037）擴增資料來源：
+    確保不會覆蓋已存在的子 Ticket 檔案。B3 方案擴增資料來源：
     除本地工作樹 glob 外，併入 main ref 上的子 ticket 檔，避免 stale base
     worktree 掃不到 main 已建立的子 ticket 而分配碰撞序號；另補上 sibling
     worktree 掃描，解決同 repo 下其他 worktree 本地已建立、尚未 merge 進
@@ -637,7 +687,7 @@ def _scan_child_files_max_seq(tickets_dir: Path, parent_id: str) -> int:
     Returns:
         最大直接子任務序號，無子 Ticket 檔案時返回 0
     """
-    # 掃描邊界（W1-052 對齊 root 路徑標註）：glob 限 `{parent_id}.*.md`，
+    # 掃描邊界（對齊 root 路徑標註）：glob 限 `{parent_id}.*.md`，
     # .yaml-only 子票不在掃描集合——與 get_next_seq 正常路徑的 .md-only 邊界
     # 同構。現實風險 ~0（系統只產 .md），children 欄位為另一獨立來源可兜底，
     # 故不為此修碼，僅顯性標註。
@@ -675,7 +725,7 @@ def _filter_child_stems(files: List[str], child_prefix: str) -> List[str]:
 
     Args:
         files: 檔案路徑字串清單（相對或絕對皆可，只取 name/stem）。
-        child_prefix: 子任務 ID 前綴（如 "0.31.0-W5-001."）。
+        child_prefix: 子任務 ID 前綴（如 "<ticket-id>."）。
 
     Returns:
         符合前綴的 .md 檔案 stem 清單。
@@ -713,22 +763,22 @@ def get_next_child_seq(parent_id: str) -> int:
     取兩者的最大序號 + 1，確保不會覆蓋已存在的子 Ticket。
 
     Args:
-        parent_id: 父 Ticket ID（如 "0.31.0-W5-001"）
+        parent_id: 父 Ticket ID（如 "<ticket-id>"）
 
     Returns:
         下一個子任務序號（正整數，從 1 開始）
 
     Examples:
-        若父 Ticket 有 children: ["0.31.0-W5-001.1", "0.31.0-W5-001.2"]：
-        >>> get_next_child_seq("0.31.0-W5-001")
+        若父 Ticket 有 children: ["<ticket-id>.1", "<ticket-id>.2"]：
+        >>> get_next_child_seq("<ticket-id>")
         3
 
-        若父 Ticket 無 children 但檔案系統有 0.31.0-W5-001.1.md：
-        >>> get_next_child_seq("0.31.0-W5-001")
+        若父 Ticket 無 children 但檔案系統有 <ticket-id>.1.md：
+        >>> get_next_child_seq("<ticket-id>")
         2
 
         若父 Ticket 無 children 且無檔案：
-        >>> get_next_child_seq("0.31.0-W5-001")
+        >>> get_next_child_seq("<ticket-id>")
         1
     """
     version = extract_version_from_ticket_id(parent_id)
@@ -817,7 +867,7 @@ def create_ticket_frontmatter(config: TicketConfig) -> Dict[str, Any]:
 
     Examples:
         >>> config = TicketConfig(
-        ...     ticket_id="0.31.0-W5-001",
+        ...     ticket_id="<ticket-id>",
         ...     version="0.31.0",
         ...     wave=5,
         ...     title="實作功能 X",
@@ -834,7 +884,7 @@ def create_ticket_frontmatter(config: TicketConfig) -> Dict[str, Any]:
         ... )
         >>> frontmatter = create_ticket_frontmatter(config)
         >>> frontmatter["id"]
-        '0.31.0-W5-001'
+        '<ticket-id>'
         >>> frontmatter["status"]
         'pending'
     """
@@ -880,6 +930,24 @@ def create_ticket_frontmatter(config: TicketConfig) -> Dict[str, Any]:
     }
 
 
+# 可見佔位符行：「（必填：…）」等四種前綴，整行即一個佔位符
+_VISIBLE_PLACEHOLDER_LINE = re.compile(r"^（(待填寫|必填|選填|免填)：(.+)）$", re.MULTILINE)
+
+
+def _as_guide_comment(text: str) -> str:
+    """把可見佔位符行轉為 HTML 註解 ``<!-- 必填：… -->``。
+
+    可見佔位符與作者內容同為字串，append-log 只在整章皆為佔位符時才替換，
+    章節另有查重紀錄或 Completion Info 欄位時佔位符會留在首屏。改為註解後
+    讀取端（皆先剝 HTML 註解再判空殼）判定不變，佔位符不再與內容同形。
+    註解以前綴詞（必填、選填等）開頭，不會被 ``<!--\\s*Schema\\[`` 比中，
+    Schema 標註不經本函式。
+    """
+    return _VISIBLE_PLACEHOLDER_LINE.sub(
+        lambda m: f"<!-- {m.group(1)}：{m.group(2)} -->", text
+    )
+
+
 def _ana_reproduction_section(ticket_type: str) -> str:
     """產生 ANA Ticket 專屬的「重現實驗結果」章節。
 
@@ -889,7 +957,7 @@ def _ana_reproduction_section(ticket_type: str) -> str:
     """
     if ticket_type != "ANA":
         return ""
-    return """
+    return _as_guide_comment("""
 ## 重現實驗結果
 
 ### 實驗方法
@@ -905,7 +973,7 @@ def _ana_reproduction_section(ticket_type: str) -> str:
 （必填：實驗結論——已驗證的事實 vs 仍未驗證的假設。僅在完成實驗後才允許列候選方案。）
 
 ---
-"""
+""")
 
 
 _SCHEMA_NOTES = {
@@ -1104,7 +1172,10 @@ def create_ticket_body(what: str, who: str, ticket_type: str = "") -> str:
     sol_marker = _schema_marker(ticket_type, "Solution")
     tr_marker = _schema_marker(ticket_type, "Test Results")
     ci_marker = _schema_marker(ticket_type, "Completion Info")
-    ph = _TYPE_PLACEHOLDERS.get(ticket_type, _DEFAULT_PLACEHOLDERS)
+    ph = {
+        key: _as_guide_comment(value)
+        for key, value in _TYPE_PLACEHOLDERS.get(ticket_type, _DEFAULT_PLACEHOLDERS).items()
+    }
     return f"""# Execution Log
 
 ## Task Summary
@@ -1150,7 +1221,7 @@ def create_ticket_body(what: str, who: str, ticket_type: str = "") -> str:
 
 ## NeedsContext
 
-<!-- 代理人回報資料缺口時追加於此（W17-010 協議）。子項建議 template：
+<!-- 代理人回報資料缺口時追加於此（NeedsContext 協議）。子項建議 template：
 - **缺失項**:（具體指出需要的 context 是什麼）
 - **觸發位置**:（檔案:行號 或 決策點）
 - **影響**:（缺料導致無法完成哪些 acceptance）
@@ -1162,7 +1233,7 @@ def create_ticket_body(what: str, who: str, ticket_type: str = "") -> str:
 
 ## Exit Status
 
-<!-- 代理人結束時以 YAML 格式回報（W17-010 schema）：
+<!-- 代理人結束時以 YAML 格式回報（Exit Status schema）：
 ```yaml
 exit_status: success        # 枚舉: success|needs_context|blocked|partial_success|failed
 reason: ""             # 狀態原因說明
@@ -1212,7 +1283,7 @@ def _append_unique_to_list_field(
     其餘 load → 防禦正規化 → append-unique → save 序列完全一致。
 
     Why:
-        W14-042 race 修復後兩函式幾乎同構，DRY 抽 helper 避免修 lock 邏輯
+        race 修復後兩函式幾乎同構，DRY 抽 helper 避免修 lock 邏輯
         時要改兩處（IMP-003 防護）。helper 內統一 try/except 回傳 False，
         讓兩 caller 的失敗策略一致（save 失敗 → False，不 propagate）。
 
@@ -1228,8 +1299,8 @@ def _append_unique_to_list_field(
         False 表示 ticket 不存在或寫入失敗。
     """
     ticket_path: Path = Path(get_ticket_path(version, ticket_id))
-    # W14-042: 用 per-ticket-file lock 包圍 load → modify → save 三步驟，
-    # 消除 logical race（W14-005 重現實驗 lost_rate 55.6%~71.9%）。
+    # 用 per-ticket-file lock 包圍 load → modify → save 三步驟，
+    # 消除 logical race（重現實驗 lost_rate 55.6%~71.9%）。
     with file_lock(ticket_path):
         ticket: Optional[Dict[str, Any]] = load_ticket(version, ticket_id)
         if not ticket:
@@ -1271,8 +1342,8 @@ def update_parent_children(version: str, parent_id: str, child_id: str) -> bool:
 
     Args:
         version: 版本號（向後相容保留，實際不使用）
-        parent_id: 父 Ticket ID（如 "0.31.0-W5-001"）
-        child_id: 子 Ticket ID（如 "0.31.0-W5-001.1"）
+        parent_id: 父 Ticket ID（如 "<ticket-id>"）
+        child_id: 子 Ticket ID（如 "<ticket-id>.1"）
 
     Returns:
         bool: 成功更新返回 True，失敗返回 False
@@ -1288,10 +1359,10 @@ def update_parent_children(version: str, parent_id: str, child_id: str) -> bool:
         8. 返回 True
 
     Examples:
-        >>> update_parent_children("0.31.0", "0.31.0-W5-001", "0.31.0-W5-001.1")
+        >>> update_parent_children("0.31.0", "<ticket-id>", "<ticket-id>.1")
         True
 
-        >>> update_parent_children("0.31.0", "invalid-id", "0.31.0-W5-001.1")
+        >>> update_parent_children("0.31.0", "invalid-id", "<ticket-id>.1")
         False
 
     Side Effects:
@@ -1316,8 +1387,8 @@ def update_source_spawned_tickets(source_ticket_id: str, new_ticket_id: str) -> 
     不會阻擋 source 的 complete。
 
     Args:
-        source_ticket_id: source Ticket ID（如 "0.18.0-W12-002"）
-        new_ticket_id: 新建立的衍生 Ticket ID（如 "0.18.0-W12-006"）
+        source_ticket_id: source Ticket ID（如 "<source-ticket-id>"）
+        new_ticket_id: 新建立的衍生 Ticket ID（如 "<new-ticket-id>"）
 
     Returns:
         bool: 成功更新返回 True；source 不存在、版本解析失敗或儲存失敗返回 False。
@@ -1336,10 +1407,10 @@ def update_source_spawned_tickets(source_ticket_id: str, new_ticket_id: str) -> 
         - 更新 source["spawned_tickets"] 清單
 
     Examples:
-        >>> update_source_spawned_tickets("0.18.0-W12-002", "0.18.0-W12-006")
+        >>> update_source_spawned_tickets("<source-ticket-id>", "<new-ticket-id>")
         True
 
-        >>> update_source_spawned_tickets("invalid-id", "0.18.0-W12-006")
+        >>> update_source_spawned_tickets("invalid-id", "<new-ticket-id>")
         False
     """
     # 從 source_ticket_id 提取版本（對齊 update_parent_children 的跨版本處理）
@@ -1352,7 +1423,7 @@ def update_source_spawned_tickets(source_ticket_id: str, new_ticket_id: str) -> 
 
 
 # ---------------------------------------------------------------------------
-# Idempotent Schema H2 dedupe helper（W11-003.3）
+# Idempotent Schema H2 dedupe helper
 # ---------------------------------------------------------------------------
 #
 # Why: 既有 ticket md 出現相同 Schema H2（例如 ## Test Results）重複出現的情況
@@ -1425,11 +1496,14 @@ def _split_body_by_h2(body: str) -> List[Tuple[Optional[str], str]]:
         List of (h2_title or None, segment_text)。第一段若無 H2 前綴，h2_title 為 None；
         segment_text 包含 H2 標題行本身（若有），以維持原始格式還原。
     """
+    from ticket_system.lib.section_locator import mask_fenced_lines
+
     h2_re = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
     segments: List[Tuple[Optional[str], str]] = []
     last_end = 0
     last_title: Optional[str] = None
-    for match in h2_re.finditer(body):
+    # code fence 內的 `## ` 不是章節：在等長遮罩副本上找標題，索引直接切原文
+    for match in h2_re.finditer(mask_fenced_lines(body)):
         if match.start() > last_end or last_title is not None:
             segments.append((last_title, body[last_end:match.start()]))
         last_end = match.start()

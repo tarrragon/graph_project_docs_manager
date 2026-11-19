@@ -109,6 +109,30 @@ def test_same_repo_random_file_not_exempt(tmp_path):
     )
 
 
+def test_same_repo_nested_readme_exempt(tmp_path):
+    # 任意層級 README.md 豁免（與 pm-role 可寫路徑一致）
+    repo = tmp_path / "host"
+    repo.mkdir()
+    _init_git_repo(repo)
+    file_path = str(repo / "lib" / "pkg" / "README.md")
+    # 顯式 host_root：確保走 same-repo 分支（否則測試隔離的 host 解析落到 cross-repo）
+    assert is_exempt_path_on_protected_branch(
+        file_path, target_repo=str(repo), host_root=str(repo)
+    )
+
+
+def test_same_repo_nested_other_md_not_exempt(tmp_path):
+    # E2 正向對照：同目錄其他 .md 與名稱近似 README 的檔仍擋
+    repo = tmp_path / "host"
+    repo.mkdir()
+    _init_git_repo(repo)
+    for name in ("NOTES.md", "README.md.bak", "XREADME.md", "readme.md"):
+        file_path = str(repo / "lib" / "pkg" / name)
+        assert not is_exempt_path_on_protected_branch(
+            file_path, target_repo=str(repo), host_root=str(repo)
+        ), name
+
+
 # ---------- is_exempt_path_on_protected_branch: cross repo ----------
 
 def test_cross_repo_readme_exempt(tmp_path):
@@ -230,3 +254,51 @@ def test_generic_exempt_list_minimal_set():
     assert ".claude/" not in GENERIC_EXEMPT_EXACT
     assert "docs/" not in GENERIC_EXEMPT_EXACT
     assert "CLAUDE.md" not in GENERIC_EXEMPT_EXACT
+
+
+# ---------- Windows 路徑（3.2.1-W1-001，#132） ----------
+# 本機為 POSIX，以字串模擬 Windows 路徑；target_repo 傳 None 走 same-repo 分支，
+# host_root 以 git 回傳的正斜線形式與反斜線形式兩種模擬。
+
+_WIN_ROOT_FWD = "C:/Users/dev/proj"
+_WIN_ROOT_BACK = "C:\\Users\\dev\\proj"
+
+
+@pytest.mark.parametrize("host_root", [_WIN_ROOT_FWD, _WIN_ROOT_BACK])
+@pytest.mark.parametrize("file_path", [
+    "C:\\Users\\dev\\proj\\.claude\\hooks\\x.py",
+    "c:\\Users\\dev\\proj\\docs\\a.md",
+    "C:/Users/dev/proj/docs/a.md",
+    "c:/Users/dev/proj/CLAUDE.md",
+])
+def test_windows_exempt_paths_pass_on_protected_branch(host_root, file_path):
+    assert is_exempt_path_on_protected_branch(
+        file_path, target_repo=None, host_root=host_root) is True
+
+
+@pytest.mark.parametrize("host_root", [_WIN_ROOT_FWD, _WIN_ROOT_BACK])
+@pytest.mark.parametrize("file_path", [
+    "C:\\Users\\dev\\proj\\lib\\main.py",
+    "c:/Users/dev/proj/src/app.ts",
+    "C:\\Users\\dev\\proj\\test\\a_test.py",
+])
+def test_windows_non_exempt_project_paths_still_blocked(host_root, file_path):
+    """正向對照（test-assertion-design E2）：專案內非豁免路徑修正後仍被擋。"""
+    assert is_exempt_path_on_protected_branch(
+        file_path, target_repo=None, host_root=host_root) is False
+
+
+def test_windows_path_outside_project_is_exempt():
+    """與 POSIX 一致：專案外的絕對路徑不受保護分支限制。"""
+    assert is_exempt_path_on_protected_branch(
+        "D:\\other\\notes.txt", target_repo=None, host_root=_WIN_ROOT_BACK) is True
+
+
+def test_posix_same_repo_behavior_unchanged():
+    root = "/home/dev/proj"
+    assert is_exempt_path_on_protected_branch(
+        root + "/.claude/x.md", target_repo=None, host_root=root) is True
+    assert is_exempt_path_on_protected_branch(
+        root + "/lib/x.py", target_repo=None, host_root=root) is False
+    assert is_exempt_path_on_protected_branch(
+        "/etc/hosts", target_repo=None, host_root=root) is True

@@ -2,6 +2,14 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 3.1.0 — `check` 的 Pre-flight 新增步驟 1.8：列出本地尚未推送到 framework canonical 的 `.claude/` commit 數（錨點為 git 歷史中最後一次寫入 `.claude/sync-base.json` 的 commit，計數為其後動到 `.claude/` 的非 merge commit）。只輸出資訊，不計入通過判定；無法計算時說明原因。
+- 對齊版號住址：`pyproject.toml` 的 `version` 由 1.0.0 改為 3.1.0。
+
+**Version**: 3.0.0（2026-11-12）— `release`／`finish` 標 completed 後預設不再推進下一個 planned 版本：下一版維持 planned，todolist 進入版本空窗，回饋檢查完成後以 `start --version <下一版>` 轉 active。新增 `--activate-next` 保留舊行為。預設行為改變，故升 major；第二次收尾提交在未推進時訊息改為「標記完成」。空窗定義見 `.claude/pm-rules/version-progression.md`〈版本生命週期〉。
+- 移除框架檔內的專案層級票號（規則 8 存量清理），改為自足敘述或佔位符；僅註解與 docstring，行為不變。
+
+**Version**: 2.12.0（2026-11-11）— `check`／`finish` 新增警告：版本已凍結、tickets 目錄內沒有任何一張票帶非空 `scope_blocker`、且至少一張 pending 票時，輸出警告並指出凍結程序第二步 `ticket track set-scope-blocker <id> --reason <契約項>`。只警告，不改結束碼與流程。SKILL.md 的安裝段同步改述 shim 化後的做法（改原始碼即時生效，不需重新安裝）。
+
 **Version**: 2.11.0（2026-10-19）— PreToolUse 提醒類 hook 改走 `additionalContext`；version-release-guard 的警告路徑保留核准決策。
 
 **Version**: 2.10.5 - `finish` 前移對撞號的 dry-run 改為續行並在結尾列對照表：`ticket migrate --dry-run` 撞號現回 rc=0 與改號預覽（配套 ticket skill 2.44.41），`migrate_overflow_tickets` 不再把撞號預覽當失敗中止，後續 preflight 與文件更新步驟在 dry-run 下可見。每張票的 dry-run 呼叫經 `--reserve-id` 帶入前面各張的預覽目標，使連環撞號的預覽與正式執行一致；新增 `print_overflow_mapping`，finish 在殘留守衛前列出「來源 ID：原目標 -> 實際目標」對照表（取自 `[MIGRATE-MAP]` 標記行，未改號者原目標等於實際目標）。`tests/test_finish_migrate_collision.py` 的 dry-run 撞號案依新語意由 rc=1 失敗改為 rc=0 續行，新增保留目標傳遞與對照表測試。

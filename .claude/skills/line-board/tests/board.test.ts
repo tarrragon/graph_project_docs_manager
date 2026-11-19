@@ -305,9 +305,13 @@ describe('Pane', () => {
   test('佇列行只含非票號文字的線，標題列標「佇列無票號」（E2）；同一協調票含票號的線不標（E1 對照）', { timeoutMs: PANE_TEST_TIMEOUT_MS }, async ($, on) => {
     const text = `## Solution\n${NO_TICKET_LANE_LINES}\n`
     const { ui } = await startBoard($, on, { files: { [`/repo/${COORDINATION_TICKET_FILE}`]: text } })
-    for (const lane of [5, 6]) {
+    for (const lane of [5, 6, 9]) {
       expect((await titleOf(ui, laneGroupId(lane)))?.[0]).toContain(QUEUE_NO_TICKET_LABEL)
     }
+    // 附說明的收線寫法標［收線寫法］，與 line_status 的過期項同類，不標［佇列無票號］
+    const endedTitle = (await titleOf(ui, laneGroupId(10)))?.[0]
+    expect(endedTitle).toContain('［收線寫法］')
+    expect(endedTitle).not.toContain(QUEUE_NO_TICKET_LABEL)
     for (const lane of [7, 8]) {
       const title = await titleOf(ui, laneGroupId(lane))
       expect(title?.[0]).toMatch(new RegExp(`^[▸▾] L${lane} `))
@@ -423,7 +427,11 @@ describe('專案設定', () => {
 
   {
     const cases: [{ projectConfig?: string; cliFailure?: CliFailure }, RegExp][] = [
-      [{ projectConfig: cliNone() }, /^line_status 無法判讀：active 版本沒有標記 `coordination: true` 的進行中票；補法：.*ticket create --coordination/],
+      // 先問用戶再補法（line-continuity §3）：舊版「；補法：」緊接成因，不符本 regex 的順序
+      [
+        { projectConfig: cliNone() },
+        /^line_status 無法判讀：active 版本沒有標記 `coordination: true` 的進行中票；不自行判定單一線，先以 AskUserQuestion 問用戶開工作線或單一線.*；用戶選開工作線時才建協調票，補法：.*ticket create --coordination/,
+      ],
       [
         { projectConfig: cliMultiple(['0.5.0-W1-349', '0.6.0-W1-099']) },
         /^line_status 無法判讀：active 版本有多張標記 coordination: true 的進行中票，不自行擇一，請用戶裁定：0\.5\.0-W1-349、0\.6\.0-W1-099/,

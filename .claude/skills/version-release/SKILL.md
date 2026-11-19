@@ -2,7 +2,7 @@
 name: version-release
 description: "版本發布整合工具。Use for: (1) 發布新版本（合併到 main、打 Tag、推送）, (2) 發布前健康檢查（所有 Ticket 完成？CHANGELOG 更新？）, (3) 更新版本文件（worklog 狀態、CHANGELOG）。Use when: 準備發布版本、執行 /version-release check 確認發布前狀態、完成所有 Ticket 後要收尾時。"
 metadata:
-  version: 2.11.0
+  version: 3.1.0
 ---
 
 # Version Release Skill
@@ -11,7 +11,7 @@ metadata:
 
 ## 三步驟發布流程
 
-1. **Pre-flight 檢查** - 驗證 Ticket 完成度、技術債務、版本同步
+1. **Pre-flight 檢查** - 驗證 Ticket 完成度、技術債務、版本同步；另列出本地尚未推送到 framework canonical 的 `.claude/` commit 數（資訊，不阻擋，錨點為最後一次寫入 `.claude/sync-base.json` 的 commit）
 2. **文件更新** - 清理 todolist、更新 CHANGELOG、確認版本號
 3. **Git 操作** - 合併、建立 Tag、推送、清理分支
 
@@ -38,6 +38,9 @@ metadata:
 # 發版收尾：前移非阻擋 pending Ticket 後執行發布流程
 /version-release finish --version 0.19
 
+# 發版時直接推進下一個 planned 版本（預設維持 planned，見〈發版後的下一版〉）
+/version-release finish --version 0.19 --activate-next
+
 # 只更新文件
 /version-release update-docs
 ```
@@ -45,7 +48,7 @@ metadata:
 | 子命令 | 說明 |
 |--------|------|
 | `start` | 啟動新版本（Options: `--version`(必填)、`--from`、`--description`、`--dry-run`） |
-| `release` | 完整發布流程（Options: `--version`、`--dry-run`、`--force`、`--defer-td`） |
+| `release` | 完整發布流程（Options: `--version`、`--dry-run`、`--force`、`--defer-td`、`--activate-next`） |
 | `check` | 只執行 Pre-flight 檢查（發版判準見下方〈發版判準：blocker 阻擋、其餘前移〉） |
 | `finish` | 發版收尾：對前移清單逐張 `ticket migrate` 至目標版本，成功後接續 `release` 同一套流程（Options 同 `release`）。前移目標撞號時 `--dry-run` 以 rc=0 預覽改號並續行，finish 結尾列出「原目標 -> 實際目標」對照表 |
 | `update-docs` | 只更新文件 |
@@ -65,6 +68,8 @@ metadata:
 **Why**：`scope_blocker` 只在凍結後才會被賦值（凍結是「範圍不再開放新收件」
 的宣告，blocker 是「凍結範圍內尚未處理」的標記）；凍結前 blocker 恆為 0，
 「blocker 清空即可發布」的判準對未凍結版本沒有鑑別力，會恆判可發布。
+
+**凍結但零張 scope_blocker 的警告**：凍結關卡通過後，若該版 tickets 目錄內沒有任何一張票（任何狀態）帶非空 `scope_blocker`，且有至少一張 pending 票，`check`／`finish` 輸出警告並指出凍結程序第二步 `ticket track set-scope-blocker <id> --reason <契約項>`。只警告，不改結束碼與流程。**Why**：凍結漏做逐張標記時，pending 票會全部被列為前移，沒有輸出指出「凍結了卻沒有必要票」。以任何狀態計，是因為凍結時已標記、之後已完成的必要票也算有標記。
 
 ### 發版判準：blocker 阻擋、其餘前移
 
@@ -118,6 +123,12 @@ metadata:
 [OK] Worklog 目標達成
 ```
 
+### 發版後的下一版：預設維持 planned
+
+`release`／`finish` 把本版標為 `completed` 後，預設不推進下一版：下一個 `planned` 版本維持 `planned`，todolist 進入版本空窗（沒有 `active` 版本）。發版後回饋檢查完成、決定下一版是 patch 還是下一個 minor 之後，以 `start --version <下一版>` 轉 `active`（既有 `planned` 版本走下方的冪等補齊路徑）。加 `--activate-next` 時沿用舊行為，發版當下推進最小的 `planned` 版本。
+
+**Why**：下一版要等回饋檢查決定。發版當下就推進最小的 `planned` 版本，等於在檢查前選定下一個 minor；檢查判定要先發 patch 時，還得把 minor 退回 `planned`。**Consequence**：沿用舊預設時，框架規則寫的空窗不會出現，回饋檢查的時點不成立。**Action**：一般發版不帶旗標；確定不做回饋檢查、下一版已定時才加 `--activate-next`。空窗定義與空窗期間的建票規則見 `.claude/pm-rules/version-progression.md`〈版本生命週期〉。
+
 ### start 子命令
 
 程式化版本啟動流程，完整生命週期：`start` -> `check` -> `release`。
@@ -133,7 +144,7 @@ metadata:
 6. 全新版本：Bump 版本檔案（依專案類型選擇對應的版本源 + sync targets）
 7. 輸出摘要報告和下一步建議
 
-**`ensure_version_activated` 冪等補齊**（既有版本走此路徑，`finish` 自動推進下一版本時亦共用同一常式）：逐項檢查 todolist status、worklog 主檔、版本檔版號、CHANGELOG In Development 段落，只補缺的項目並逐項印出 `[OK]`／`[補]`；全部就位時印「無缺漏」且不改動任何檔案（含 mtime）。version status 為 `completed` 時視為不可逆錯誤，不會被本路徑復原。
+**`ensure_version_activated` 冪等補齊**（既有版本走此路徑，`release`／`finish` 帶 `--activate-next` 推進下一版本時亦共用同一常式）：逐項檢查 todolist status、worklog 主檔、版本檔版號、CHANGELOG In Development 段落，只補缺的項目並逐項印出 `[OK]`／`[補]`；全部就位時印「無缺漏」且不改動任何檔案（含 mtime）。version status 為 `completed` 時視為不可逆錯誤，不會被本路徑復原。
 
 ## 多專案類型支援
 
@@ -357,17 +368,16 @@ subprojects:
 
 ---
 
-## 修改 source 後必須重新安裝
+## 修改 source 後無需重新安裝（shim 化）
 
-> **重要**：本 skill 透過 `uv tool install` 安裝為獨立 CLI，source（本目錄）與 installed（`~/.local/share/uv/tools/<package>/`）是兩份獨立 Python package。修改 source 後若未 reinstall，CLI 仍使用 stale installed 版本，新增的函式會 AttributeError 或被 hasattr 包裝靜默吞掉（W11-037 根因）。
+> **重要**：本 skill 已改用 cwd-resolving shim，不走 `uv tool install`。shim 每次執行都 `uv run --directory .claude/skills/version-release` 當前專案源碼，修改 source 後改動即時生效，無 stale installed 問題。
 
-**修復指令**：
+**檢查 / 安裝指令**（SessionStart 會自動執行安裝）：
 
 ```bash
-cd .claude/skills/<本 skill 目錄> && uv tool install . --force --reinstall
+python3 .claude/scripts/install-skill-clis.py          # 安裝 / 更新 shim
+python3 .claude/scripts/install-skill-clis.py --check  # 檢查是否已 shim 化（exit 0/1）
 ```
-
-**自動偵測**：每次 SessionStart 由 `uv-tool-staleness-check-hook` 比對 source vs installed SHA256，偵測 stale 時提示修復指令。對應 ticket-skill 本身另有 `ticket-reinstall-hook` 自動 reinstall。
 
 ---
 

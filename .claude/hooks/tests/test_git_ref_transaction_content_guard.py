@@ -241,6 +241,24 @@ class TestMainIntegration:
         assert result.returncode == 0
         assert "framework-rule-edit-skill-trigger" in result.stderr
 
+    def test_same_skill_dir_multi_files_single_warn_with_count(self, scratch_repo):
+        """3.3.0-W1-048：同一 skill 目錄多檔變更只出一則 skill-trigger 提醒並附檔數。"""
+        head = _capture(["rev-parse", "HEAD"], cwd=scratch_repo)
+        for i in range(3):
+            target = scratch_repo / f".claude/skills/demo-skill/references/r{i}.md"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(f"內容 {i}\n", encoding="utf-8")
+        _run_git(["add", "."], cwd=scratch_repo)
+        tree = _capture(["write-tree"], cwd=scratch_repo)
+        new_sha = _capture(["commit-tree", tree, "-p", head, "-m", "multi"], cwd=scratch_repo)
+        _run_git(["reset", "-q", "--hard", head], cwd=scratch_repo)
+
+        result = _run_guard(scratch_repo, "prepared", f"{head} {new_sha} refs/heads/main\n")
+
+        assert result.returncode == 0
+        assert result.stderr.count("[skill-trigger]") == 1, result.stderr
+        assert ".claude/skills/demo-skill/ 下 3 個檔案" in result.stderr
+
 
 def _prepare_merge_commit(repo, feature_path, feature_content):
     """在 `repo` 建一個 feature 分支（`feature/x`）並 commit 一個非豁免路徑
@@ -729,6 +747,118 @@ class TestCheckRule8PerProject:
         """E2 正向對照：同字面在非整段相等路徑仍 deny。"""
         findings = self._findings(rel_path)
         assert any(f.severity == "deny" for f in findings)
+
+
+_EVT_PATH = "docs/events/EVT-DEMO-001-demo.md"
+_EVT_HEAD = "---\nid: EVT-DEMO-001\nname: demo\ncanonical_name: Demo\ncategory: domain_event\n"
+_EVT_OK = _EVT_HEAD + "producers: [a]\nconsumers: [b]\n---\n# demo\n"
+_EVT_NO_CONSUMER = _EVT_HEAD + "producers: [a]\n---\n# demo\n"
+
+
+class TestDocValidateOnRefTransaction:
+    """3.3.0-W1-018：reference-transaction 路徑以 commit tree 為提交內容跑 doc validate。
+
+    工作區保留提交內容（同 ticket track commit 的隔離索引提交後狀態）；寫入非保護分支，
+    避免 branch-verify 介入。
+    """
+
+    @staticmethod
+    def _commit_keep_worktree(repo, text):
+        head = _capture(["rev-parse", "HEAD"], cwd=repo)
+        target = repo / _EVT_PATH
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8")
+        _run_git(["add", _EVT_PATH], cwd=repo)
+        tree = _capture(["write-tree"], cwd=repo)
+        new_sha = _capture(["commit-tree", tree, "-p", head, "-m", "doc"], cwd=repo)
+        return f"{head} {new_sha} refs/heads/feat-x\n"
+
+    def test_new_doc_error_denied(self, scratch_repo):
+        result = _run_guard(scratch_repo, "prepared", self._commit_keep_worktree(scratch_repo, _EVT_NO_CONSUMER))
+        assert result.returncode == 87
+        assert "[doc-validate]" in result.stderr
+        assert "缺少 consumer" in result.stderr
+
+    def test_clean_doc_allowed(self, scratch_repo):
+        result = _run_guard(scratch_repo, "prepared", self._commit_keep_worktree(scratch_repo, _EVT_OK))
+        assert result.returncode == 0, result.stderr
+        assert "[doc-validate]" not in result.stderr
+
+    def test_worktree_differs_from_commit_tree_downgrades_to_warn(self, scratch_repo):
+        stdin_text = self._commit_keep_worktree(scratch_repo, _EVT_NO_CONSUMER)
+        (scratch_repo / _EVT_PATH).write_text(_EVT_NO_CONSUMER + "未提交的修改。\n", encoding="utf-8")
+        result = _run_guard(scratch_repo, "prepared", stdin_text)
+        assert result.returncode == 0
+        assert "[doc-validate]" in result.stderr
+        assert "不一致" in result.stderr
+
+
+class TestWrapSkillYamlAc3Only:
+    """提交階段只保留 AC3（warn），映射檔缺失不再 deny。"""
+
+    _SKILL = ".claude/skills/wrap-decision/SKILL.md"
+
+    class _ErrLogger(_Logger):
+        def error(self, *a, **k): pass
+
+    def _repo_with_skill(self, tmp_path, head_v, new_v):
+        _run_git(["init", "-q"], tmp_path)
+        _run_git(["config", "user.email", "t@t"], tmp_path)
+        _run_git(["config", "user.name", "t"], tmp_path)
+        p = tmp_path / self._SKILL
+        p.parent.mkdir(parents=True)
+        p.write_text(f"# s\n\n**Version**: {head_v}\n", encoding="utf-8")
+        _run_git(["add", "."], tmp_path)
+        _run_git(["commit", "-q", "-m", "init"], tmp_path)
+        p.write_text(f"# s\n\n**Version**: {new_v}\n", encoding="utf-8")
+
+    def _sf(self):
+        from lib import commit_content_guards as ccg
+        return ccg, ccg.StagedFile(self._SKILL, "", "", "")
+
+    def test_missing_alignment_file_not_denied(self, tmp_path):
+        self._repo_with_skill(tmp_path, "1.0.0", "1.0.1")
+        ccg, sf = self._sf()
+        assert ccg._check_wrap_skill_yaml(sf, self._ErrLogger(), tmp_path) == []
+
+    def test_version_regress_still_warns(self, tmp_path):
+        self._repo_with_skill(tmp_path, "1.2.0", "1.1.0")
+        ccg, sf = self._sf()
+        findings = ccg._check_wrap_skill_yaml(sf, self._ErrLogger(), tmp_path)
+        assert [f.severity for f in findings] == ["warn"]
+        assert "AC3" in findings[0].message
+
+    def test_ac3_exception_does_not_void_other_deny(self, tmp_path, monkeypatch):
+        self._repo_with_skill(tmp_path, "1.0.0", "1.0.1")
+        ccg, sf = self._sf()
+
+        def _boom(self_or_root, *a, **k):
+            raise PermissionError("denied")
+
+        real_load = ccg._load_module
+
+        def _patched_load(name, path):
+            m = real_load(name, path)
+            if name == "commit_gate_wrap_skill_yaml" and m is not None:
+                m.check_version_no_regress = _boom
+            return m
+
+        monkeypatch.setattr(ccg, "_load_module", _patched_load)
+        deny = ccg.Finding("deny", "fake-guard", "blocked", "other.txt")
+        monkeypatch.setattr(
+            ccg, "_PER_FILE_CHECKS",
+            [lambda s, lg: [deny] if s.rel_path == "other.txt" else []],
+        )
+        monkeypatch.setattr(ccg, "_check_branch_verify", lambda *a, **k: [])
+        monkeypatch.setattr(ccg, "_check_doc_validate", lambda *a, **k: [])
+        other = ccg.StagedFile("other.txt", "", "", "x")
+        findings = ccg._run_all_checks([other, sf], tmp_path, self._ErrLogger())
+        assert any(f.severity == "deny" for f in findings)
+        assert any(
+            f.severity == "warn" and f.source == "wrap-skill-yaml-consistency"
+            and "PermissionError" in f.message
+            for f in findings
+        )
 
 
 if __name__ == "__main__":

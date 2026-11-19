@@ -108,3 +108,79 @@ class TestFormatPermissionReport:
         combined = "\n".join(lines)
         for claim in ("下個 session 起生效", "本 session 生效", "立即生效", "生效時點不作斷言"):
             assert claim not in combined
+
+
+class TestCoverageCountsManifest:
+    """3.4.0-W1-034：清冊內 hook 計為已註冊；清冊外仍列出；清冊無法判定時明示。"""
+
+    def _setup(self, root, manifest_text):
+        hooks = root / ".claude" / "hooks"
+        hooks.mkdir(parents=True)
+        (hooks / "in-manifest-hook.py").write_text("")
+        (hooks / "outside-hook.py").write_text("")
+        (root / ".claude" / "settings.json").write_text('{"hooks": {}}')
+        if manifest_text is not None:
+            pi = root / ".claude" / "project-integration"
+            pi.mkdir(parents=True)
+            (pi / "hook-registry.yaml").write_text(manifest_text)
+        return hooks
+
+    def _run(self, root, monkeypatch, capsys):
+        monkeypatch.setattr(hook_mod, "__file__", str(root / ".claude" / "hooks" / "x.py"))
+        hook_mod.main()
+        return capsys.readouterr().out
+
+    MANIFEST = (
+        "version: 1\nhooks:\n  in-manifest-hook.py:\n"
+        "    script: .claude/hooks/in-manifest-hook.py\n    event: PreToolUse\n    matcher: Edit\n"
+    )
+
+    def test_manifest_hook_registered_outside_hook_listed(self, tmp_path, monkeypatch, capsys):
+        self._setup(tmp_path, self.MANIFEST)
+        out = self._run(tmp_path, monkeypatch, capsys)
+        assert "  - outside-hook.py" in out  # 正向對照：清冊外仍列出
+        assert "  - in-manifest-hook.py" not in out
+        assert "經專案 hook 清冊註冊: 1 個" in out
+
+    def test_unusable_manifest_noted(self, tmp_path, monkeypatch, capsys):
+        self._setup(tmp_path, "version: 9\nhooks: {}\n")
+        out = self._run(tmp_path, monkeypatch, capsys)
+        assert hook_mod.MANIFEST_UNDETERMINED_NOTE in out
+        assert "  - in-manifest-hook.py" in out
+
+
+class TestLocalRegistrationsAgainstManifest:
+    """3.3.0-W1-036.3：專案 hook 清冊產生的 local 註冊為合法，不示警；
+    清冊外的條目（含框架 hook 的第二份註冊）照舊示警。"""
+
+    PROJECT_CMD = "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/project-integration/hooks/api.py"
+    FRAMEWORK_CMD = "uv run --quiet $CLAUDE_PROJECT_DIR/.claude/hooks/bash-edit-guard-hook.py"
+
+    def _local(self):
+        return {"hooks": {"PreToolUse": [{"matcher": "Edit", "hooks": [
+            {"type": "command", "command": self.PROJECT_CMD},
+            {"type": "command", "command": self.FRAMEWORK_CMD},
+        ]}]}}
+
+    def _write_manifest(self, root, text):
+        path = root / ".claude" / "project-integration" / "hook-registry.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def test_manifest_entry_not_flagged_framework_entry_flagged(self, tmp_path):
+        self._write_manifest(tmp_path, (
+            "version: 1\nhooks:\n  api.py:\n"
+            "    script: .claude/project-integration/hooks/api.py\n    event: PreToolUse\n    matcher: Edit\n"
+        ))
+        flagged = [c for _e, c in hook_mod.find_local_hook_registrations(self._local(), tmp_path)]
+        assert self.PROJECT_CMD not in flagged
+        assert self.FRAMEWORK_CMD in flagged  # 正向對照：框架 hook 在 local 仍示警
+
+    def test_without_manifest_all_local_entries_flagged(self, tmp_path):
+        flagged = [c for _e, c in hook_mod.find_local_hook_registrations(self._local(), tmp_path)]
+        assert flagged == [self.PROJECT_CMD, self.FRAMEWORK_CMD]
+
+    def test_unusable_manifest_does_not_legitimize(self, tmp_path):
+        self._write_manifest(tmp_path, "version: 9\nhooks: {}\n")
+        flagged = [c for _e, c in hook_mod.find_local_hook_registrations(self._local(), tmp_path)]
+        assert self.PROJECT_CMD in flagged

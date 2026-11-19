@@ -6,8 +6,11 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+import importlib.util
 import json
+import logging
 import subprocess
+import sys
 import yaml
 import stat
 
@@ -23,7 +26,18 @@ REQUIRED_DIRECTORIES = [
     ("config", "config/"),
 ]
 
-# 必須的 .gitignore 規則
+# .gitignore 必要規則的來源：受檢專案的 .claude/lib/sync_exclude_manifest.py
+# （required_gitignore_entries），與 SessionStart 的 gitignore 檢查同一份。
+# 該模組只依賴標準庫，以檔案路徑載入；uv tool 安裝的本套件無法用 import 找到專案 lib。
+SYNC_EXCLUDE_MANIFEST_RELATIVE = Path(".claude") / "lib" / "sync_exclude_manifest.py"
+
+# 票庫 lock 必要項（{票庫}/**/*.md.lock）的推導來源，同樣以檔案路徑載入，hook 共用同一份。
+TICKET_LOCK_MODULE_RELATIVE = Path(".claude") / "lib" / "ticket_lock_gitignore.py"
+TICKET_LOCK_UNDETERMINED_LABEL = "{票庫}/**/*.md.lock"
+TICKET_LOCK_UNDETERMINED_REASON = "受檢專案為舊版框架，缺 .claude/lib/ticket_lock_gitignore.py，無法推導票庫路徑"
+_LOGGER = logging.getLogger("project_init.onboard_checker")
+
+# 舊版框架（受檢專案沒有 required_gitignore_entries）時的退回清單。
 GITIGNORE_REQUIRED_RULES = [
     "coverage",
     "htmlcov",
@@ -115,6 +129,12 @@ class GitignoreCheckInfo:
     """包含 .claude/dispatch-active 規則."""
     missing_rules: list[str] = field(default_factory=list)
     """缺失的規則清單."""
+    retired_rules: list[str] = field(default_factory=list)
+    """可移除的舊規則原始行（宣告檔已改為進版控，忽略它們會讓新 clone 讀不到）."""
+    undetermined_rules: list[str] = field(default_factory=list)
+    """無法判定的規則名稱（受檢專案缺推導來源）；不算缺漏，不影響 all_required_complete."""
+    undetermined_reason: str = ""
+    """無法判定的原因."""
 
 
 @dataclass
@@ -687,6 +707,139 @@ def _create_missing_gitignore_result(exists: bool = False) -> GitignoreCheckInfo
     )
 
 
+def _load_sync_exclude_manifest(project_root: Path):
+    """以檔案路徑載入受檢專案的 sync_exclude_manifest，失敗回 None.
+
+    模組不存在或沒有 required_gitignore_entries（舊版框架）時寫 stderr，
+    呼叫端退回 GITIGNORE_REQUIRED_RULES。
+    """
+    module_path = project_root / SYNC_EXCLUDE_MANIFEST_RELATIVE
+    try:
+        spec = importlib.util.spec_from_file_location("_onboard_sync_exclude_manifest", module_path)
+        if spec is None or spec.loader is None or not module_path.is_file():
+            raise FileNotFoundError(str(module_path))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.required_gitignore_entries  # noqa: B018 — 舊版模組沒有此函式，於此處判定
+        module.gitignore_probe_paths  # noqa: B018
+        return module
+    except Exception as exc:  # 載入失敗不可中斷 onboard；stderr 說明退回行為
+        sys.stderr.write(
+            f"[project-init] 無法從 {module_path} 取得 .gitignore 必要規則（{exc}）；"
+            "改用內建的退回清單，可能少於 SessionStart 檢查要求的條目\n"
+        )
+        return None
+
+
+def _load_ticket_lock_module(project_root: Path):
+    """以檔案路徑載入受檢專案的 ticket_lock_gitignore，失敗回 None（舊版框架）並寫 stderr."""
+    module_path = project_root / TICKET_LOCK_MODULE_RELATIVE
+    try:
+        spec = importlib.util.spec_from_file_location("_onboard_ticket_lock_gitignore", module_path)
+        if spec is None or spec.loader is None or not module_path.is_file():
+            raise FileNotFoundError(str(module_path))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.resolve_ticket_root_dir  # noqa: B018 — 缺函式視同舊版
+        module.ticket_lock_required_entry  # noqa: B018
+        module.ticket_lock_probe_path  # noqa: B018
+        return module
+    except Exception as exc:  # 載入失敗不可中斷 onboard；stderr 說明略過行為，報告本文另標無法判定
+        sys.stderr.write(
+            f"[project-init] 無法從 {module_path} 取得票庫 lock 必要項（{exc}）；"
+            "略過此項檢查，SessionStart 檢查仍可能要求該條目\n"
+        )
+        return None
+
+
+def collect_required_gitignore_entries(project_root: Path) -> Optional[tuple[list[str], bool]]:
+    """組出專案 .gitignore 的完整必要條目，與 SessionStart gitignore 檢查同源.
+
+    Returns:
+        None 表示 manifest 載入失敗（舊版框架，載入函式已寫 stderr）；
+        否則 (條目, lock 項是否已判定)：條目為 manifest 的 required_gitignore_entries()
+        排序後，加上票庫 lock 項（lock 模組缺失時不含該項，第二值為 False）。
+    """
+    manifest = _load_sync_exclude_manifest(project_root)
+    if manifest is None:
+        return None
+    entries = sorted(manifest.required_gitignore_entries())
+    lock_module = _load_ticket_lock_module(project_root)
+    if lock_module is None:
+        return entries, False
+    root_dir = lock_module.resolve_ticket_root_dir(project_root, _LOGGER)
+    return entries + [lock_module.ticket_lock_required_entry(root_dir)], True
+
+
+def _ticket_lock_check(project_root: Path, content: str) -> tuple[list[str], list[str]]:
+    """票庫 lock 必要項檢查，回傳 (缺漏, 無法判定)；content 為空字串表示 .gitignore 不存在."""
+    module = _load_ticket_lock_module(project_root)
+    if module is None:
+        return [], [TICKET_LOCK_UNDETERMINED_LABEL]
+    root_dir = module.resolve_ticket_root_dir(project_root, _LOGGER)
+    required = module.ticket_lock_required_entry(root_dir)
+    if not content:
+        return [required], []
+    verdict = _is_path_ignored_by_git(project_root, module.ticket_lock_probe_path(root_dir))
+    if verdict is None:
+        verdict = _has_gitignore_rule(content, required)
+    return ([] if verdict else [required]), []
+
+
+def _entry_covered(project_root: Path, content: str, entry: str, manifest) -> bool:
+    """判定 .gitignore 是否涵蓋必要條目：git check-ignore 探測各代表路徑，全部被忽略才算.
+
+    git 無法判定（不在 PATH、非 git repo）時退回字面比對：巢狀名稱用 manifest 的
+    is_nested_name_covered，其餘比對正規化後的條目字面。
+    """
+    probes = manifest.gitignore_probe_paths(entry)
+    verdicts = [_is_path_ignored_by_git(project_root, probe) for probe in probes]
+    if all(v is not None for v in verdicts):
+        return all(verdicts)
+    if entry.startswith(".claude/**/"):
+        name = entry[len(".claude/**/"):]
+        return manifest.is_nested_name_covered(name, content.splitlines())
+    return _has_gitignore_rule(content, entry)
+
+
+def _check_against_manifest(project_root: Path, content: str, manifest) -> GitignoreCheckInfo:
+    """以 manifest 的 required_gitignore_entries 逐條檢查 .gitignore."""
+    missing = [
+        entry
+        for entry in sorted(manifest.required_gitignore_entries())
+        if not _entry_covered(project_root, content, entry, manifest)
+    ]
+    lock_missing, undetermined = _ticket_lock_check(project_root, content)
+    missing = missing + lock_missing
+
+    def ok(*entries: str) -> bool:
+        return not any(e in missing for e in entries)
+
+    return GitignoreCheckInfo(
+        exists=True,
+        has_coverage_rules=ok("coverage/"),
+        has_hook_logs_rule=ok(".claude/**/hook-logs"),
+        has_worktrees_rule=ok(".claude/worktrees"),
+        has_tool_results_rule=ok(".claude/tool-results/"),
+        has_handoff_rule=ok(".claude/**/handoff"),
+        has_dispatch_active_rule=ok(".claude/**/dispatch-active.json", ".claude/**/dispatch-active.lock"),
+        has_pycache_rule=ok(".claude/**/__pycache__"),
+        all_required_complete=not missing,
+        missing_rules=missing,
+        retired_rules=_retired_rules(content, manifest),
+        undetermined_rules=undetermined,
+        undetermined_reason=TICKET_LOCK_UNDETERMINED_REASON if undetermined else "",
+    )
+
+
+def _retired_rules(content: str, manifest) -> list[str]:
+    """以 manifest 的 retired_gitignore_lines 找出可移除的舊規則；舊版框架沒有此函式時回空清單."""
+    finder = getattr(manifest, "retired_gitignore_lines", None)
+    if finder is None:
+        return []
+    return finder(content.splitlines())
+
+
 def check_gitignore_completeness(project_root: Path) -> GitignoreCheckInfo:
     """檢查 .gitignore 是否包含所有必須的框架排除規則.
 
@@ -702,14 +855,25 @@ def check_gitignore_completeness(project_root: Path) -> GitignoreCheckInfo:
     gitignore_path = project_root / ".gitignore"
 
     if not gitignore_path.exists():
-        return _create_missing_gitignore_result(exists=False)
+        manifest = _load_sync_exclude_manifest(project_root)
+        result = _create_missing_gitignore_result(exists=False)
+        if manifest is not None:
+            lock_missing, undetermined = _ticket_lock_check(project_root, "")
+            result.missing_rules = sorted(manifest.required_gitignore_entries()) + lock_missing
+            result.undetermined_rules = undetermined
+            result.undetermined_reason = TICKET_LOCK_UNDETERMINED_REASON if undetermined else ""
+        return result
 
     try:
         content = gitignore_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return _create_missing_gitignore_result(exists=True)
 
-    # 檢查每個必須規則：優先用 git check-ignore 語意判定（正確處理萬用字元 /
+    manifest = _load_sync_exclude_manifest(project_root)
+    if manifest is not None:
+        return _check_against_manifest(project_root, content, manifest)
+
+    # 退回清單：檢查每個必須規則：優先用 git check-ignore 語意判定（正確處理萬用字元 /
     # 根錨定 / 具體檔名等所有 gitignore 語法），無 git / 非 git repo 時 fallback 字面匹配
     def _rule_satisfied(probe_path: str, *patterns: str) -> bool:
         ignored = _is_path_ignored_by_git(project_root, probe_path)

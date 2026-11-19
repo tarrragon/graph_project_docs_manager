@@ -48,6 +48,7 @@ def repo(tmp_path, monkeypatch):
     git(r, "init", "-b", "main")
     git(r, "config", "user.email", "t@example.com")
     git(r, "config", "user.name", "t")
+    commit_file(r, "pubspec.yaml", "name: app\n", "base pubspec")  # 內建 Flutter 對應須有此檔才生效
     commit_file(r, "lib/marker.txt", "clean\n", "base marker")
     commit_file(r, "lib/other.txt", "o\n", "base other")
     commit_file(r, TICKET_FILE, "t0\n", "base ticket")
@@ -183,6 +184,7 @@ def _touch(root, rel, text=""):
 def skel(tmp_path):
     """模擬合併快照：三種 skill 型態 + 無 tests 的 skill。"""
     r = tmp_path / "snap"
+    _touch(r, "pubspec.yaml", "name: app\n")
     for name, pyproject, imports_lib in (("withpy", True, True), ("nopy", False, True), ("lone", True, False)):
         _touch(r, f".claude/skills/{name}/tests/test_a.py")
         _touch(r, f".claude/skills/{name}/mod.py", "from lib import x\n" if imports_lib else "import os\n")
@@ -195,6 +197,23 @@ def skel(tmp_path):
 
 
 class TestScope:
+    def test_e1_builtin_flutter_needs_pubspec_in_snapshot(self, skel, tmp_path):
+        """E1 對照：同一批改動路徑，有／無 pubspec.yaml 的快照選出的套件不同。"""
+        paths = ["docs/roadmap.md", "lib/main.dart"]
+        bare = tmp_path / "bare"
+        _touch(bare, "README.md")
+        assert mg.select_suites(paths, skel) == [mg.SUITE_FLUTTER]
+        assert mg.select_suites(paths, str(bare)) == []
+        assert mg.needs_gate(paths) and not mg.needs_gate(paths, flutter=False)
+        assert mg.unmapped_paths(paths) == [] and mg.unmapped_paths(paths, flutter=False) == paths
+
+    def test_has_flutter_marker_reads_commit_tree(self, repo):
+        assert mg.has_flutter_marker(str(repo), "main")
+        git(repo, "checkout", "-b", "nopub")
+        git(repo, "rm", "pubspec.yaml")
+        git(repo, "commit", "-m", "rm pubspec")
+        assert not mg.has_flutter_marker(str(repo), "nopub")
+
     def test_flutter_scope(self, skel):
         assert mg.select_suites(["lib/main.dart"], skel) == [mg.SUITE_FLUTTER]
 
@@ -251,6 +270,71 @@ class TestScope:
         """對照：沒被 hooks／scripts 匯入或引用的 skill 不加跑。"""
         _touch(Path(skel), ".claude/hooks/h.py", "import os\nfrom lib import z\n")
         assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
+
+    def test_e1_package_change_adds_importing_skill(self, skel):
+        """E1 對照（3.4.0-W1-258）：同一改動，快照內有／無其他 skill 匯入該套件，選出的套件不同。"""
+        _touch(Path(skel), ".claude/skills/lone/lone_system/__init__.py")
+        _touch(Path(skel), ".claude/skills/lone/lone_system/core.py", "x = 1\n")
+        change = [".claude/skills/lone/lone_system/core.py"]
+        assert mg.select_suites(change, skel) == ["skill:lone"]
+        assert mg.cross_skill_importers(change, skel) == {}
+        _touch(Path(skel), ".claude/skills/withpy/tests/test_b.py",
+               "def test_x():\n    from lone_system.core import x\n")  # 縮排內匯入同樣涵蓋
+        assert mg.select_suites(change, skel) == ["skill:lone", "skill:withpy"]
+        assert mg.cross_skill_importers(change, skel) == {"skill:withpy": ["lone_system"]}
+
+    def test_package_under_scripts_counts(self, skel):
+        _touch(Path(skel), ".claude/skills/lone/scripts/lone_pkg/__init__.py")
+        _touch(Path(skel), ".claude/skills/nopy/tests/test_b.py", "import lone_pkg.sub\n")
+        change = [".claude/skills/lone/scripts/lone_pkg/sub.py"]
+        assert mg.select_suites(change, skel) == ["skill:lone", "skill:nopy"]
+
+    def test_change_outside_package_selects_as_before(self, skel):
+        """對照：被匯入套件存在，但改動不在套件內（skill 根的單檔），結果與修改前相同。"""
+        _touch(Path(skel), ".claude/skills/lone/lone_system/__init__.py")
+        _touch(Path(skel), ".claude/skills/withpy/tests/test_b.py", "from lone_system import y\n")
+        assert mg.select_suites([".claude/skills/lone/mod.py"], skel) == ["skill:lone"]
+
+    def test_single_file_module_name_not_matched_across_skills(self, skel):
+        """刻意行為：只比對套件；他 skill 匯入同名單檔模組（mod）不加選。"""
+        _touch(Path(skel), ".claude/skills/nopy/tests/test_b.py", "import mod\n")
+        assert mg.select_suites([".claude/skills/withpy/mod.py"], skel) == ["skill:withpy"]
+
+    def test_deleted_or_renamed_package_still_adds_importer(self, skel):
+        """E2：套件被刪除或改名後快照已無 __init__.py，匯入它的 skill 仍須加選（消費端會 ImportError）。"""
+        _touch(Path(skel), ".claude/skills/withpy/tests/test_b.py", "from lone_system import y\n")
+        assert "skill:withpy" in mg.select_suites([".claude/skills/lone/lone_system/__init__.py"], skel)
+        assert "skill:withpy" in mg.select_suites(
+            [".claude/skills/lone/lone_system/a.py", ".claude/skills/lone/lone_core/a.py"], skel)
+
+    def test_report_marks_reused_suite(self, capsys):
+        mg._report_cross_skill({"skill:a": ["p"], "skill:b": ["p"]}, ["skill:a"])
+        assert "skill:a（匯入 p）、skill:b（匯入 p，沿用）" in capsys.readouterr().out
+
+    def test_importer_without_pytest_tests_not_added(self, skel):
+        _touch(Path(skel), ".claude/skills/lone/lone_system/__init__.py")
+        _touch(Path(skel), ".claude/skills/tsonly/x.py", "from lone_system import y\n")
+        assert mg.select_suites([".claude/skills/lone/lone_system/a.py"], skel) == ["skill:lone"]
+
+    def test_similar_prefix_name_not_matched(self, skel):
+        _touch(Path(skel), ".claude/skills/lone/lone_system/__init__.py")
+        _touch(Path(skel), ".claude/skills/withpy/tests/test_b.py", "import lone_system_extra\n")
+        assert mg.select_suites([".claude/skills/lone/lone_system/a.py"], skel) == ["skill:lone"]
+
+    def test_gate_prints_cross_skill_reason(self, repo, capsys):
+        """E2：分支只改 foo 的套件；匯入者 bar 在 main 上，閘門仍須加跑 bar 並印理由。"""
+        commit_file(repo, ".claude/skills/foo/tests/test_a.py", "", "foo tests")
+        commit_file(repo, ".claude/skills/foo/foo_system/__init__.py", "", "foo pkg")
+        commit_file(repo, ".claude/skills/bar/tests/test_b.py", "from foo_system import x\n", "bar importer")
+        git(repo, "checkout", "-q", "feat")
+        git(repo, "merge", "-q", "main")
+        commit_file(repo, ".claude/skills/foo/foo_system/x.py", "x = 1\n", "foo change")
+        git(repo, "checkout", "-q", "main")
+        calls = []
+        out = wm.merge_branch_cas("feat", repo=str(repo), pre_merge_check=mg.MergeGate(str(repo), art(green_runner(calls))))
+        assert out.ok
+        assert "跨 skill 匯入加選套件：skill:bar（匯入 foo_system）" in capsys.readouterr().out
+        assert any("../skills/bar/tests" in " ".join(argv) for argv, _ in calls)
 
     def test_path_reference_counts_only_in_non_test_files(self, skel):
         _touch(Path(skel), ".claude/hooks/tests/test_h.py", "p = '.claude/skills/lone/x.json'\n")
@@ -1251,6 +1335,8 @@ class TestDeclaration:
         assert mg.suite_command("web", skel) == ["npm", "test"]
 
     def test_builtin_flutter_equals_declared_flutter(self, skel):
+        """FVM 專案中，內建 Flutter 對應等同寫明 fvm 的宣告（內建命令依 .fvmrc 補前綴）。"""
+        _touch(Path(skel), ".fvmrc", "{}")
         paths = ["lib/a.dart", "pubspec.lock", "docs/x.md", "assets/a.json", "tools/z.py",
                  ".claude/hooks/h.py", "README.md"]
         builtin = ([mg.select_suites([p], skel) for p in paths], mg.suite_command("flutter", skel),
@@ -1260,7 +1346,7 @@ class TestDeclaration:
         declared = ([mg.select_suites([p], skel) for p in paths], mg.suite_command("flutter", skel),
                     [mg.needs_gate([p], decl) for p in paths], mg.unmapped_paths(paths, decl))
         assert declared == builtin
-        assert mg.declared_artifacts("flutter", decl) == mg.REQUIRED_ARTIFACTS["flutter"]
+        assert mg.declared_artifacts("flutter", decl) == mg.declared_artifacts("flutter", None, skel)
 
     def test_absent_declaration_is_none(self, skel):
         assert mg.load_declaration(skel) is None
@@ -1348,7 +1434,20 @@ class TestDeclaredGate:
         assert self._gate(repo, monkeypatch, ["lib/a.dart"], calls).passed
         out = capsys.readouterr().out
         assert "INFO" in out and DECL_REL in out
-        assert ["fvm", "flutter", "test"] in calls
+        assert ["flutter", "test"] in calls
+
+    def test_builtin_flutter_commands_follow_snapshot_fvm_config(self, repo, monkeypatch):
+        """快照有 .fvmrc 時內建套件命令與生成命令經 fvm，沒有時不帶（E1：同批對照兩者不同）。"""
+        plain = []
+        self._gate(repo, monkeypatch, ["lib/a.dart"], plain)
+        commit_file(repo, ".fvmrc", '{"flutter": "3.47.1"}', "pin flutter")
+        pinned = []
+        self._gate(repo, monkeypatch, ["lib/a.dart"], pinned)
+        assert plain != pinned
+        assert ["flutter", "test"] in plain and not any(c[0] == "fvm" for c in plain)
+        assert ["fvm", "flutter", "test"] in pinned
+        assert ["flutter", "pub", "get"] in plain  # 快照不含 gitignored 的生成產物，必先生成
+        assert ["fvm", "flutter", "pub", "get"] in pinned
 
 
 # ---- 宣告檔自身被改動時的加選（3.1.0-W1-047）----

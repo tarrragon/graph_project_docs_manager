@@ -553,6 +553,35 @@ def test_ex_n4_ticket_tracked_缺_ticket_id():
     assert valid is False and err == "ticket-tracked-need-id"
 
 
+@pytest.mark.parametrize(
+    "category,reason",
+    [
+        ("ticket-tracked", "已收束到 tarrragon/claude#56 追蹤"),
+        ("ticket-tracked", "已收束到 framework issue #56 追蹤"),
+        ("history", "動機脈絡見 tarrragon/claude#54 的討論"),
+    ],
+)
+def test_ex_issue_ref_accepted_as_anchor(category, reason):
+    """issue 編號可作為 ticket-tracked / history 的追蹤錨點。"""
+    m = parse_exempt_marker("<!-- PC-093-exempt: {}:{} -->".format(category, reason))
+    valid, err = validate_exempt_fields(m)
+    assert valid is True and err is None
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "理由夠長但只有井字號 # 沒有數字",
+        "理由夠長但數字前沒有井字號 56 號",
+    ],
+)
+def test_ex_issue_ref_malformed_still_invalid(reason):
+    """正向對照：不成形的 issue 編號仍判定缺錨點。"""
+    m = parse_exempt_marker("<!-- PC-093-exempt: ticket-tracked:{} -->".format(reason))
+    valid, err = validate_exempt_fields(m)
+    assert valid is False and err == "ticket-tracked-need-id"
+
+
 # ---- W10-127: Context Bundle [ref] 行豁免（PC-142 case 4 漏網案例） ----
 
 def test_w10_127_ref_line_phase4_不命中():
@@ -750,6 +779,28 @@ def test_dist_5_多個_marker_各自對應():
     assert len(exempted) == 4
 
 
+# ----------------------------------------------------------------------------
+# marker 剝除：理由含 > 時仍須整段剝除（3.3.0-W1-040）
+# ----------------------------------------------------------------------------
+
+@pytest.mark.parametrize("reason", [
+    "baseline 80ms 之後再決定",   # 對照：理由不含 >，修改前後皆不命中
+    "baseline>80ms 之後再決定",   # 理由含 >：修改前 marker 剝不掉，M2 命中 marker 文字
+])
+def test_marker_with_delay_phrase_in_reason_is_stripped(reason):
+    line = f"保持現狀 <!-- PC-093-exempt: rule-quote: {reason} -->"
+    assert _hits_by_rule(_scan_text(line), "M2") == []
+
+
+def test_marker_strip_does_not_swallow_text_between_markers():
+    """反向對照：兩個 marker 之間的正文仍須掃描，剝除止於第一個 -->。"""
+    line = (
+        "<!-- PC-093-exempt: a: x>1 --> 之後再決定 "
+        "<!-- PC-093-exempt: b: y -->"
+    )
+    assert len(_hits_by_rule(_scan_text(line), "M2")) == 1
+
+
 # ============================================================================
 # L4 — main() 整合測試（10 案例）
 # ============================================================================
@@ -922,14 +973,43 @@ def test_int_6_phase3b_不觸發(monkeypatch, capsys, mock_find_ticket):
     assert err == ""
 
 
-def test_int_7_pretool_complete_殘留_block(monkeypatch, capsys, mock_find_ticket):
+def test_int_7_pretool_complete_殘留_warn_not_block(monkeypatch, capsys, mock_find_ticket):
+    """complete 前命中 MUST-block 等級：降為警告放行，訊息走 additionalContext。
+
+    驗收只審三項固定檢查（verification-framework），延後話術不在其內。
+    """
     mock_find_ticket("ticket_with_must_block.md")
     rc, out, err = _run_main_with_stdin(
         _payload("PreToolUse", "ticket track complete 0.1.0-W1-001"),
         monkeypatch, capsys,
     )
+    assert rc == 0
+    assert err == ""
+    assert "additionalContext" in out
+    assert "complete 前不阻擋" in out
+    assert "--source-ticket 0.1.0-W1-001" in out
+
+
+def test_int_7b_phase4_gate_same_ticket_still_blocks(monkeypatch, capsys, mock_find_ticket):
+    """正向對照：同一份 fixture 走 phase4 閘門仍 exit 2（放寬只限 complete 前）。"""
+    mock_find_ticket("ticket_with_must_block.md")
+    rc, out, err = _run_main_with_stdin(
+        _payload("PostToolUse", "ticket track phase 0.1.0-W1-001 phase4"),
+        monkeypatch, capsys,
+    )
     assert rc == 2
     assert "PC-093" in err
+    assert "執行期（版本 scope 已凍結）：建後續版本票" in err
+
+
+def test_int_7c_pretool_complete_warn_ignores_low_effort(monkeypatch, capsys, mock_find_ticket):
+    """complete 前的警告不受 low effort 抑制（原本是阻擋，降級後仍須送達模型）。"""
+    mock_find_ticket("ticket_with_must_block.md")
+    payload = _payload("PreToolUse", "ticket track complete 0.1.0-W1-001")
+    payload["effort"] = {"level": "low"}
+    rc, out, err = _run_main_with_stdin(payload, monkeypatch, capsys)
+    assert rc == 0
+    assert "complete 前不阻擋" in out
 
 
 def test_int_8_pretool_complete_clean(monkeypatch, capsys, mock_find_ticket):
@@ -1370,6 +1450,17 @@ def test_w10_108_block_message_starts_with_inline_hint():
     assert inline_pos < hit_pos, "inline 提示必須在命中清單之前"
 
 
+def test_block_message_points_to_add_exempt_marker_cli():
+    """擋下訊息指出 Edit 不可用時的合法出口：一行可執行的 add-exempt-marker 用法（3.3.0-W1-209.5）。"""
+    hits = [Hit(line_no=10, rule_id="M1", level="BLOCK", text="Phase 5 再決定")]
+    msg = format_block_message("1.0.0-W1-001", hits, exempted=[])
+    assert "ticket track add-exempt-marker 1.0.0-W1-001 --section" in msg
+    for flag in ("--match", "--category", "--reason"):
+        assert flag in msg
+    # 出口提示在命中清單之前，受阻者先讀到
+    assert msg.index("add-exempt-marker") < msg.index("命中:")
+
+
 def test_w10_108_block_message_categories_have_use_case():
     """每個 category 後附『適用情境』一行說明（非僅列名稱）。"""
     hits = [Hit(line_no=10, rule_id="M1", level="BLOCK", text="Phase 5 再決定")]
@@ -1396,58 +1487,45 @@ def test_w10_108_block_message_references_decision_trigger_binding_rule():
 # W10-130 — Placeholder template 區塊內 PC-093-exempt 範例字串豁免
 # ============================================================================
 
-def test_w10_130_schema_placeholder_block_skips_example_exempt_marker():
-    """<!-- Schema[...]: ... --> placeholder 區塊內的 PC-093-exempt 範例字串
-    不應被解析為實際 marker（避免誤判 cat:reason 為 INVALID category-whitelist）。"""
+def test_w10_130_comment_placeholders_yield_no_markers():
+    """Schema 行與註解形態的佔位符（`<!-- 選填：… -->`）是純註解行，不蒐集 marker。"""
     lines = [
         "## Problem Analysis",
         "<!-- Schema[IMP/Problem Analysis]: 選填 -->",
         "",
-        "範例: <!-- PC-093-exempt: cat:reason -->",
-        "另一範例: <!-- PC-093-exempt: <category>:<reason> -->",
+        "<!-- 選填：問題如何發現？ -->",
         "",
         "---",
         "",
         "## Solution",
         "實際內容",
     ]
-    refs = collect_exempt_markers(lines)
-    # placeholder 區塊內的範例字串不應被收集為 marker
-    assert len(refs) == 0, (
-        "placeholder 區塊內的 PC-093-exempt 範例應被跳過，"
-        "但收到 {} markers: {}".format(len(refs), refs)
-    )
+    assert collect_exempt_markers(lines) == []
 
 
-def test_w10_130_schema_placeholder_block_terminates_at_next_h2():
-    """placeholder 區塊在下個 H2（## ）處結束；之後的 marker 仍應被解析。"""
+def test_schema_line_no_longer_opens_skip_block_for_markers():
+    """Schema 行之後的 marker 是實質內容，照常蒐集（不再整段圈成佔位區塊）。"""
     lines = [
         "<!-- Schema[IMP/Problem Analysis]: 選填 -->",
-        "<!-- PC-093-exempt: cat:reason -->",  # 範例（區塊內）— 跳過
-        "## Solution",
-        "<!-- PC-093-exempt: ticket-tracked:W10-130 hook 修復 -->",  # 區塊外 — 解析
+        "<!-- PC-093-exempt: ticket-tracked:W10-130 hook 修復 -->",
+        "範例: <!-- PC-093-exempt: cat:reason -->",
     ]
     refs = collect_exempt_markers(lines)
-    # 只剩第 4 行的真實 marker
-    assert len(refs) == 1
-    assert refs[0].line_no == 4
+    assert [r.line_no for r in refs] == [2, 3]
     assert refs[0].valid is True
+    assert refs[1].valid is False
 
 
-def test_w10_130_schema_placeholder_block_terminates_at_hr_separator():
-    """placeholder 區塊在 `---` 分隔符處結束；之後的 marker 仍應被解析。"""
+def test_multiline_comment_interior_yields_no_markers():
+    """多行 HTML 註解內部的 marker 字樣是說明文字，不蒐集。"""
     lines = [
-        "<!-- Schema[IMP/Problem Analysis]: 選填 -->",
-        "<!-- PC-093-exempt: cat:reason -->",  # 範例 — 跳過
-        "",
-        "---",
-        "",
-        "<!-- PC-093-exempt: ticket-tracked:W10-130 真實 marker -->",  # 解析
+        "<!-- 調查過程記錄（可選）：",
+        "範例 <!-- PC-093-exempt: cat:reason -->",
+        "-->",
+        "<!-- PC-093-exempt: ticket-tracked:W10-130 真實 marker -->",
     ]
     refs = collect_exempt_markers(lines)
-    assert len(refs) == 1
-    assert refs[0].line_no == 6
-    assert refs[0].valid is True
+    assert [r.line_no for r in refs] == [4]
 
 
 def test_w10_130_no_schema_placeholder_normal_marker_still_works():
@@ -1479,6 +1557,74 @@ def test_w10_130_schema_placeholder_also_skips_phrase_scanning():
     # placeholder 區塊內即使 Schema note 含「Phase 5 再決定」字樣也應跳過
     assert len(blocked) == 0
     assert len(warned) == 0
+
+
+# ============================================================================
+# Schema 行之後的實質內容照常掃描：只跳過純 HTML 註解行
+# ============================================================================
+
+_DEFERRAL = "是否保留快取之後再決定"
+
+
+def _blocked_and_warned(lines):
+    hits = scan_lines_for_phrases(lines, build_regex_table())
+    blocked, warned, _info, _exempted = partition_hits(hits, collect_exempt_markers(lines))
+    return blocked + warned
+
+
+def test_substantive_content_after_schema_line_is_scanned():
+    """正向對照（E2）：Schema 行之後的 Solution 實質內容含延後語句，必須命中。"""
+    lines = [
+        "## Solution",
+        "<!-- Schema[IMP/Solution]: 必填 -->",
+        "",
+        "### 方案",
+        "",
+        _DEFERRAL,
+        "",
+        "---",
+    ]
+    hit_lines = [h.line_no for h in _blocked_and_warned(lines)]
+    assert 6 in hit_lines
+
+
+def test_comment_only_placeholder_section_not_reported():
+    """對照（E1）：同一句只出現在註解佔位符內時不命中；改為可見文字即命中。"""
+    commented = [
+        "## Solution",
+        "<!-- Schema[IMP/Solution]: 必填 -->",
+        f"<!-- 必填：例如「{_DEFERRAL}」這類句子不要寫 -->",
+        "",
+        "---",
+    ]
+    visible = commented[:2] + [_DEFERRAL] + commented[3:]
+    assert _blocked_and_warned(commented) == []
+    assert [h.line_no for h in _blocked_and_warned(visible)] == [3]
+
+
+def test_multiline_comment_interior_not_scanned():
+    lines = [
+        "<!-- 說明：",
+        _DEFERRAL,
+        "-->",
+    ]
+    assert _blocked_and_warned(lines) == []
+
+
+def test_unclosed_comment_does_not_swallow_rest_of_file():
+    """未關閉的 `<!--` 只算該行，其後內容照常掃描（避免整檔靜默放行）。"""
+    lines = [
+        "<!-- 忘了關閉的註解",
+        "",
+        _DEFERRAL,
+    ]
+    assert [h.line_no for h in _blocked_and_warned(lines)] == [3]
+
+
+def test_text_with_trailing_comment_still_scanned():
+    """行內有註解但註解外仍有文字，該行照常掃描（不因含 `<!--` 而被跳過）。"""
+    lines = [f"{_DEFERRAL} <!-- 備註 -->"]
+    assert [h.line_no for h in _blocked_and_warned(lines)] == [1]
 
 
 # ============================================================================
@@ -2403,3 +2549,129 @@ def test_w1_120_7_9_5_10_option_value_not_taken_as_id(command, expected):
 ])
 def test_w1_120_7_9_5_10_no_id_or_other_phase_no_target(command):
     assert extract_ticket_targets_from_command(command.format(bad=_BAD)) == []
+
+
+# ============================================================================
+# 3.3.0-W1-213.9 -- complete 前的同鏈票面寫入：判定讀的是寫入前內容，提示拆分
+# ============================================================================
+
+_T = "0.1.0-W1-001"
+_OTHER = "0.1.0-W1-002"
+_MARK = ("ticket track add-exempt-marker {t} --section Solution --match \"x\" "
+         "--category history --reason \"見 0.1.0-W1-009 歷史\"")
+_LOG = "ticket track append-log {t} --section Solution \"補充說明\""
+
+
+@pytest.mark.parametrize("command,expected", [
+    (_MARK + " && ticket track complete {t}", {_T}),
+    (_LOG + "; ticket track finish {t}", {_T}),
+    (_LOG + " && ticket track batch-complete {o} {t}", {_T}),
+    # 對照：寫入在 complete 之後、寫的是他票、沒有寫入
+    ("ticket track complete {t} && " + _LOG, set()),
+    (_LOG.replace("{t}", "{o}") + " && ticket track complete {t}", set()),
+    ("ticket track complete {t}", set()),
+    # 讀取類子命令不算寫入
+    ("ticket track query {t} && ticket track complete {t}", set()),
+])
+def test_w1_213_9_find_pre_complete_body_writes(command, expected):
+    cmd = command.format(t=_T, o=_OTHER)
+    assert _hook.find_pre_complete_body_writes(cmd) == expected
+
+
+def test_w1_213_9_chain_write_then_complete_hints_split(monkeypatch, capsys, mock_find_ticket):
+    """同鏈先補標記再 complete：警告訊息含拆分提示（修正前無）。"""
+    mock_find_ticket("ticket_with_must_block.md")
+    rc, out, err = _run_main_with_stdin(
+        _payload("PreToolUse", (_MARK + " && ticket track complete {t}").format(t=_T)),
+        monkeypatch, capsys,
+    )
+    assert rc == 0
+    assert "complete 前不阻擋" in out
+    assert _hook.CHAIN_WRITE_HINT.splitlines()[0] in out
+
+
+def test_w1_213_9_chain_write_on_clean_ticket_still_hints(monkeypatch, capsys, mock_find_ticket):
+    """票面乾淨但同鏈有寫入：寫入內容未經掃描，仍提示拆分。"""
+    mock_find_ticket("clean_ticket.md")
+    rc, out, err = _run_main_with_stdin(
+        _payload("PreToolUse", (_LOG + " && ticket track complete {t}").format(t=_T)),
+        monkeypatch, capsys,
+    )
+    assert rc == 0
+    assert _hook.CHAIN_WRITE_HINT.splitlines()[0] in out
+
+
+def test_w1_213_9_detection_error_keeps_phase4_block(monkeypatch, capsys, mock_find_ticket):
+    """同鏈偵測拋例外時，phase4 閘門的阻擋結果不變（提示邏輯不得改變結束碼）。"""
+    mock_find_ticket("ticket_with_must_block.md")
+
+    def boom(command):
+        raise RuntimeError("偵測失敗")
+
+    monkeypatch.setattr(_hook, "find_pre_complete_body_writes", boom)
+    rc, out, err = _run_main_with_stdin(
+        _payload("PostToolUse", "ticket track phase {t} phase4".format(t=_T)),
+        monkeypatch, capsys,
+    )
+    assert rc == 2
+    assert "PC-093" in err and "同鏈寫入偵測失敗" in err
+
+
+@pytest.mark.parametrize("fixture", ["ticket_with_must_block.md", "clean_ticket.md"])
+def test_w1_213_9_no_chain_write_message_unchanged(monkeypatch, capsys, mock_find_ticket, fixture):
+    """正向對照：沒有同鏈寫入時不出現拆分提示，乾淨票面仍無任何輸出。"""
+    mock_find_ticket(fixture)
+    rc, out, err = _run_main_with_stdin(
+        _payload("PreToolUse", "ticket track complete {t}".format(t=_T)),
+        monkeypatch, capsys,
+    )
+    assert rc == 0
+    assert _hook.CHAIN_WRITE_HINT.splitlines()[0] not in out
+    if fixture == "clean_ticket.md":
+        assert out == ""
+
+
+# ============================================================================
+# 命令作用範圍：作用在其他 repo 時不讀 session repo 的同 ID 票
+# ============================================================================
+
+
+def _git_repo(path):
+    import subprocess
+
+    path.mkdir()
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    return path.resolve()
+
+
+class TestCommandScope:
+    """以 _check_ticket 是否被呼叫判定 hook 有沒有讀 session repo 的票。"""
+
+    def _run(self, monkeypatch, session, command):
+        calls = []
+        monkeypatch.setattr(_hook, "_check_ticket", lambda tid, *a, **k: calls.append(tid) or 2)
+        payload = {
+            "hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": str(session),
+            "tool_input": {"command": command},
+        }
+        monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(payload)))
+        return main(), calls
+
+    def test_direct_complete_checked(self, monkeypatch, tmp_path):
+        """正向對照：直接 complete 會讀票判定。"""
+        session = _git_repo(tmp_path / "s")
+        rc, calls = self._run(monkeypatch, session, "ticket track complete 0.0.0-W1-001")
+        assert calls == ["0.0.0-W1-001"] and rc == 2
+
+    def test_other_repo_skipped(self, monkeypatch, tmp_path):
+        """子 shell cd 到其他 repo：不讀 session repo 的同 ID 票，放行。"""
+        session = _git_repo(tmp_path / "s")
+        other = _git_repo(tmp_path / "o")
+        rc, calls = self._run(monkeypatch, session, f"(cd {other} && ticket track complete 0.0.0-W1-001)")
+        assert calls == [] and rc == 0
+
+    def test_unknown_dir_keeps_previous_behavior(self, monkeypatch, tmp_path):
+        """目錄無法靜態解析：沿用修改前的判定（仍讀票）。"""
+        session = _git_repo(tmp_path / "s")
+        rc, calls = self._run(monkeypatch, session, 'cd "$X" && ticket track complete 0.0.0-W1-001')
+        assert calls == ["0.0.0-W1-001"]

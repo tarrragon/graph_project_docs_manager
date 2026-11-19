@@ -441,3 +441,145 @@ class TestDetectMissingMainWorklog:
 
         result = guard_hook.detect_missing_main_worklog(versions, tmp_path)
         assert result == ["0.38.0"]
+
+
+MAIN_WORKLOG_PATH = "docs/work-logs/v0/v0.37/v0.37.0/v0.37.0-main.md"
+
+
+def _render_missing_main_warning(tmp_path, capsys, with_main: bool) -> str:
+    """以 v0.37.0 fixture 走偵測、組裝與輸出三步，回傳 stdout。"""
+    version_dir = tmp_path / "docs" / "work-logs" / "v0" / "v0.37" / "v0.37.0"
+    version_dir.mkdir(parents=True)
+    if with_main:
+        (version_dir / "v0.37.0-main.md").write_text("x", encoding="utf-8")
+    versions = {"0.37.0": "active"}
+    missing = guard_hook.detect_missing_main_worklog(versions, tmp_path)
+    lines = guard_hook.build_warning_lines(
+        [], [], [], None, versions, [], [], [], missing
+    )
+    if lines:
+        guard_hook.print_warnings(lines)
+    return capsys.readouterr().out
+
+
+def _assert_tells_where_and_format(out: str) -> None:
+    """讀者要能從警告得知補在哪裡、照什麼格式補。"""
+    assert MAIN_WORKLOG_PATH in out
+    assert guard_hook.MAIN_WORKLOG_TEMPLATE in out
+
+
+class TestMissingMainWorklogWarningText:
+    """缺 main worklog 的警告列出完整分層路徑與格式出處（3.2.0-W1-142）"""
+
+    def test_missing_main_lists_full_path_and_format_sources(self, tmp_path, capsys):
+        out = _render_missing_main_warning(tmp_path, capsys, with_main=False)
+        _assert_tells_where_and_format(out)
+
+    def test_present_main_prints_no_path(self, tmp_path, capsys):
+        out = _render_missing_main_warning(tmp_path, capsys, with_main=True)
+        assert MAIN_WORKLOG_PATH not in out
+        assert "[缺 main worklog]" not in out
+
+    def test_assertion_rejects_legacy_warning_text(self):
+        """E2 正向對照：舊版只給檔名樣式與通用建議句，斷言必須判紅"""
+        legacy = (
+            "  - [缺 main worklog] 版本目錄存在但缺 v{version}-main.md（僅查 "
+            "active/planned，避免歷史存量噪音）: 0.37.0\n"
+            "建議：校準 docs/todolist.yaml，或補建缺漏版本條目\n"
+        )
+        with pytest.raises(AssertionError):
+            _assert_tells_where_and_format(legacy)
+
+    def test_relpath_rejects_non_three_part_version(self):
+        assert guard_hook.main_worklog_relpath("1.0") is None
+
+
+# 每類漂移行自帶補法：(build_warning_lines 參數名, 參數值, 補法必含字樣)
+_DRIFT_CASES = [
+    ("multiple_active", ["3.3.0", "3.4.0"], ["docs/todolist.yaml", "status"]),
+    ("ghosts", ["0.0.1"], ["docs/todolist.yaml", guard_hook.TODOLIST_ENTRY_TEMPLATE]),
+    ("stale_active", ["3.3.0"], ["docs/todolist.yaml", "status", "completed"]),
+    ("tag_drift_version", "3.2.0", ["docs/todolist.yaml", "status", "completed"]),
+    ("closed_ticket_anomalies", ["9.9.0-W1-001: closed_by 缺失"], ["closed_by", "close_reason_note"]),
+    ("stale_proposals", ["PROP-001（target_version v3.2.0 已 completed）"],
+     ["docs/proposals-tracking.yaml", "status", "implemented"]),
+    ("unregistered_confirmed_proposals", ["PROP-002（target_version v9.9.0）"],
+     ["docs/todolist.yaml", "planned", guard_hook.TODOLIST_ENTRY_TEMPLATE]),
+    ("missing_main_worklog", ["0.37.0"], [guard_hook.MAIN_WORKLOG_TEMPLATE]),
+]
+
+
+def _lines_for(param: str, value) -> list:
+    kwargs = dict(
+        multiple_active=[], ghosts=[], stale_active=[], tag_drift_version=None,
+        versions={"3.2.0": "active"}, closed_ticket_anomalies=[], stale_proposals=[],
+        unregistered_confirmed_proposals=[], missing_main_worklog=[],
+    )
+    kwargs[param] = value
+    return guard_hook.build_warning_lines(**kwargs)
+
+
+def _assert_fix_attached(line: str, required: list) -> None:
+    """漂移行須自帶「補法：」並寫出要改的檔與欄位。"""
+    assert "補法：" in line
+    fix = line.split("補法：", 1)[1]
+    for token in required:
+        assert token in fix
+
+
+class TestPerDriftFixGuidance:
+    """每類漂移行各自附補法，取代區塊末尾的單一通用建議句"""
+
+    @pytest.mark.parametrize("param,value,required", _DRIFT_CASES, ids=[c[0] for c in _DRIFT_CASES])
+    def test_each_drift_line_carries_its_fix(self, param, value, required):
+        lines = _lines_for(param, value)
+        assert len(lines) == 1
+        _assert_fix_attached(lines[0], required)
+
+    @pytest.mark.parametrize("param,value,required", _DRIFT_CASES, ids=[c[0] for c in _DRIFT_CASES])
+    def test_legacy_line_without_fix_is_rejected(self, param, value, required):
+        """E2 正向對照：舊版漂移行只有描述沒有補法，斷言必須判紅"""
+        legacy_line = _lines_for(param, value)[0].split("\n", 1)[0]
+        with pytest.raises(AssertionError):
+            _assert_fix_attached(legacy_line, required)
+
+    def test_footer_drops_generic_suggestion(self, capsys):
+        guard_hook.print_warnings(_lines_for("ghosts", ["0.0.1"]))
+        out = capsys.readouterr().out
+        assert "建議：校準 docs/todolist.yaml，或補建缺漏版本條目" not in out
+
+
+class TestLegacyClosedTicketConfig:
+    """豁免名單由專案設定提供（E1：有設定與無設定對照）"""
+
+    EXEMPT_ID = "9.9.9-W1-001"
+    CLOSED = [{"id": "9.9.9-W1-001", "close_reason": "completed"}]
+
+    @staticmethod
+    def _config_path(root):
+        cfg_dir = root / ".claude" / "project-integration"
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        return cfg_dir / "version-tracking-legacy-closed-tickets.txt"
+
+    def test_with_config_ticket_is_exempt_without_config_it_is_flagged(self, tmp_path, logger):
+        self._config_path(tmp_path).write_text("# 註解\n\n9.9.9-W1-001\n", encoding="utf-8")
+        exempt = guard_hook.load_legacy_closed_ticket_ids(tmp_path, logger)
+        assert exempt == frozenset({self.EXEMPT_ID})
+        assert guard_hook.detect_closed_ticket_anomalies(self.CLOSED, exempt) == []
+
+        empty_root = tmp_path / "empty"
+        empty_root.mkdir()
+        none = guard_hook.load_legacy_closed_ticket_ids(empty_root, logger)
+        assert none == frozenset()
+        assert guard_hook.detect_closed_ticket_anomalies(self.CLOSED, none) != []
+
+    def test_missing_file_is_silent(self, tmp_path, logger, capsys):
+        assert guard_hook.load_legacy_closed_ticket_ids(tmp_path, logger) == frozenset()
+        captured = capsys.readouterr()
+        assert captured.err == "" and captured.out == ""
+
+    def test_unreadable_file_falls_back_to_empty_with_warning(self, tmp_path, logger, capsys):
+        cfg = self._config_path(tmp_path)
+        cfg.write_bytes(b"\xff\xfe\x00bad")
+        assert guard_hook.load_legacy_closed_ticket_ids(tmp_path, logger) == frozenset()
+        assert str(cfg) in capsys.readouterr().err

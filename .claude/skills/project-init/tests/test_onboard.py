@@ -235,10 +235,10 @@ __pycache__/
         captured = capsys.readouterr()
         assert "0 項需處理" in captured.out or "需處理" in captured.out
 
-    def test_onboard_hook_completeness_section(
+    def test_onboard_hook_coverage_section(
         self, tmp_path: Path, capsys
     ) -> None:
-        """測試 onboard 包含 Hook 完整性驗證區段."""
+        """測試 onboard 包含 Hook 註冊涵蓋率區段，並寫明不量的維度."""
         # 建立最小的 Flutter 專案
         (tmp_path / "pubspec.yaml").touch()
 
@@ -254,8 +254,11 @@ __pycache__/
         result = run_onboard(tmp_path)
 
         captured = capsys.readouterr()
-        # 應該包含 Hook 完整性檢查的輸出
-        assert "Hook 完整性驗證" in captured.out
+        # 區段標題為註冊涵蓋率，舊的「完整性」標題不再出現
+        assert "[Hook 註冊涵蓋率]" in captured.out
+        assert "Hook 完整性" not in captured.out
+        # 寫明只量登記、不量的維度
+        assert "不量觸發、事件、權限、依賴" in captured.out
 
     def test_onboard_unregistered_hooks_in_todo(
         self, tmp_path: Path, capsys
@@ -386,3 +389,36 @@ __pycache__/
         assert hook_config_info.yaml_permission_info is not None
         # YAML 檔案應該可讀
         assert hook_config_info.yaml_permission_info.can_read
+
+
+class TestSettingsLocalHint:
+    """settings.local.json 待辦提示指向範本（E1 對照）."""
+
+    TEMPLATE = "settings-local-template.json"
+    TODO_DESC = "settings.local.json 不存在"
+
+    def _make_project(self, root: Path, with_local: bool) -> None:
+        (root / "pubspec.yaml").touch()
+        (root / ".claude").mkdir()
+        (root / ".claude" / "settings.json").write_text('{"hooks": {}}')
+        if with_local:
+            (root / ".claude" / "settings.local.json").touch()
+
+    def test_missing_local_hint_points_to_template(self, tmp_path: Path, capsys) -> None:
+        self._make_project(tmp_path, with_local=False)
+        result = run_onboard(tmp_path)
+        out = capsys.readouterr().out
+        hints = [i.hint for i in result.todo_items if i.description == self.TODO_DESC]
+        assert len(hints) == 1
+        assert self.TEMPLATE in hints[0]
+        assert "settings.json" not in hints[0].replace("settings.local.json", "")
+        section = out.split("[settings.local.json]")[1].split("\n[")[0]
+        assert self.TEMPLATE in section
+        assert "settings.json" not in section.replace("settings.local.json", "")
+
+    def test_existing_local_has_no_hint(self, tmp_path: Path, capsys) -> None:
+        self._make_project(tmp_path, with_local=True)
+        result = run_onboard(tmp_path)
+        out = capsys.readouterr().out
+        assert not [i for i in result.todo_items if i.description == self.TODO_DESC]
+        assert self.TEMPLATE not in out

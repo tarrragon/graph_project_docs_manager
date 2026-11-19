@@ -30,6 +30,8 @@ from ticket_system.lib.ticket_loader import (
 )
 from ticket_system.lib.version import suggest_version_for_ticket
 from ticket_system.lib.ticket_validator import extract_version_from_ticket_id
+from ticket_system.lib.terminal_parent_guard import terminal_parent_hint
+from ticket_system.lib.sibling_predecessor_guard import check_sibling_predecessors
 from ticket_system.lib.messages import (
     ErrorEnvelope,
     ErrorMessages,
@@ -52,6 +54,7 @@ from ticket_system.lib.field_validators import (
     check_when_blocked_by_consistency,
     directory_declaration_warnings,
     missing_where_paths,
+    resolve_reference_version,
     validate_blocked_by_references,
     validate_discovered_during_arg,
     validate_portable_issue_gate,
@@ -71,6 +74,7 @@ from ticket_system.lib.constants import (
     DEFAULT_UNDEFINED_VALUE,
 )
 from ticket_system.lib import dedup_runner
+from ticket_system.lib.where_overlap import print_where_overlap_hint
 from ticket_system.lib.tdd_sequence import suggest_tdd_sequence
 from ticket_system.lib.ticket_builder import (
     TicketConfig,
@@ -90,6 +94,7 @@ from ticket_system.lib.duplicate_detector import (
 from ticket_system.lib.create_reporter import print_create_checklist
 from ticket_system.lib.ana_coupling_hint import (
     hint_blocked_by_ana,
+    hint_frozen_version_ana_parent,
     hint_parent_is_ana,
 )
 
@@ -132,7 +137,7 @@ def _print_in_progress_group_hint(
 def _inherit_parent_who(parent_ticket: Optional[Dict[str, Any]]) -> str:
     """從 parent ticket 取 who.current，相容舊字串格式。
 
-    W11-003.7: 舊 ticket（v0.16/v0.17 早期）who 為字串；新格式為 dict {current, history}。
+    舊 ticket（v0.16/v0.17 早期）who 為字串；新格式為 dict {current, history}。
     型別防護策略：dict 走 .get("current")、str 直接使用、None/缺失 fallback "pending"。
     """
     if not parent_ticket:
@@ -148,7 +153,7 @@ def _inherit_parent_who(parent_ticket: Optional[Dict[str, Any]]) -> str:
 def _inherit_parent_where_layer(parent_ticket: Optional[Dict[str, Any]]) -> str:
     """從 parent ticket 取 where.layer，相容舊字串格式。
 
-    W11-003.7: 舊 ticket where 為字串（即 layer 描述），新格式為 dict {layer, files}。
+    舊 ticket where 為字串（即 layer 描述），新格式為 dict {layer, files}。
     型別防護策略：dict 走 .get("layer")、str 直接使用、None/缺失 fallback DEFAULT_UNDEFINED_VALUE。
     """
     if not parent_ticket:
@@ -261,7 +266,7 @@ def _parse_cli_args_to_config(
 
     # PC-018: why 必填（DOC 類型豁免）。不在此提前退出——統一交給
     # _validate_create_checklist 與 when/who/how_strategy 等缺漏一次列全，
-    # 避免分批報錯造成多輪試錯（1.0.0-W1-024.1 A2）
+    # 避免分批報錯造成多輪試錯
     why_value = args.why or (parent_ticket.get("why") if parent_ticket else DEFAULT_UNDEFINED_VALUE)
 
     return {
@@ -327,7 +332,24 @@ def _validate_before_persist(
     if not validate_blocked_by_references(version, ticket_id, blocked_by):
         return False
 
-    # Tier 2 阻擋層（W1-040.1 冪等防護）：命中且未旁路 → 阻擋
+    # 兄弟前驅數（ARCH-017）：以寫入後的 parent_id 與 blockedBy 判定
+    sibling_hint = check_sibling_predecessors(
+        ticket_id,
+        blocked_by or [],
+        config.get("parent_id"),
+        lambda tid: load_ticket(resolve_reference_version(version, tid), tid),
+        unchanged_note="本票未建立",
+    )
+    if sibling_hint:
+        print(format_error(ErrorEnvelope(
+            component="create",
+            action="validate_blocked_by",
+            errno="BLOCKED_BY_MULTI_SIBLING",
+            hint=sibling_hint,
+        )))
+        return False
+
+    # Tier 2 阻擋層：命中且未旁路 → 阻擋
     if not enforce_blocking_duplicate(
         version=version,
         new_title=config["title"],
@@ -354,7 +376,7 @@ def _validate_before_persist(
     return True
 
 
-# _validate_create_checklist 已下沉至 lib/ticket_builder.py（1.0.0-W1-027，
+# _validate_create_checklist 已下沉至 lib/ticket_builder.py（
 # 三建票路徑共用驗證邏輯，根除散落漂移 ARCH-020）。保留私有別名以向後相容
 # 既有 import（tests/test_create_ux_merged_validation.py）與本檔呼叫鏈。
 _validate_create_checklist = validate_create_checklist
@@ -384,14 +406,14 @@ def _suggest_field_value(field: str, ticket_type: str, action: str) -> str | Non
 
 def _enforce_create_checklist(missing: List[str], force: bool,
                               ticket_type: str = "IMP", action: str = "") -> None:
-    """W11-003.5: 將清單式驗證從 WARNING 升級為阻擋建立。
+    """將清單式驗證從 WARNING 升級為阻擋建立。
 
     根據缺失欄位清單與 --force 旗標決定行為：
     - 無缺失：直接 return（不阻擋）
     - 有缺失 + 未 --force：印錯誤訊息、建議值並 sys.exit(1)
     - 有缺失 + --force：印 WARNING 但允許繼續（保留快速建立逃生閥）
 
-    0.3.4-W2-001: 缺失欄位附帶基於 type+action 的建議值，從「攔截」改為「攔截+引導」。
+    缺失欄位附帶基於 type+action 的建議值，從「攔截」改為「攔截+引導」。
 
     Args:
         missing: _validate_create_checklist 回傳的缺失欄位清單
@@ -463,7 +485,10 @@ _HOOK_ACCEPTANCE_TEMPLATES = (
     ("本 session 實地觸發確認",
      "[ ] 當次執行環境下的觸發驗證結果：<待填：以 ticket track set-acceptance <id> "
      "--edit <編號> 改寫本條，勾選不算填寫；"
-     "證據寫在 Test Results 或 Solution，貼 hook-logs/ 日誌行引文>"),
+     "證據寫在 Test Results 或 Solution，貼 hook-logs/ 日誌行引文，"
+     "且須證明修改點有執行，擇一：只有修改後分支才會產生的日誌行或輸出；"
+     "或同一輸入跑修改前與修改後版本、兩者輸出不同並列出差異。"
+     "入口、提取票號、讀票等每次都寫的行，以及修改點之前提前回傳的判定行，不算證據>"),
     ("liveness 驗證方式",
      "[ ] 載入與執行的確認方式：<待填：以 ticket track set-acceptance <id> "
      "--edit <編號> 改寫本條，勾選不算填寫；"
@@ -503,22 +528,81 @@ def _strip_checkbox(item: str) -> str:
     return re.sub(r"^\s*\[[ xX]\]\s*", "", item)
 
 
+_PATH_INVENTORY_FORMAT_HINT = (
+    "gate 接受的格式（ticket-body-schema.md「防護類 hook ticket 額外 acceptance」節）：\n"
+    "  - 表頭須含「產生路徑」欄與含「覆蓋」字樣的欄，表頭下一行緊接分隔列\n"
+    "  - 覆蓋欄每列只接受「是」或「否」，至少一列資料\n"
+    "  | 產生路徑 | 是否覆蓋 | 未覆蓋原因 |\n"
+    "  |---------|---------|-----------|\n"
+    "  | <路徑> | 是 | |\n"
+)
+
+
+def _has_table_missing_inventory_header(checker: Any, text: str) -> bool:
+    """有含「覆蓋」欄的表格，但表頭不含「產生路徑」（gate 判為 absent）。"""
+    lines = text.split("\n")
+    for i in range(len(lines) - 1):
+        stripped = lines[i].strip()
+        if not stripped.startswith("|"):
+            continue
+        if checker._INVENTORY_HEADER_MARKER in stripped:
+            continue
+        if checker._COVERAGE_HEADER_MARKER not in stripped:
+            continue
+        if checker._TABLE_SEPARATOR_ROW_RE.match(lines[i + 1].strip()):
+            return True
+    return False
+
+
+def describe_path_inventory_problem(checker: Any, how_strategy: str) -> Optional[str]:
+    """回傳 how.strategy 盤點表的格式問題警告；無問題（含無表）回傳 None。
+
+    判定沿用 gate 的 parse_path_inventory_table，使建票端與完成端接受範圍一致：
+      - failed：表格存在但覆蓋欄缺失、值非「是／否」或無資料列，
+        gate 會略過計數（fail-open），盤點結果不被記錄
+      - absent 且有含「覆蓋」欄的表格：表頭缺「產生路徑」，gate 判為無表並阻擋 complete
+    """
+    text = how_strategy or ""
+    status = checker.parse_path_inventory_table(text).status
+    if status == "failed":
+        reason = (
+            "盤點表存在但格式不符（缺「覆蓋」欄、覆蓋值非「是／否」或無資料列），"
+            "acceptance-gate 會略過本項計數"
+        )
+    elif status == "absent" and _has_table_missing_inventory_header(checker, text):
+        reason = (
+            "how.strategy 有含「覆蓋」欄的表格，但表頭缺「產生路徑」，"
+            "acceptance-gate 會判為無盤點表並阻擋 complete"
+        )
+    else:
+        return None
+    return f"[WARNING] 產生路徑盤點表：{reason}\n{_PATH_INVENTORY_FORMAT_HINT}"
+
+
 def apply_hook_acceptance_template(
     where_files: List[str],
     acceptance: Optional[List[str]],
     how_strategy: str = "",
+    ticket_type: Optional[str] = None,
 ) -> tuple:
     """where 觸及 hook 本體時，於 acceptance 追加缺少類別的模板。
 
     第四條（產生路徑盤點）的已具備判定與 gate 一致：how_strategy 內有盤點表
     （parse_path_inventory_table 非 absent/no_separator）即視為已具備。
 
+    ticket_type 給定且不在驗證端 ``APPLICABLE_TYPES`` 內時不帶入模板：驗證端
+    對這些票型不檢查，帶入的條目只能手動改寫為不適用。未給定（None）時
+    維持原行為，供只知道 where 的呼叫端使用。
+
     Returns:
-        (新 acceptance 清單, 是否觸及 hook 範圍)。未觸及或 checker 不可用時
-        原樣回傳 acceptance 與 False。已含對應類別的條目不重複追加。
+        (新 acceptance 清單, 是否觸及 hook 範圍)。未觸及、票型不適用或
+        checker 不可用時原樣回傳 acceptance 與 False。已含對應類別的條目
+        不重複追加。
     """
     checker = _load_hook_protection_checker()
     if checker is None:
+        return acceptance, False
+    if ticket_type is not None and ticket_type.strip().upper() not in checker.APPLICABLE_TYPES:
         return acceptance, False
     # 唯讀宣告（::read）不改動 hook，先濾掉再判範圍；剝離規則沿用 file_conflict
     write_paths = []
@@ -534,6 +618,10 @@ def apply_hook_acceptance_template(
     plain_text = "\n".join(_strip_checkbox(str(item)) for item in current)
     missing = set(checker._missing_categories(text))
     inventory = checker.parse_path_inventory_table(how_strategy or "")
+    problem = describe_path_inventory_problem(checker, how_strategy)
+    if problem:
+        # CLI 經 Bash 執行，stderr 與 stdout 同樣回到模型；用 stderr 與錯誤通道一致
+        sys.stderr.write(problem)
     if inventory.status in ("absent", "no_separator") and "產生路徑盤點" not in text:
         missing.add(_PATH_INVENTORY_LABEL)
     for label, template in _HOOK_ACCEPTANCE_TEMPLATES:
@@ -609,8 +697,8 @@ def _build_and_save_ticket(
 
     save_ticket(ticket, ticket_path)
 
-    # 落盤後驗證（W1-042）：確認檔案確實寫入預期路徑。
-    # W1-039 事件中出現「記錄平面幻影但世界平面無檔案落盤」，此驗證使
+    # 落盤後驗證：確認檔案確實寫入預期路徑。
+    # 事件中出現「記錄平面幻影但世界平面無檔案落盤」，此驗證使
     # 落盤失敗成為顯性錯誤而非靜默成功（規則 4：異常可觀測）。
     if not ticket_path.exists():
         sys.stderr.write(
@@ -744,7 +832,7 @@ def _persist_and_report(
     if not _validate_before_persist(version, ticket_id, config, allow_duplicate):
         return 1
 
-    # 步驟 1.5：PROP-009 清單式欄位驗證（W11-003.5 升級為阻擋；--force 可豁免）
+    # 步驟 1.5：PROP-009 清單式欄位驗證
     ticket_type = config.get("ticket_type", "IMP")
     missing_fields = _validate_create_checklist(config, ticket_type)
     force_flag = bool(getattr(args, "force", False))
@@ -769,6 +857,7 @@ def _persist_and_report(
     new_acceptance, touches_hook = apply_hook_acceptance_template(
         config.get("where_files") or [], base_acceptance,
         str(config.get("how_strategy") or ""),
+        ticket_type=config["ticket_type"],
     )
     if touches_hook:
         config["acceptance"] = new_acceptance
@@ -810,12 +899,20 @@ def _persist_and_report(
         ticket_path=ticket_path,
     )
 
-    # 步驟 4.5：指向 ANA 的耦合後果提示（只寫 stderr，不影響 exit code）
+    # 步驟 4.5：指向 ANA 的耦合後果提示（寫 stdout，不影響 exit code）
     if args.parent:
         hint_parent_is_ana(version, args.parent, ticket_id)
+        hint_frozen_version_ana_parent(
+            version, args.parent, ticket_id, getattr(args, "scope_blocker", None)
+        )
     hint_blocked_by_ana(version, config.get("blocked_by") or [], ticket_id)
 
-    # 步驟 5（W17-008.15 方案 D）：未帶 --parent 時提示 in_progress group
+    # 步驟 4.6：where.files 與未完成票重疊提示（查重輔助，不阻擋）
+    print_where_overlap_hint(
+        ticket_id, ((ticket.get("where") or {}).get("files") or [])
+    )
+
+    # 步驟 5：未帶 --parent 時提示 in_progress group
     if not args.parent:
         wave_for_hint = config.get("wave") if isinstance(config, dict) else None
         _print_in_progress_group_hint(version, wave_for_hint, ticket_id)
@@ -864,7 +961,7 @@ def _auto_extract_context_bundle_post_create(
     verbose: bool = False,
     json_output: bool = False,
 ) -> bool:
-    """Create 後的 Context Bundle 自動抽取 wire-in（W17-002.2）。
+    """Create 後的 Context Bundle 自動抽取 wire-in。
 
     僅當 target ticket 具備 source_ticket / blocked_by / related_to 之一時才觸發。
     異常降級：任何例外都寫入 stderr traceback，不 re-raise（主流程不因此中斷）。
@@ -927,7 +1024,7 @@ def execute(args: argparse.Namespace) -> int:
 
     版本歸屬引導（建議版本 / VERSION_NOT_REGISTERED 檢查）僅對根票生效。
     子任務（--parent 存在）無條件繼承父票 version/wave，不受引導與註冊檢查
-    影響（W5-005.13：子票版本應與父票綁定，引導推導值可能未在 todolist
+    影響（子票版本應與父票綁定，引導推導值可能未在 todolist
     註冊而導致子票建立 hard-fail）。
     """
     ticket_type = args.type or "IMP"
@@ -950,7 +1047,7 @@ def execute(args: argparse.Namespace) -> int:
         return 1
 
     # 判準 S1/S2 自動推導：僅在三個顯式旗標皆未給時啟動，不改寫顯式選擇
-    # （0.2.1-W3-826 判準；顯式優先是 Never break userspace 的要求）。
+    # （顯式優先是 Never break userspace 的要求）。
     # --no-topic 以 NO_TOPIC 哨兵表達，在此即短路推導：若改由推導後的
     # 報告分支攔截，旗標只能在推導本來就落空時生效，命中時反被覆蓋。
     if topic is NO_TOPIC:
@@ -973,6 +1070,16 @@ def execute(args: argparse.Namespace) -> int:
                 hint="無法從 --parent 解析版本號，請確認 --parent 格式正確",
             )))
             return 1
+        # 父票已結案時拒絕：先於 ID 配置與任何寫入，不留下半成品子票
+        terminal_hint = terminal_parent_hint(args.parent, load_ticket(version, args.parent))
+        if terminal_hint:
+            print(format_error(ErrorEnvelope(
+                component="create",
+                action="validate_parent",
+                errno="PARENT_TERMINAL",
+                hint=terminal_hint,
+            )))
+            return 1
     else:
         # 根票：版本歸屬引導：根據 type + action 建議目標版本
         suggestion = suggest_version_for_ticket(ticket_type, action)
@@ -992,7 +1099,11 @@ def execute(args: argparse.Namespace) -> int:
                 component="create",
                 action="resolve_version",
                 errno="VERSION_NOT_DETECTED",
-                hint="無法自動偵測版本號，請使用 --version 明確指定（或確認 todolist.yaml 已設定 current_version）",
+                hint=(
+                    "無法自動偵測版本號。偵測規則：取 docs/todolist.yaml 的 versions 中"
+                    "第一個 status: active 的版本，取不到時改取 docs/work-logs/ 下的最高版本目錄。"
+                    "處置：以 --version 明確指定，或把目標版本在 todolist.yaml 標為 status: active"
+                ),
             )))
             return 1
 
@@ -1139,7 +1250,7 @@ def execute(args: argparse.Namespace) -> int:
             ))
         elif requires_topic_assignment(args):
             # 判準 S3：ANA 未歸屬會使其整串衍生票一併失明，訊息須說明後果
-            # 而非僅陳述狀態（0.2.1-W3-826 實驗 H2：純狀態提示無效）。
+            # 而非僅陳述狀態。
             print(format_warning(
                 "[主題] 未指派主題且無法自動推導。此票為 ANA 型（判準 S3），"
                 "其衍生票會經上游繼承取得主題，未歸屬將使整串後續票不出現於"
@@ -1153,7 +1264,7 @@ def execute(args: argparse.Namespace) -> int:
                 "--new-topic 指定，或以 --no-topic 明示不指派",
             ))
 
-    # Step 4 (W17-002.2)：Context Bundle 自動抽取（post-persist enhancement）
+    # Step 4：Context Bundle 自動抽取（post-persist enhancement）
     # --dry-run 時 ticket 未落盤，抽取與 auto-commit 的對象不存在，一併略過。
     ticket_intact = True
     commit_failed = False
@@ -1287,7 +1398,7 @@ def _source_backfill_paths(args: argparse.Namespace, ticket_id: str) -> list:
     return paths
 
 
-# 1.0.0-W1-028: 縮寫歧義攔截已抽為共用 helper，泛化原 _AmbiguousHowAction。
+# 縮寫歧義攔截已抽為共用 helper，泛化原 _AmbiguousHowAction。
 # 共用 hint 文字常數，供 --how / --ho 等更短前綴共用同一提示（DRY）。
 _HOW_AMBIGUOUS_HINT = (
     "--how 不是有效旗標，請使用完整旗標名："
@@ -1306,7 +1417,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
             "  ticket create --action 實作 --target 'SessionListPage 排序功能' --wave 3\n"
             "  ticket create --action 修復 --target 'ticket CLI 錯誤提示' --wave 3 --type ADJ\n"
             "  ticket create --action 分析 --target 'Monorepo 版本策略' --wave 1 --type ANA\n"
-            "  ticket create --action 實作 --target '子任務描述' --parent 0.2.0-W3-001\n"
+            "  ticket create --action 實作 --target '子任務描述' --parent <ticket-id>\n"
             "\n"
             "必填參數: --action（動詞）、--target（目標）\n"
             "根任務還需: --wave（Wave 編號）\n"
@@ -1371,7 +1482,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         help="標記為協調票（frontmatter 寫入 coordination: true，供 multi-session-orchestration 消費）",
     )
     # --how / --ho 攔截：exact match 優先於縮寫展開，給友善提示
-    # （1.0.0-W1-024.1 A3 + 1.0.0-W1-028 模式化）。--ho 為更短前綴同類誤打，
+    #。--ho 為更短前綴同類誤打，
     # 共用同一中文提示（約束 2 落地：攔截而非懸而未決）。
     register_ambiguous_prefix(parser, "--how", _HOW_AMBIGUOUS_HINT)
     register_ambiguous_prefix(parser, "--ho", _HOW_AMBIGUOUS_HINT)
@@ -1414,7 +1525,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     parser.add_argument("--blocked-by", action="append", help="依賴的 Ticket IDs（逗號分隔，如 'ID1,ID2'；可重複給）")
     parser.add_argument("--related-to", action="append", help="相關的 Ticket IDs（逗號分隔，如 'ID1,ID2'；可重複給）")
     parser.add_argument("--acceptance", action="append", help="驗收條件（多次 --acceptance 或 | 分隔，如 '條件A|條件B'）")
-    # --decision-tree 攔截：撞 --decision-tree-entry/-decision/-rationale（1.0.0-W1-028）
+    # --decision-tree 攔截：撞 --decision-tree-entry/-decision/-rationale
     register_ambiguous_prefix(
         parser,
         "--decision-tree",
@@ -1430,19 +1541,19 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--quiet",
         dest="quiet",
         action="store_true",
-        help="Context Bundle 抽取摘要單行輸出（W17-002.2）",
+        help="Context Bundle 抽取摘要單行輸出",
     )
     parser.add_argument(
         "--verbose",
         dest="verbose",
         action="store_true",
-        help="Context Bundle 抽取摘要附欄位預覽（W17-002.2）",
+        help="Context Bundle 抽取摘要附欄位預覽",
     )
     parser.add_argument(
         "--json",
         dest="json_output",
         action="store_true",
-        help="Context Bundle 抽取結果以 JSON 結構化輸出（W17-002.1）",
+        help="Context Bundle 抽取結果以 JSON 結構化輸出",
     )
     parser.add_argument(
         "--force",
@@ -1450,7 +1561,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help=(
             "跳過 PROP-009 清單式欄位驗證（5W1H/acceptance/decision_tree_path）"
-            "的阻擋（W11-003.5 逃生閥；不建議用於正式 Ticket）"
+            "的阻擋"
         ),
     )
 
@@ -1459,7 +1570,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         dest="allow_duplicate",
         action="store_true",
         help=(
-            "旁路 Tier 2 同窗口高相似度阻擋層（W1-040.1 冪等防護逃生閥）；"
+            "旁路 Tier 2 同窗口高相似度阻擋層；"
             "用於失誤後刻意重建近似 Ticket 的合法情境"
         ),
     )

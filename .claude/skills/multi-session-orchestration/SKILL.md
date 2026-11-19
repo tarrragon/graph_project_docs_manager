@@ -2,7 +2,7 @@
 name: multi-session-orchestration
 description: "PM coordinating 2+ peer Claude Code sessions in one repo: split work lines by topic, share the merge gate and test slot, relay user decisions, triage title-only review flags, wrap up for handoff. Use when running parallel session lines."
 metadata:
-  version: 1.23.0
+  version: 1.27.1
 ---
 
 # 多 session 分線協調（主控 PM 統籌多條工作線）
@@ -77,6 +77,7 @@ metadata:
 | 批次合併 | 改動檔案互不重疊、各張自帶測試、已審查，張數上限見 references |
 | 閘門紅燈 | 先在 main 跑同一個失敗測試，判定是 main 既有回歸還是本分支造成 |
 | 主 checkout 共用本地 main | 任何一線推送都會帶出所有本地 commit；非票面的修改一律在 worktree 做 |
+| 線在合併後於主 checkout 收尾 complete | 以 PM 身份申報：先 `ticket track set-who <id> --current rosemary-project-manager`，再 `ticket track complete <id> --as rosemary-project-manager`；不要以本線標籤申報，identity-guard 只認 who.current 所指的執行者與 PM 身份。完整條文見 `.claude/pm-rules/parallel-dispatch.md`〈PM 側 worktree 合入與驗收三軸（強制）〉 |
 
 ### 4. 審查標記與查證
 
@@ -97,7 +98,7 @@ metadata:
 
 例外發生後，主控在 `/clear` 或 `/compact` 後收到的第一則訊息，不論內容是什麼，都先完成自我接續，不等用戶提示接續點：
 
-1. 讀設定檔，找出協調票。
+1. 以 `scripts/coordination_ticket.py --json` 找出協調票：自動解析 active 版本中標記 `coordination: true` 且狀態為 in_progress 的票。結果為 `multiple` 或 `none` 時停手問用戶，不自行挑選。`.claude/project-integration/multi-session.json` 的 `coordinationTicket` 只作選用覆寫，不是必要的設定檔。
 2. 判讀每條線目前的狀態，分為：已收線、`/clear` 後繼續、`/compact` 後繼續、新 session 接手。
 3. 把判讀結果寫進協調票。
 4. 向用戶回報。

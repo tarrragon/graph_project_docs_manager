@@ -378,6 +378,46 @@ def _shared_index_entries(paths: List[str], cwd: str) -> Optional[Dict[str, str]
     return entries
 
 
+def _ignored_untrack_paths(
+    paths: List[str],
+    shared_entries: Optional[Dict[str, str]],
+    head: str,
+    cwd: str,
+) -> List[str]:
+    """回傳「停止追蹤並補 .gitignore」的路徑：須在隔離 index 以刪除處理。
+
+    三條件同時成立才算：HEAD 有該路徑、共用 index 已無該路徑（git rm --cached
+    的結果）、工作區檔案仍在且被 ignore 規則涵蓋。此時 `git add` 會把仍在磁碟
+    上的檔案重新暫存，刪除靜默遺失。只滿足部分條件者（強制追蹤的 ignore 檔、
+    單純從磁碟刪除的檔）維持走 `git add`。共用 index 讀取失敗時回傳空清單，
+    行為與修正前相同。
+    """
+    if shared_entries is None:
+        return []
+    # 先以磁碟存在性過濾（無 git 呼叫），多數提交在此即短路
+    candidates = [
+        p for p in paths
+        if p not in shared_entries and os.path.isfile(os.path.join(cwd, p))
+    ]
+    if not candidates:
+        return []
+    ok, out, _err = _run_git_with_lock_retry(
+        ["git", "ls-tree", "-r", "--name-only", "-z", head, "--"] + candidates, cwd=cwd
+    )
+    in_head = set(out.split("\0")) if ok else set()
+    on_disk = [p for p in candidates if p in in_head]
+    if not on_disk:
+        return []
+    # --no-index：不受 index 狀態影響，只依 ignore 規則判定；-z 須搭配 --stdin。
+    # 無任何路徑命中時 exit 1、stdout 空，視同全部未被 ignore。
+    ok, out, _err = _run_git_with_lock_retry(
+        ["git", "check-ignore", "--no-index", "--stdin", "-z"],
+        cwd=cwd, input_text="\0".join(on_disk) + "\0",
+    )
+    ignored = set(out.split("\0")) if out else set()
+    return [p for p in on_disk if p in ignored]
+
+
 def _path_history_entries(path: str, cwd: str) -> set:
     """該路徑在 HEAD 可達歷史中最近 ``_OWN_HISTORY_LOOKBACK`` 次提交的 entry 集合。
 
@@ -646,7 +686,29 @@ _GUARD_PREVALIDATE_CLEAN_TOKEN = "PREVALIDATE_CLEAN"
 _GUARD_RELPATH = ".claude/hooks/git-ref-transaction-content-guard.py"
 _GUARD_BLOCK_EXIT_CODE = 87  # 須與 guard 的 EXIT_BLOCK 一致
 _GUARD_PREVALIDATE_TIMEOUT = 300
-_PREVALIDATE_LOG_DIR = os.path.join(".claude", "hook-logs", "git-ops-prevalidate")
+_PREVALIDATE_LOG_NAME = "git-ops-prevalidate"
+
+
+def hook_log_dir(name: str) -> str:
+    """hook-logs 子目錄：經 hook_logging.get_hook_log_dir，linked worktree 內解析到主 repo。
+
+    相對路徑與 CLAUDE_PROJECT_DIR 拼接都依 cwd／env，worktree 內會與主 repo 分處兩地
+    （tarrragon/claude#97）。`.claude/lib` 不可達時（skill 單獨安裝）退回
+    get_ticket_state_root()，同為 worktree 解析到主 repo 的語意。
+    """
+    from .claude_lib_loader import load_claude_lib
+
+    hook_logging = load_claude_lib("hook_logging")
+    if hook_logging is not None:
+        return str(hook_logging.get_hook_log_dir(name))
+    from .paths import get_ticket_state_root
+
+    return os.path.join(str(get_ticket_state_root()), ".claude", "hook-logs", name)
+
+
+def hook_logs_root() -> str:
+    """hook-logs 根目錄（日誌檔直接放在根目錄下的呼叫端用）；解析規則同 hook_log_dir。"""
+    return os.path.dirname(hook_log_dir("_"))
 
 
 def _run_guard_prevalidate(repo_root: str, stdin_text: str) -> Tuple[int, str, str]:
@@ -673,7 +735,7 @@ def _report_prevalidate_failure(repo_root: str, reason: str) -> None:
     message = f"預驗證失敗，本次 update-ref 退回 hook 完整掃描：{reason}"
     print(f"[WARNING] {message}", file=sys.stderr)
     try:
-        log_dir = os.path.join(repo_root, _PREVALIDATE_LOG_DIR)
+        log_dir = hook_log_dir(_PREVALIDATE_LOG_NAME)
         os.makedirs(log_dir, exist_ok=True)
         log_path = os.path.join(log_dir, "prevalidate-" + time.strftime("%Y%m%d") + ".log")
         with open(log_path, "a", encoding="utf-8") as fh:
@@ -837,11 +899,21 @@ def _commit_files_isolated_impl(
         if not ok:
             return {"status": "failed", "commit_sha": None, "error": err}
 
-        ok, _, err = _run_git_with_lock_retry(
-            ["git", "add", "--"] + deduped, cwd=cwd, env=env
-        )
-        if not ok:
-            return {"status": "failed", "commit_sha": None, "error": err}
+        untracked_removals = _ignored_untrack_paths(deduped, snapshot, old_head, cwd)
+        if untracked_removals:
+            ok, _, err = _run_git_with_lock_retry(
+                ["git", "rm", "--cached", "--quiet", "--"] + untracked_removals,
+                cwd=cwd, env=env,
+            )
+            if not ok:
+                return {"status": "failed", "commit_sha": None, "error": err}
+        to_add = [p for p in deduped if p not in untracked_removals]
+        if to_add:
+            ok, _, err = _run_git_with_lock_retry(
+                ["git", "add", "--"] + to_add, cwd=cwd, env=env
+            )
+            if not ok:
+                return {"status": "failed", "commit_sha": None, "error": err}
 
         for rel, text in appended.items():
             stage_err = _stage_appended_blob(

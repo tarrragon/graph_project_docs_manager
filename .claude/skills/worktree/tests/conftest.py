@@ -4,9 +4,44 @@ pytest fixtures for worktree SKILL tests
 提供共用的 mock 和測試資料。
 """
 
+import os
 import pytest
 from pathlib import Path
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
+import liveness_session_isolation as _liveness_iso  # noqa: E402
+from process_state_restore import process_state_guard  # noqa: E402,F401  逐測試還原 cwd/environ
+
+_SENTINEL = {}
+
+
+def pytest_configure(config):
+    """洩漏哨兵：測試前拍真實 hook-logs 快照（本套件有 hook 測試，無 hooks conftest 隔離）。"""
+    real_root = Path(__file__).resolve().parents[4]
+    _SENTINEL["root"] = real_root
+    _SENTINEL["real_session_id"] = os.environ.get(_liveness_iso.ENV_SESSION_ID)
+    _SENTINEL["snapshot"] = _liveness_iso.take_snapshot(real_root)
+    # 拍完快照才換 id：漏網的 _liveness 寫入落在 pytest- 前綴檔，不併入呼叫者 session 檔
+    mp = pytest.MonkeyPatch()
+    mp.setenv(_liveness_iso.ENV_SESSION_ID, _liveness_iso.new_test_session_id())
+    _SENTINEL["patch"] = mp
+
+
+def pytest_unconfigure(config):
+    mp = _SENTINEL.pop("patch", None)
+    if mp is not None:
+        mp.undo()
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """洩漏哨兵：真實 _liveness 出現 pytest- 前綴檔即令套件失敗（fail-closed）。"""
+    if _SENTINEL.get("root") is not None:
+        _liveness_iso.apply_leak_sentinel(session, _SENTINEL["root"])
+    if _SENTINEL.get("snapshot") is not None:
+        _liveness_iso.apply_snapshot_sentinel(
+            session, _SENTINEL["root"], _SENTINEL["snapshot"], _SENTINEL["real_session_id"]
+        )
 
 
 # ===== 套件層級 cwd 隔離 =====

@@ -19,6 +19,7 @@ merge_branch_cas 產生合併 commit 之前取得、update-ref 完成或中止�
 套件執行器可注入（SuiteRunner），單元測試不真的跑 hooks 或 flutter 全套件。
 """
 
+import hashlib
 import os
 import re
 import shutil
@@ -34,12 +35,27 @@ from typing import Callable, Iterator, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # .claude/，供 import lib
 from lib import slot_gate  # noqa: E402
+from lib.flutter_launcher import launch_argv  # noqa: E402
 
 try:
-    from .merge_cas import CheckResult
+    from .merge_cas import BatchHooks, BatchItem, CheckResult, MergeOutcome
 except ImportError:
     # Fallback when running with scripts/ on sys.path (test 與直接執行情境)
-    from merge_cas import CheckResult
+    from merge_cas import BatchHooks, BatchItem, CheckResult, MergeOutcome
+
+# 批次合併：一次候選含領導者最多這麼多張；環境變數 MERGE_GATE_BATCH_MAX 覆寫，設 1 即停用批次
+BATCH_MAX_DEFAULT = 4
+BATCH_MAX_ENV = "MERGE_GATE_BATCH_MAX"
+COMMITTING_WAIT_SECONDS = 30.0  # 跟隨者等領導者寫完 ref 的上限（update-ref 為毫秒級，此值只擋領導者卡死）
+COMMITTING_POLL_SECONDS = 0.02
+_QUEUE_FIELDS = ("repo", "branch", "branch_sha", "target", "message")
+
+
+def batch_max() -> int:
+    try:
+        return max(int(os.environ[BATCH_MAX_ENV]), 1)
+    except (KeyError, ValueError):
+        return BATCH_MAX_DEFAULT
 
 # 閘門允許的 CAS 重試次數（不含首次嘗試）；超過即中止並回報最後一次失敗原因
 GATE_MAX_RETRIES = 3
@@ -58,9 +74,10 @@ SUITE_HOOKS = "hooks"
 SUITE_SCRIPTS = "scripts"
 SUITE_SKILL_PREFIX = "skill:"
 
-# 全套件命令（argv）；相對於快照根目錄執行
+# 全套件命令（argv）；相對於快照根目錄執行。flutter／dart 開頭者執行前經 launch_argv
+# 依快照是否使用 FVM 補 fvm 前綴（suite_command、declared_artifacts），此處不寫死
 SUITE_COMMANDS = {
-    SUITE_FLUTTER: ["fvm", "flutter", "test"],
+    SUITE_FLUTTER: ["flutter", "test"],
     SUITE_HOOKS: ["uv", "--directory", ".claude/hooks", "run", "pytest"],
     SUITE_SCRIPTS: ["uv", "--directory", ".claude/scripts", "run", "pytest"],
 }
@@ -68,10 +85,12 @@ SUITE_COMMANDS = {
 # 範圍判準：路徑前綴或精確檔名命中即需對應套件。見 SKILL.md〈合併前全套件〉
 FLUTTER_SCOPE_PREFIXES = ("lib/", "test/", "integration_test/", "macos/", "docs/", "assets/")
 FLUTTER_SCOPE_FILES = ("pubspec.yaml", "pubspec.lock", "l10n.yaml", "analysis_options.yaml")
+# 內建 Flutter 對應只在合併快照根目錄有此檔時生效（非 Flutter 專案不被 docs/、lib/ 等慣例目錄誤選）
+FLUTTER_MARKER_FILE = "pubspec.yaml"
 
 # 快照內執行前必須就緒的 gitignored 生成產物：套件 -> ((產物路徑, 生成命令), ...)
 REQUIRED_ARTIFACTS = {
-    SUITE_FLUTTER: ((".dart_tool/package_config.json", ["fvm", "flutter", "pub", "get"]),),
+    SUITE_FLUTTER: ((".dart_tool/package_config.json", ["flutter", "pub", "get"]),),
     SUITE_HOOKS: (),
     SUITE_SCRIPTS: (),
 }
@@ -222,11 +241,17 @@ def _in_declared_scope(path: str, decl: dict) -> bool:
     return any(path.startswith(s["prefixes"]) or path in s["files"] for s in decl.values())
 
 
-def declared_artifacts(suite: str, decl: Declaration) -> tuple:
-    """套件快照內須就緒的產物：宣告優先，其餘沿用 REQUIRED_ARTIFACTS。"""
+def declared_artifacts(suite: str, decl: Declaration, root: Optional[str] = None) -> tuple:
+    """套件快照內須就緒的產物：宣告優先（argv 原樣），其餘沿用 REQUIRED_ARTIFACTS。
+
+    給 root 時，內建生成命令依該目錄是否使用 FVM 補前綴；宣告的命令由專案自行寫定，不改。
+    """
     if decl is not None and suite in decl:
         return decl[suite]["artifacts"]
-    return REQUIRED_ARTIFACTS.get(suite, ())
+    builtin = REQUIRED_ARTIFACTS.get(suite, ())
+    if root is None:
+        return builtin
+    return tuple((path, launch_argv(generator, root)) for path, generator in builtin)
 
 
 # CAS 重試沿用驗證結果的豁免清單：測試不讀取這些檔，只改它們不影響全套件結果。
@@ -337,33 +362,93 @@ def _consumer_suites(root: str, skills: set) -> set:
     return suites
 
 
+def _touched_packages(paths: list) -> dict:
+    """改動落在的 skill 頂層目錄（skill 根或 scripts/ 下）：{skill 名稱: {目錄名}}。
+
+    依路徑形狀判定，不看快照是否仍有 __init__.py：套件被刪除或改名時快照裡已沒有它，
+    而匯入它的 skill 正是最需要跑的。非套件目錄（references 等）只會比對不到匯入，不會誤選。
+    只取目錄不取單檔模組：各 skill 常有同名單檔（constants、cli），以模組名比對會讓
+    無關 skill 互相加選；套件名（如 ticket_system）在 repo 內唯一。
+    """
+    touched = {}
+    for p in paths:
+        skill = _skill_name(p)
+        if not skill:
+            continue
+        rel = p.split("/")[3:]
+        if rel and rel[0] == "scripts":
+            rel = rel[1:]
+        if len(rel) > 1 and rel[0].isidentifier() and rel[0] != "tests":
+            touched.setdefault(skill, set()).add(rel[0])
+    return touched
+
+
+def cross_skill_importers(changed_paths: list, root: str) -> dict:
+    """改動落在某 skill 頂層套件時，快照內其他帶 tests 的 skill 若有 .py 匯入該套件，回傳 {套件識別: [套件名]}。
+
+    匯入以行首（含縮排）`from X`／`import X` 辨識，與 hooks／scripts 的掃描同一判準。
+    """
+    touched = _touched_packages([p for p in changed_paths if not is_reuse_exempt(p)])
+    base = Path(root) / ".claude" / "skills"
+    if not touched or not base.is_dir():
+        return {}
+    found = {}
+    for skill in sorted(p for p in base.iterdir() if p.is_dir()):
+        pkgs = set().union(*(m for s, m in touched.items() if s != skill.name))
+        if not pkgs or not _skill_has_tests(root, skill.name):
+            continue
+        hits = set()
+        for dirpath, dirnames, filenames in os.walk(skill):
+            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+            for n in (n for n in filenames if n.endswith(".py")):
+                text = _read_text(Path(dirpath) / n)
+                hits.update(m for m in pkgs if _imports_any(text, {m}))
+        if hits:
+            found[f"{SUITE_SKILL_PREFIX}{skill.name}"] = sorted(hits)
+    return found
+
+
+def _report_cross_skill(found: dict, todo: list) -> None:
+    """列出因匯入改動套件而加選的 skill 套件與理由；沿用上次結果而未實跑者標明「沿用」。"""
+    if found:
+        reasons = "、".join(f"{s}（匯入 {', '.join(m)}{'' if s in todo else '，沿用'}）"
+                           for s, m in sorted(found.items()))
+        print(f"[合併前測試] 跨 skill 匯入加選套件：{reasons}")
+
+
 def _imports_any(text: str, modules: set) -> bool:
     return bool(modules) and re.search(
         r"^\s*(?:from|import)\s+(?:%s)\b" % "|".join(re.escape(m) for m in sorted(modules)), text, re.MULTILINE
     ) is not None
 
 
-def needs_gate(changed_paths: list, decl: Declaration = None) -> bool:
+def has_flutter_marker(repo: str, ref: str) -> bool:
+    """ref 根目錄是否有 pubspec.yaml（建立快照前判定內建 Flutter 對應是否生效）；git 失敗時保守視為有。"""
+    proc = _git(["ls-tree", "--name-only", ref, "--", FLUTTER_MARKER_FILE], repo)
+    return proc.returncode != 0 or bool(proc.stdout.strip())
+
+
+def needs_gate(changed_paths: list, decl: Declaration = None, flutter: bool = True) -> bool:
     """改動是否可能落在任何全套件範圍內（用於決定是否值得建立快照）。"""
-    return any(_in_any_suite_scope(p, decl) for p in changed_paths if not is_reuse_exempt(p))
+    return any(_in_any_suite_scope(p, decl, flutter) for p in changed_paths if not is_reuse_exempt(p))
 
 
-def _in_any_suite_scope(path: str, decl: Declaration = None) -> bool:
+def _in_any_suite_scope(path: str, decl: Declaration = None, flutter: bool = True) -> bool:
     """範圍判準唯一處：警告與 needs_gate 共用，宣告前綴與內建 Flutter 範圍都經此判定。"""
     if path.startswith(".claude/"):
         return True
     if decl is not None:
         return _in_declared_scope(path, decl)
-    return path.startswith(FLUTTER_SCOPE_PREFIXES) or path in FLUTTER_SCOPE_FILES
+    return flutter and (path.startswith(FLUTTER_SCOPE_PREFIXES) or path in FLUTTER_SCOPE_FILES)
 
 
-def unmapped_paths(changed_paths: list, decl: Declaration = None) -> list:
+def unmapped_paths(changed_paths: list, decl: Declaration = None, flutter: bool = True) -> list:
     """既非豁免、也不屬任何套件範圍的路徑（如自帶測試的子專案）：閘門不會替它們跑任何測試。"""
-    return [p for p in changed_paths if not is_reuse_exempt(p) and not _in_any_suite_scope(p, decl)]
+    return [p for p in changed_paths if not is_reuse_exempt(p) and not _in_any_suite_scope(p, decl, flutter)]
 
 
-def _warn_unmapped(paths: list, decl: Declaration = None) -> None:
-    unmapped = unmapped_paths(paths, decl)
+def _warn_unmapped(paths: list, decl: Declaration = None, flutter: bool = True) -> None:
+    unmapped = unmapped_paths(paths, decl, flutter)
     if not unmapped:
         return
     shown = unmapped[:UNMAPPED_SHOW_MAX]
@@ -402,7 +487,8 @@ def select_suites(changed_paths: list, root: str, base_decl=BASE_UNKNOWN) -> lis
     want = set()
     touched_skills = {n for n in (_skill_name(p) for p in paths) if n}
     if decl is None:
-        if any(p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
+        if os.path.isfile(os.path.join(root, FLUTTER_MARKER_FILE)) and any(
+                p.startswith(FLUTTER_SCOPE_PREFIXES) or p in FLUTTER_SCOPE_FILES for p in paths):
             want.add(SUITE_FLUTTER)
     else:
         want.update(n for n, s in decl.items() if _suite_scope_files(s, paths))
@@ -421,6 +507,7 @@ def select_suites(changed_paths: list, root: str, base_decl=BASE_UNKNOWN) -> lis
             want.add(SUITE_HOOKS)
     if touched_skills:
         want |= _consumer_suites(root, touched_skills)  # hooks／scripts 匯入該 skill 時加跑
+        want.update(cross_skill_importers(paths, root))  # 其他 skill 匯入改動的頂層套件時加跑
     declared = [n for n in (decl or {}) if n in want]  # 宣告順序在前，與內建 flutter 居首一致
     head = declared + [s for s in (SUITE_FLUTTER, SUITE_HOOKS, SUITE_SCRIPTS) if s in want and s not in declared]
     return head + sorted(s for s in want if s.startswith(SUITE_SKILL_PREFIX))
@@ -442,7 +529,7 @@ def suite_command(suite: str, root: str, files: Optional[list] = None) -> list:
     if decl is not None and suite in decl:
         return decl[suite]["command"] + (files or [])
     if not suite.startswith(SUITE_SKILL_PREFIX):
-        return SUITE_COMMANDS[suite]
+        return launch_argv(SUITE_COMMANDS[suite], root)
     name = suite[len(SUITE_SKILL_PREFIX):]
     if os.path.isfile(os.path.join(root, ".claude", "skills", name, "pyproject.toml")):
         return ["uv", "--directory", f".claude/skills/{name}", "run", "pytest"]
@@ -614,8 +701,47 @@ def save_failure_output(log_root: str, tag: str, suite: str, rc: int, output: st
     return str(path)
 
 
+FAILURE_REF_NAMESPACE = "refs/merge-gate-failures"
+FAILURE_REF_RETENTION_SECONDS = 30 * 24 * 3600
+_FULL_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+def _prune_failure_refs(repo: str, now: float) -> None:
+    """刪除 committer date 超過保留期的 ref；失敗只警告。"""
+    listing = _git(["for-each-ref", "--format=%(refname) %(committerdate:unix)", FAILURE_REF_NAMESPACE], repo)
+    if listing.returncode != 0:
+        raise OSError(listing.stderr.decode(errors="replace").strip() or "for-each-ref 失敗")
+    for line in listing.stdout.decode().splitlines():
+        name, _, stamp = line.partition(" ")
+        if stamp.isdigit() and now - int(stamp) > FAILURE_REF_RETENTION_SECONDS:
+            _git(["update-ref", "-d", name], repo)
+
+
+def preserve_failure_commit(repo: str, commit: str, now: Optional[float] = None) -> str:
+    """紅燈時建 refs/merge-gate-failures/<sha> 保住合併 commit（gc 後仍可回放），回傳 ref 名。
+
+    建立失敗回空字串並寫 stderr 與 worktree-merge.log（fail-open，不改變閘門結果）；
+    建立後順手清理超過 30 天的舊 ref，清理失敗只警告。
+    """
+    if not _FULL_SHA.fullmatch(commit or ""):
+        return ""
+    ref = f"{FAILURE_REF_NAMESPACE}/{commit}"
+    try:
+        proc = _git(["update-ref", ref, commit], repo)
+        if proc.returncode != 0:
+            raise OSError(proc.stderr.decode(errors="replace").strip() or f"exit {proc.returncode}")
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        _snapshot_warning(repo, f"紅燈合併 commit 保留 ref {ref} 建立失敗（{exc}）；gc 後該 commit 可能不可回放")
+        return ""
+    try:
+        _prune_failure_refs(repo, time.time() if now is None else now)
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        _snapshot_warning(repo, f"過期 {FAILURE_REF_NAMESPACE} 清理失敗（{exc}）")
+    return ref
+
+
 def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "",
-               failure: Optional["re.Pattern"] = None) -> str:
+               failure: Optional["re.Pattern"] = None, ref: str = "") -> str:
     if rc == 124:
         return f"[{suite}] 全套件逾時（{SUITE_TIMEOUT_SECONDS} 秒）"
     if rc == 125:
@@ -623,12 +749,14 @@ def _rc_reason(suite: str, rc: int, output: str, detail_path: str = "",
     reason = f"[{suite}] 全套件紅燈（exit {rc}），失敗項：\n  " + "\n  ".join(_failed_items(output, failure))
     if detail_path:
         reason += f"\n  全輸出與記憶體快照：{detail_path}"
+    if ref:
+        reason += f"\n  合併 commit 回放 ref：{ref}"
     return reason
 
 
 def _ensure_artifacts(suite: str, snapshot: str, project_root: str, runner: SuiteRunner) -> str:
     """缺 gitignored 生成產物時先生成；生成失敗或仍缺則回傳指名缺漏的理由，否則空字串。"""
-    for artifact, generator in declared_artifacts(suite, load_declaration(snapshot)):
+    for artifact, generator in declared_artifacts(suite, load_declaration(snapshot), snapshot):
         if os.path.exists(os.path.join(snapshot, artifact)):
             continue
         rc, out = runner(wrapped_argv(generator), snapshot)
@@ -762,9 +890,15 @@ def gate_result_label(error: str) -> str:
     return GATE_ABORTED
 
 
-def gate_line(phase: str, target: str, branch: str, commit: str, result: Optional[str] = None) -> str:
-    """閘門開始／結束行。commit：開始行為 base HEAD，結束行寫入時為合併 commit、其餘仍為 base HEAD。"""
+def gate_line(phase: str, target: str, branch: str, commit: str, result: Optional[str] = None,
+              batch: str = "") -> str:
+    """閘門開始／結束行。commit：開始行為 base HEAD，結束行寫入時為合併 commit、其餘仍為 base HEAD。
+
+    batch 非空：本票屬該批次（領導者與跟隨者共用同一識別字串）。
+    """
     tail = f"｜結果 {result}" if result else ""
+    if batch:
+        tail += f"｜批次 {batch}"
     return f"{GATE_LINE_PREFIX} {phase}｜target {target}｜分支 {branch}｜commit {commit[:12]}{tail}"
 
 
@@ -803,8 +937,10 @@ def _run_suites(suites: list, snapshot: str, project_root: str, runner: SuiteRun
         _emit_result(log_root, _suite_result_line(
             suite, _STATUS_BY_RC.get(rc, "紅燈"), summarize_output(out, summary_pat, rc), time.monotonic() - start))
         if rc != 0:
-            detail = save_failure_output(log_root, tag, suite, rc, out) if rc not in (124, 125) else ""
-            return _rc_reason(suite, rc, out, detail, failure_pat)
+            red = rc not in (124, 125)
+            detail = save_failure_output(log_root, tag, suite, rc, out) if red else ""
+            ref = preserve_failure_commit(log_root, tag) if red else ""
+            return _rc_reason(suite, rc, out, detail, failure_pat, ref)
         if on_green:
             on_green(suite)
     return ""
@@ -821,6 +957,199 @@ class MergeGate:
         self.project_root = project_root or repo
         self.verified_suites: dict = {}  # 套件 -> 該套件最近一次確認綠燈（含沿用）的合併 commit
         self.suite_runs = 0
+        self._held = None  # 持有中的 SlotHold（未取得名額時為 None）
+        self._own: Optional[tuple] = None  # (內容鍵, 本票分支 sha)：follower 讀認領與裁決用
+        self._message: Optional[str] = None  # 本票合併訊息（batch_hooks 登記）
+        self.batch_id = ""  # 本票所屬批次（領導者組成批次或被認領時才有值）
+
+    # ----- 批次合併：排隊欄位、候選組成、follower 端判定 -----
+
+    def _resolve_sha(self, branch: str) -> Optional[str]:
+        """以完整 refs/heads/<名> 逐筆查詢（不用 for-each-ref 的部分名稱 pattern：對不到會靜默回空集合）。"""
+        proc = _git(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}^{{commit}}"], self.repo)
+        return proc.stdout.decode().strip() if proc.returncode == 0 else None
+
+    def _content_key(self, branch: str, sha: str) -> str:
+        raw = f"{os.path.realpath(self.repo)}\0{branch}\0{sha}"
+        return hashlib.sha1(raw.encode("utf-8", "surrogateescape")).hexdigest()[:16]
+
+    def _changed_files(self, branch: str, base: str) -> Optional[list]:
+        """merge-base(base, branch)..branch 的改動檔（豁免清單檔不計）；git 失敗回 None。"""
+        proc = _git(["merge-base", f"refs/heads/{base}", f"refs/heads/{branch}"], self.repo)
+        if proc.returncode != 0:
+            return None
+        paths = changed_paths_between(self.repo, proc.stdout.decode().strip(), f"refs/heads/{branch}")
+        return None if paths is None else [p for p in paths if not is_reuse_exempt(p)]
+
+    def queue_extra(self, branch: str, base: str, message: Optional[str]) -> Optional[dict]:
+        """排隊檔附加欄位，供領導者判斷可否併入；取不到分支 sha 時回 None（不可被併）。"""
+        sha = self._resolve_sha(branch)
+        if sha is None:
+            self._own = None
+            return None
+        self._own = (self._content_key(branch, sha), sha)
+        return {"repo": os.path.realpath(self.repo), "branch": branch, "branch_sha": sha, "target": base,
+                "message": message or f"Merge branch '{branch}'"}
+
+    def _candidate(self, waiter: dict, base: str, taken: set, directory: str) -> Optional[BatchItem]:
+        """排隊者可否併入：欄位齊全、同 repo 同 target、分支 head 未變、未被認領、改動檔不重疊且不含宣告。"""
+        if not all(isinstance(waiter.get(f), str) and waiter[f] for f in _QUEUE_FIELDS):
+            return None  # 舊格式或欄位缺漏：不可併
+        pid = waiter.get("pid")
+        if not isinstance(pid, int) or pid == os.getpid():
+            return None
+        if os.path.realpath(waiter["repo"]) != os.path.realpath(self.repo) or waiter["target"] != base:
+            return None
+        sha = self._resolve_sha(waiter["branch"])
+        if sha is None or sha != waiter["branch_sha"]:
+            return None
+        key = self._content_key(waiter["branch"], sha)
+        if slot_gate.read_sidecar(directory, "claim", pid, key) is not None:
+            return None
+        files = self._changed_files(waiter["branch"], base)
+        if not files or DECLARATION_PATH in files or taken.intersection(files):
+            return None
+        taken.update(files)
+        return BatchItem(waiter["branch"], sha, waiter["message"],
+                         {"pid": pid, "key": key, "name": waiter["name"], "files": files})
+
+    def collect_batch(self, branch: str, base: str) -> list:
+        """領導者取得名額後組候選（不含自己）；任何失敗回空清單，行為退回單票。"""
+        limit = batch_max() - 1
+        if limit <= 0 or self._held is None:
+            return []
+        try:
+            return self._collect(branch, base, limit)
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            sys.stderr.write(f"merge-gate: 批次組成失敗，改單票合併：{exc}\n")
+            return []
+
+    def _collect(self, branch: str, base: str, limit: int) -> list:
+        leader_files = self._changed_files(branch, base)
+        if not leader_files or DECLARATION_PATH in leader_files:
+            return []
+        directory = slot_gate.slot_dir()
+        slot_gate.sweep_sidecars(directory)
+        taken, items = set(leader_files), []
+        for waiter in slot_gate.list_waiting(directory):
+            if len(items) >= limit:
+                break
+            item = self._candidate(waiter, base, taken, directory)
+            if item is not None:
+                items.append(item)
+        if not items:
+            return []
+        self.batch_id = f"b{os.getpid()}-{int(time.time())}"
+        for item in items:
+            slot_gate.write_sidecar(directory, "claim", item.ref["pid"], item.ref["key"],
+                                    {"batch": self.batch_id, "leader_pid": os.getpid()})
+        self._reestimate(set(leader_files).union(*(i.ref["files"] for i in items)))
+        _emit_result(self.repo, f"{GATE_LINE_PREFIX} 批次｜batch {self.batch_id}｜領導 {branch}｜成員 "
+                                f"{', '.join(i.branch for i in items)}")
+        return items
+
+    def _reestimate(self, paths: set) -> None:
+        """整批只持一個名額：預估改為候選改動檔聯集的套件耗時加總。"""
+        try:
+            self._held.set_estimate(suite_estimate_seconds(select_suites(sorted(paths), self.repo), self.repo))
+        except (OSError, subprocess.SubprocessError, ValueError) as exc:
+            sys.stderr.write(f"merge-gate: 批次預估更新失敗，沿用原值：{exc}\n")
+
+    def _merge_commit_of(self, sha: str, base: str) -> str:
+        proc = _git(["rev-list", "--merges", "--parents", "-n", "200", f"refs/heads/{base}"], self.repo)
+        for line in proc.stdout.decode().splitlines():
+            fields = line.split()
+            if sha in fields[2:]:
+                return fields[0]
+        tip = _git(["rev-parse", f"refs/heads/{base}"], self.repo)
+        return tip.stdout.decode().strip()
+
+    def landed_outcome(self, base: str, require_claim: bool) -> Optional[MergeOutcome]:
+        """本票分支已是 target 祖先時的成功結果（世界平面事實）；來源標明批次或「未經本閘門」。
+
+        require_claim：True 時必須持有領導者的認領檔（取得名額後路徑，無認領者維持既有的已包含錯誤）；
+        False 用於逾時與取消路徑（認領檔有則標批次，無則標未經本閘門）。
+        """
+        if self._own is None:
+            return None
+        key, sha = self._own
+        directory = slot_gate.slot_dir()
+        claim = slot_gate.read_sidecar(directory, "claim", os.getpid(), key)
+        if not require_claim:
+            claim = self._withdraw_claim(directory, key, claim)
+        if require_claim and claim is None:
+            return None
+        if _git(["merge-base", "--is-ancestor", sha, f"refs/heads/{base}"], self.repo).returncode != 0:
+            return None
+        slot_gate.remove_sidecar(directory, "claim", os.getpid(), key)
+        if claim:
+            self.batch_id = str(claim.get("batch", ""))
+        via = f"批次 {self.batch_id}" if claim else "未經本閘門"
+        return MergeOutcome(True, "", self._merge_commit_of(sha, base), via=via)
+
+    def _withdraw_claim(self, directory: str, key: str, claim: Optional[dict]) -> Optional[dict]:
+        """撤離前先撤回認領（claim -> withdrawn 原子 rename），再做祖先判定；回傳認領內容（來源標示用）。
+
+        rename 成功：領導者之後搶不到本票，不會寫入。失敗：領導者已搶下（committing），
+        等它寫完歸還認領後再判定，避免「已寫入卻回報失敗」。
+        """
+        pid = os.getpid()
+        deadline = time.monotonic() + COMMITTING_WAIT_SECONDS  # 涵蓋整個迴圈
+        seen = claim
+        while True:
+            if slot_gate.rename_sidecar(directory, pid, key, "claim", "withdrawn"):
+                slot_gate.remove_sidecar(directory, "withdrawn", pid, key)
+                return None
+            committing = slot_gate.read_sidecar(directory, "committing", pid, key)
+            if committing is None:
+                return seen  # claim 與 committing 皆無：已寫入並歸還後移除，或從未被認領
+            seen = committing
+            if time.monotonic() >= deadline or slot_gate._pid_gone(int(committing.get("leader_pid", 0))):
+                return seen  # 領導者卡死或已死：不再等，以世界平面（祖先判定）為準
+            time.sleep(COMMITTING_POLL_SECONDS)  # 歸還後回迴圈頂重試撤回，領導者可能重搶
+
+    def followed_outcome(self, branch: str, base: str) -> Optional[MergeOutcome]:
+        """取得名額後先看領導者是否已處理本票：紅燈裁決、已寫入皆直接回報，否則 None（自己合併）。"""
+        if self._held is None or self._own is None:
+            return None
+        key, _sha = self._own
+        directory = slot_gate.slot_dir()
+        verdict = slot_gate.read_sidecar(directory, "verdict", os.getpid(), key)
+        if verdict is not None:
+            self.batch_id = str(verdict.get("batch", ""))
+            slot_gate.remove_sidecar(directory, "verdict", os.getpid(), key)
+            slot_gate.remove_sidecar(directory, "claim", os.getpid(), key)
+            return MergeOutcome(False, str(verdict.get("reason", "批次紅燈")), via=f"批次 {self.batch_id}")
+        landed = self.landed_outcome(base, require_claim=True)
+        if landed is not None:
+            return landed
+        slot_gate.remove_sidecar(directory, "claim", os.getpid(), key)  # 領導者未寫入本票：自己單跑
+        return None
+
+    def _refuse(self, item: BatchItem, reason: str) -> None:
+        slot_gate.write_sidecar(slot_gate.slot_dir(), "verdict", item.ref["pid"], item.ref["key"],
+                                {"batch": self.batch_id, "result": GATE_REFUSED, "reason": reason})
+
+    def _drop(self, item: BatchItem) -> None:
+        slot_gate.remove_sidecar(slot_gate.slot_dir(), "claim", item.ref["pid"], item.ref["key"])
+
+    def _seize(self, item: BatchItem) -> bool:
+        return slot_gate.rename_sidecar(slot_gate.slot_dir(), item.ref["pid"], item.ref["key"], "claim", "committing")
+
+    def _restore(self, item: BatchItem) -> None:
+        slot_gate.rename_sidecar(slot_gate.slot_dir(), item.ref["pid"], item.ref["key"], "committing", "claim")
+
+    def _follower_alive(self, item: BatchItem) -> bool:
+        return slot_gate.queue_entry_alive(slot_gate.slot_dir(), item.ref["name"])
+
+    def batch_hooks(self, branch: str, base: str, message: Optional[str] = None) -> BatchHooks:
+        self._message = message
+        return BatchHooks(
+            followed=lambda: self.followed_outcome(branch, base),
+            collect=lambda: self.collect_batch(branch, base),
+            alive=self._follower_alive, seize=self._seize, restore=self._restore,
+            on_refused=self._refuse, on_dropped=self._drop,
+            batch_id=lambda: self.batch_id)
 
     def _needs_slot(self, branch: str, base: str) -> bool:
         """分支相對 base 的改動是否可能需跑全套件；git 失敗時保守視為需要。"""
@@ -832,7 +1161,7 @@ class MergeGate:
             decl = load_declaration_at(self.repo, branch)
         except DeclarationError:
             return True  # 宣告壞掉：保守取名額，合併時的檢查會判紅
-        return paths is None or needs_gate(paths, decl)
+        return paths is None or needs_gate(paths, decl, has_flutter_marker(self.repo, branch))
 
     def _estimate_hold_seconds(self, branch: str, base: str) -> Optional[float]:
         """本次合併預計持有名額的秒數；套件範圍算不出來時回 None（交由 slot_gate 用命令預設值）。"""
@@ -851,6 +1180,7 @@ class MergeGate:
         """持有 heavy 名額的區段：進入時排隊取得，離開（成功、中止、例外、中斷）一律釋放。
 
         改動不在任何全套件範圍內者不取得，免得文件合併排在他方全套件之後。
+        本票合併訊息取自 batch_hooks 登記的 message，隨排隊檔公開供領導者組批時逐票使用。
         """
         if not self._needs_slot(branch, base):
             yield
@@ -858,17 +1188,20 @@ class MergeGate:
         with _sigterm_as_interrupt():
             held, early = slot_gate.acquire_slot(
                 ["merge-gate", branch], lambda: None, label="merge-gate",
-                estimate_seconds=self._estimate_hold_seconds(branch, base))
+                estimate_seconds=self._estimate_hold_seconds(branch, base),
+                queue_extra=self.queue_extra(branch, base, self._message))
             if early is not None:
                 raise SlotWaitRefused(early)
             if held is None:  # 名額閘門失效（目錄不可用）：與 run-with-timeout 一致，略過不擋
                 yield
                 return
+            self._held = held
             self.on_event("slot_acquired")
             try:
                 with slot_gate.export_hold(held):
                     yield
             finally:
+                self._held = None
                 held.release()
                 self.on_event("slot_released")
 
@@ -895,8 +1228,9 @@ class MergeGate:
         paths = changed_paths_between(self.repo, expected_old, commit)
         if paths is None:
             return CheckResult(False, "無法計算合併改動範圍")
-        _warn_unmapped(paths, decl)
-        if not needs_gate(paths, decl):
+        flutter = has_flutter_marker(self.repo, commit)
+        _warn_unmapped(paths, decl, flutter)
+        if not needs_gate(paths, decl, flutter):
             print("[合併前測試] 改動不在任何全套件範圍內，免跑")
             return CheckResult(True)
         base_decl = load_base_declaration(self.repo, expected_old)
@@ -911,6 +1245,7 @@ class MergeGate:
                     continue
                 _emit_result(self.repo, _suite_result_line(suite, "沿用", f"沿用 {last[:12]} 的驗證結果", 0.0))
                 self.verified_suites[suite] = commit  # 差異不觸及此套件，驗證結果視同延伸到新 commit
+            _report_cross_skill(cross_skill_importers(paths, snap), todo)
             if todo:
                 print(f"[合併前測試] 快照內跑全套件：{', '.join(todo)}（合併 commit {commit[:12]}，嘗試 {attempt}）")
                 self.suite_runs += 1

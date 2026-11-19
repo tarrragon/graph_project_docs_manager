@@ -84,13 +84,16 @@ class PackageMessages:
 
     NO_PACKAGES = "無自製套件"
     NOT_INSTALLED = "{name} ({version}) [MISSING]"
-    NOT_INSTALLED_ACTION = "  → 需執行: uv tool install ."
+    NOT_INSTALLED_ACTION = "  → 需執行: python3 .claude/scripts/install-skill-clis.py"
     OUTDATED = ">>> [STALE-CLI] {name} ({version}) [OUTDATED] — 必須 reinstall <<<"
-    OUTDATED_ACTION = "  → 原始碼已更新，需重新安裝: uv tool install . --force --reinstall"
+    OUTDATED_ACTION = (
+        "  → CLI 非當前原始碼的 shim，需重新安裝 shim: "
+        "python3 .claude/scripts/install-skill-clis.py"
+    )
     OUTDATED_SUMMARY_WARNING = (
         "[WARNING] {count} 個自製套件 OUTDATED — 對應 CLI 為舊版，"
         "session 內 hook/CLI 行為可能與最新原始碼不一致。"
-        "請執行: uv tool install . --force --reinstall"
+        "請執行: python3 .claude/scripts/install-skill-clis.py"
     )
 
 
@@ -135,17 +138,18 @@ class OnboardMessages:
     LANGUAGE_IDENTIFIER = "識別依據: {identifier}"
     LANGUAGE_UNKNOWN = "未偵測到已知語言"
     HOOK_CLASSIFICATION_SECTION = "Hook 語言分類"
-    FLUTTER_HOOKS_LABEL = "Flutter 特定 Hook（保留）:"
-    PROJECT_SPECIFIC_HOOKS_LABEL = "專案特定 Hook（需檢查）:"
-    HOOK_COMPLETENESS_SECTION = "Hook 完整性驗證"
-    HOOK_COMPLETENESS_OK = "狀態: [OK] 所有 Hook 已登記"
-    HOOK_COMPLETENESS_TODO = "狀態: [TODO] 有未登記的 Hook"
+    FLUTTER_HOOKS_LABEL = "含 Flutter 專屬檢查的 Hook（非 Flutter 輸入自動略過，不需停用）:"
+    PROJECT_SPECIFIC_HOOKS_LABEL = "含專案慣例的 Hook（只掃對應語言檔案，必要時調整樣式）:"
+    HOOK_COVERAGE_SECTION = "Hook 註冊涵蓋率"
+    HOOK_COVERAGE_SCOPE = "範圍: 只量是否已登記（settings.json + hook-dispatch-registry），不量觸發、事件、權限、依賴"
+    HOOK_COVERAGE_OK = "狀態: [OK] 所有 Hook 已登記"
+    HOOK_COVERAGE_TODO = "狀態: [TODO] 有未登記的 Hook"
     HOOK_REGISTERED_COUNT = "已登記: {count} 個"
     HOOK_UNREGISTERED_COUNT = "未登記: {count} 個"
     HOOK_EXCLUDED_COUNT = "排除: {count} 個"
     HOOK_UNREGISTERED_LIST = "未登記的 Hook（最多顯示 15 個）:"
     HOOK_UNREGISTERED_MORE = "  ... 還有 {count} 個"
-    HOOK_COMPLETENESS_HINT = "建議: 檢查這些 Hook 是否需要在 settings.json 中註冊，或新增到 hook-exclude-list.json"
+    HOOK_COVERAGE_HINT ="建議: 這些 Hook 若屬框架，回報 framework issue 由主控方在上游補註冊；若屬專案自有 hook 且尚未寫進專案 hook 清冊，寫進 .claude/project-integration/hook-registry.yaml（格式見 references/project-hook-registry-format.md）；已透過其他管道執行者，新增到 hook-exclude-list.json"
     CLAUDE_MD_SECTION = "CLAUDE.md"
     CLAUDE_MD_OK = "狀態: [OK] 已存在"
     CLAUDE_MD_TODO = "狀態: [TODO] 不存在"
@@ -156,7 +160,7 @@ class OnboardMessages:
     SETTINGS_LOCAL_SECTION = "settings.local.json"
     SETTINGS_LOCAL_OK = "狀態: [OK] 已存在"
     SETTINGS_LOCAL_TODO = "狀態: [TODO] 不存在"
-    SETTINGS_LOCAL_HINT = "建議: 檢查 [{language}] 標記的權限是否適用"
+    SETTINGS_LOCAL_HINT = "建議: 從 .claude/templates/settings-local-template.json 複製為 .claude/settings.local.json，依檔內說明調整 [{language}] 權限"
     DOCS_STRUCTURE_SECTION = "docs/ 目錄結構"
     DOCS_STRUCTURE_OK = "狀態: [OK] 目錄結構完整"
     DOCS_STRUCTURE_TODO = "狀態: [TODO] 目錄結構缺失"
@@ -174,7 +178,7 @@ class RemediationGuidance:
     def get_python_install_steps(os_type: Optional[str] = None) -> list[str]:
         """取得 Python 安裝步驟（OS 感知 + uv 優先）。
 
-        Why（W9-001 跨平台）：原步驟導向 python.org 手動安裝 +
+        Why（跨平台）：原步驟導向 python.org 手動安裝 +
         `python3 --version` 驗證，屬 macOS/Linux 思維；Windows 執行檔為
         `python.exe`（無 python3），手動安裝還需自行處理 PATH。框架本就
         硬性依賴 uv，`uv python install` 跨平台一致且免改 PATH，故改為

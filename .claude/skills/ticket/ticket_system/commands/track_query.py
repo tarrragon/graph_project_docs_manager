@@ -21,10 +21,10 @@ if __name__ == "__main__":
     print()
     print("正確使用方式：")
     print("  ticket track summary")
-    print("  ticket track claim 0.31.0-W4-001")
+    print("  ticket track claim <ticket-id>")
     print()
-    print("如尚未安裝，請執行：")
-    print("  cd .claude/skills/ticket && uv tool install .")
+    print("如尚未安裝，請在專案根目錄執行：")
+    print("  python3 .claude/scripts/install-skill-clis.py")
     print()
     print("詳見 SKILL.md")
     print(SEPARATOR_PRIMARY)
@@ -218,6 +218,66 @@ def _format_where_field(where_value) -> str:
     return where_value if where_value else DEFAULT_UNKNOWN_VALUE
 
 
+def _iter_all_ticket_frontmatters():
+    """依序產出全部版本目錄（扁平與三層）票檔的 (path, frontmatter)。"""
+    from ticket_system.lib.parser import parse_frontmatter
+    from ticket_system.lib.paths import get_ticket_state_root
+
+    work_logs_root = get_ticket_state_root() / "docs" / "work-logs"
+    dirs = set(work_logs_root.glob("v*/tickets")) | set(work_logs_root.glob("v*/v*/v*/tickets"))
+    for path in (f for d in sorted(dirs) for f in sorted(d.glob("*.md"))):
+        try:
+            frontmatter, _body = parse_frontmatter(path.read_text(encoding="utf-8"))
+        except Exception as e:  # 單一票檔損壞不中斷掃描，記 stderr
+            sys.stderr.write(f"[resolve] 略過無法解析的票檔 {path}：{e}\n")
+            continue
+        if frontmatter:
+            yield path, frontmatter
+
+
+def resolve_previous_id(old_id: str) -> List[Dict[str, Any]]:
+    """依 previous_ids 找出曾用 old_id 的現行票，回傳 [{id, status, path}]。
+
+    migrate 每次改號都把舊號追加到新票的 previous_ids，連續改號的票其清單含
+    全部舊號，掃描一次即可解析到最新號。old_id 本身仍是現行票時也一併回傳
+    （relation="current"）。
+    """
+    matches: List[Dict[str, Any]] = []
+    for path, fm in _iter_all_ticket_frontmatters():
+        ticket_id = str(fm.get("id", ""))
+        previous = fm.get("previous_ids") or []
+        if ticket_id == old_id:
+            relation = "current"
+        elif old_id in [str(p) for p in previous]:
+            relation = "previous"
+        else:
+            continue
+        matches.append({
+            "id": ticket_id,
+            "status": fm.get("status", DEFAULT_UNKNOWN_VALUE),
+            "path": str(path),
+            "relation": relation,
+        })
+    return matches
+
+
+def execute_resolve(args: argparse.Namespace, version: str) -> int:
+    """以舊票號查出現行票號（ticket track resolve <舊票號>）。"""
+    old_id = args.ticket_id
+    matches = resolve_previous_id(old_id)
+    if not matches:
+        print(f"[resolve] 找不到 {old_id}：沒有現行票使用此 ID，也沒有票的 previous_ids 記錄它")
+        print("  previous_ids 只記錄 migrate 加入該欄位之後的改號；更早的改號需以 git log --follow 追蹤")
+        return 1
+    for match in matches:
+        if match["relation"] == "current":
+            print(f"[resolve] {old_id} 仍是現行票號（status: {match['status']}）")
+        else:
+            print(f"[resolve] {old_id} → {match['id']}（status: {match['status']}）")
+        print(f"  {match['path']}")
+    return 0
+
+
 def execute_query(args: argparse.Namespace, version: str) -> int:
     """查詢單一 Ticket"""
     ticket, error = load_and_validate_ticket(version, args.ticket_id)
@@ -243,13 +303,13 @@ def execute_query(args: argparse.Namespace, version: str) -> int:
     print(f"{SECTION_5W1H_INDENT}Where: {_format_where_field(ticket.get('where'))}")
     print(f"{SECTION_5W1H_INDENT}Why: {ticket.get('why', DEFAULT_UNKNOWN_VALUE)}")
 
-    # W15-003: 顯示 spawned_tickets 完成進度（僅對 ANA 類型有意義，但一律顯示）
+    # 顯示 spawned_tickets 完成進度（僅對 ANA 類型有意義，但一律顯示）
     spawned = ticket.get("spawned_tickets") or []
     if spawned:
         completed_ids: List[str] = []
         incomplete_items: List[str] = []
         for sid in spawned:
-            sub = load_ticket(version, sid)
+            sub = _load_ticket_cross_version(sid, version)
             if not sub:
                 incomplete_items.append(f"{sid} (not_found)")
                 continue
@@ -499,7 +559,7 @@ def execute_deps(args: argparse.Namespace, version: str) -> int:
     print(f"{ticket_id} [{status}] ({ttype}) {title}")
     print(SEPARATOR_CHAR * SEPARATOR_WIDTH)
 
-    # 反思鏈深度警示（Layer 2，W15-010/W15-021）：
+    # 反思鏈深度警示（Layer 2）：
     # 僅對 ANA type Ticket 計算沿 source_ticket 連續 ANA 祖鏈長度
     reflection_depth, reflection_chain = _compute_reflection_chain_depth(ticket, version)
     print(f"\nReflection Chain Depth: {reflection_depth}")
@@ -598,7 +658,7 @@ def execute_log(args: argparse.Namespace, version: str) -> int:
         print(format_warning(WarningMessages.NO_BODY_CONTENT, ticket_id=args.ticket_id))
         return 0
 
-    # W17-008.3: --section 過濾分支（W17-117.1: 統一抽至 section_locator helper）
+    # --section 過濾分支（統一抽至 section_locator helper）
     section = getattr(args, "section", None)
     if section:
         from ticket_system.lib.section_locator import find_section
@@ -665,7 +725,7 @@ def execute_version(args: argparse.Namespace, current_version: str) -> int:
 
 def execute_list(args: argparse.Namespace, version: str) -> int:
     """列出 Tickets，支援狀態篩選、Wave 篩選和多種輸出格式"""
-    # --version all: 跨版本查詢所有 Tickets（W9-002）
+    # --version all: 跨版本查詢所有 Tickets
     if version == "all":
         return _execute_list_all_versions(args)
 
@@ -685,11 +745,11 @@ DEFAULT_TOP = 10
 def _normalize_priority(value: Any) -> str:
     """Normalize priority value to one of P0/P1/P2/P3, else P9 (sorts last).
 
-    W10-115: 缺欄位 / None / 空字串 / 非標準值（如 'X1' / 'P9'）一律歸 P9。
+    缺欄位 / None / 空字串 / 非標準值（如 'X1' / 'P9'）一律歸 P9。
 
-    W10-121 註：本函式為 str 變體（"P0".."P3"/"P9"）；track_runqueue._priority_rank
+    註：本函式為 str 變體（"P0".."P3"/"P9"）；track_runqueue._priority_rank
     為 int 變體（0..3/99）。兩者共享 priority schema 但介面分歧（caller 偏好不同）。
-    若 W10-119 trigger 觸發抽 lib/runqueue_helpers.py 時，順便將本函式納入 SSOT。
+    若日後抽出 lib/runqueue_helpers.py，順便將本函式納入 SSOT。
     """
     if not isinstance(value, str):
         return "P9"
@@ -749,7 +809,7 @@ def _apply_top_limit(tickets: List[Dict[str, Any]], top: Optional[int]) -> List[
 
 
 def _execute_list_all_versions(args: argparse.Namespace) -> int:
-    """跨所有版本列出 Tickets（--version all，W9-002）"""
+    """跨所有版本列出 Tickets（--version all）"""
     from ticket_system.lib.version import get_active_versions
 
     active_versions = get_active_versions()
@@ -762,7 +822,7 @@ def _execute_list_all_versions(args: argparse.Namespace) -> int:
     output_format = getattr(args, "format", "table")
     found_any = False
 
-    # W10-115: 先決定 top 限制（跨版本 aggregate 適用）
+    # 先決定 top 限制（跨版本 aggregate 適用）
     effective_top, top_warning = _resolve_top_conflict(args)
     if top_warning:
         sys.stderr.write(top_warning + "\n")
@@ -834,7 +894,7 @@ def _execute_list_cross_version(
             all_filtered.extend(filtered)
             matched_versions.append(ver)
 
-    # W10-115: 排序 + 限制
+    # 排序 + 限制
     effective_top, top_warning = _resolve_top_conflict(args)
     if top_warning:
         sys.stderr.write(top_warning + "\n")
@@ -876,7 +936,7 @@ def _execute_list_single_version(
     if wave_value is not None:
         filtered_tickets = [t for t in filtered_tickets if t.get("wave") == wave_value]
 
-    # W10-115: 排序 + 限制（執行順序：篩選 → 排序 → 限制）
+    # 排序 + 限制（執行順序：篩選 → 排序 → 限制）
     effective_top, top_warning = _resolve_top_conflict(args)
     if top_warning:
         sys.stderr.write(top_warning + "\n")
@@ -1025,7 +1085,7 @@ def _output_table(tickets: list, version: str, total_stats: Optional[Dict[str, i
         tickets: 顯示用的 Ticket 列表（可能已被 --top 截斷）
         version: 版本號
         total_stats: 截斷前的全量統計。提供時標題統計行以此為準（避免截斷後
-            清單低估總數，0.38.0-W1-003 根因修復）；未提供時 fallback 為從
+            清單低估總數）；未提供時 fallback 為從
             tickets 自行計算（向後相容既有呼叫端）。
     """
     stats = total_stats if total_stats is not None else get_ticket_stats(tickets)
@@ -1062,7 +1122,7 @@ def _output_table(tickets: list, version: str, total_stats: Optional[Dict[str, i
 
 
 def execute_search(args: argparse.Namespace, version: str) -> int:
-    """搜尋 Tickets — 依 UC/Spec/Prop 引用或檔案路徑（W9-002）"""
+    """搜尋 Tickets — 依 UC/Spec/Prop 引用或檔案路徑"""
     ref_query = getattr(args, "ref", None)
     file_query = getattr(args, "file_path", None)
 

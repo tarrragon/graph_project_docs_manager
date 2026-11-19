@@ -40,6 +40,110 @@ def test_load_preserve_list_valid_parses(tmp_path: Path) -> None:
     }
 
 
+@pytest.fixture
+def no_pyyaml(monkeypatch: pytest.MonkeyPatch) -> None:
+    """停用 yaml 模組，強制走備用解析器。"""
+    monkeypatch.setattr(sync_mod, "yaml", None)
+
+
+def test_fallback_empty_inline_list_is_empty_set(
+    tmp_path: Path, no_pyyaml: None
+) -> None:
+    """無 PyYAML：preserve: [] 為空清單（修正前拋 ValueError）。"""
+    (tmp_path / "sync-preserve.yaml").write_text("preserve: []\n", encoding="utf-8")
+    assert sync_mod.load_preserve_list(tmp_path) == set()
+
+
+@pytest.mark.parametrize(
+    "content, expected",
+    [
+        ("preserve: [ ]\n", set()),
+        ("preserve: []  # 註解\n", set()),
+        ("preserve:  # 註解\n  - a\n  - b\n", {"a", "b"}),
+    ],
+)
+def test_fallback_equivalent_spellings_match_pyyaml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str, expected: set
+) -> None:
+    """無 PyYAML：空清單等價寫法與區塊清單帶註解，結果同有 PyYAML 時。"""
+    (tmp_path / "sync-preserve.yaml").write_text(content, encoding="utf-8")
+    real_yaml = sync_mod.yaml
+    with_yaml = sync_mod.load_preserve_list(tmp_path) if real_yaml else expected
+    monkeypatch.setattr(sync_mod, "yaml", None)
+    assert sync_mod.load_preserve_list(tmp_path) == with_yaml == expected
+
+
+@pytest.mark.parametrize(
+    "content", ["preserve: [a, b]\n", "preserve: [ a ]  # x\n"]
+)
+def test_fallback_nonempty_inline_still_aborts(
+    tmp_path: Path, no_pyyaml: None, content: str
+) -> None:
+    """正向對照：非空 inline flow（含帶註解）仍中止。"""
+    (tmp_path / "sync-preserve.yaml").write_text(content, encoding="utf-8")
+    with pytest.raises(sync_mod.PreserveParseError):
+        sync_mod.load_preserve_list(tmp_path)
+
+
+def test_fallback_block_list_unchanged(tmp_path: Path, no_pyyaml: None) -> None:
+    """無 PyYAML：區塊清單解析結果不變。"""
+    (tmp_path / "sync-preserve.yaml").write_text(
+        "preserve:\n  - settings.local.json\n  - VERSION\n", encoding="utf-8"
+    )
+    assert sync_mod.load_preserve_list(tmp_path) == {"settings.local.json", "VERSION"}
+
+
+@pytest.mark.parametrize(
+    "content, hint",
+    [
+        ("preserve: [a, b]\n", "inline flow"),
+        ("preserve:\n\t- a\n", "tab"),
+    ],
+)
+def test_fallback_unparseable_gives_actionable_error(
+    tmp_path: Path, no_pyyaml: None, content: str, hint: str
+) -> None:
+    """無法解析的格式：PreserveParseError，訊息含原因、位置、處置。"""
+    (tmp_path / "sync-preserve.yaml").write_text(content, encoding="utf-8")
+    with pytest.raises(sync_mod.PreserveParseError) as exc_info:
+        sync_mod.load_preserve_list(tmp_path)
+    message = str(exc_info.value)
+    assert hint in message
+    assert "sync-preserve.yaml" in message
+    assert "PyYAML" in message
+
+
+def test_entrypoint_prints_readable_error_without_traceback(
+    tmp_path: Path,
+) -> None:
+    """入口攔截 PreserveParseError：非 0 結束碼、無 traceback。"""
+    import subprocess
+
+    claude = tmp_path / ".claude"
+    claude.mkdir()
+    (claude / "sync-preserve.yaml").write_text("preserve:\n\t- a\n", encoding="utf-8")
+    # 阻擋 yaml、替換 clone_repo 為 no-op 後以 __main__ 執行 --audit
+    driver = (
+        "import sys, runpy, types, subprocess\n"
+        "sys.modules['yaml'] = None\n"
+        "sys.argv = ['sync-claude-pull.py', '--audit']\n"
+        "orig = subprocess.run\n"
+        "def fake(args, *a, **k):\n"
+        "    if isinstance(args, (list, tuple)) and 'clone' in args:\n"
+        "        return subprocess.CompletedProcess(args, 0, '', '')\n"
+        "    return orig(args, *a, **k)\n"
+        "subprocess.run = fake\n"
+        f"runpy.run_path({str(_SCRIPT)!r}, run_name='__main__')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", driver],
+        cwd=tmp_path, capture_output=True, text=True, timeout=60,
+    )
+    assert result.returncode != 0
+    assert "Traceback" not in result.stderr
+    assert "tab" in result.stderr
+
+
 def test_load_preserve_list_malformed_yaml_fails_loud(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -84,3 +188,37 @@ def test_backup_claude_dir_excludes_artifacts(tmp_path: Path) -> None:
     assert not (dest / ".venv").exists()
     assert not (dest / "hooks" / "__pycache__").exists()
     assert not (dest / ".pytest_cache").exists()
+
+
+# 3.4.0-W1-307.2：備份排除改由 manifest 工具產物類別推導。
+def test_backup_ignore_patterns_derived_from_manifest_tool_artifacts() -> None:
+    from lib import sync_exclude_manifest as manifest
+
+    names = {p for p in sync_mod.BACKUP_IGNORE_PATTERNS if not p.startswith("*")}
+    globs = {p for p in sync_mod.BACKUP_IGNORE_PATTERNS if p.startswith("*")}
+    assert names == manifest.ALL_TOOL_ARTIFACT_PATTERNS
+    assert globs == {f"*{s}" for s in manifest.TOOL_ARTIFACT_DIR_SUFFIXES}
+    # 推導前的 3 個名稱仍在（未縮小）
+    assert {"__pycache__", ".pytest_cache", ".venv"} <= names
+
+
+def test_backup_claude_dir_excludes_new_tool_artifacts_keeps_local_state(tmp_path: Path) -> None:
+    """新增的工具產物類別（.ruff_cache、htmlcov、egg-info）也排除；本地狀態保留在備份內。"""
+    claude_dir = tmp_path / ".claude"
+    skill = claude_dir / "skills" / "x"
+    for rel in (".ruff_cache/a", ".mypy_cache/a", "htmlcov/index.html", "x.egg-info/PKG-INFO"):
+        (skill / rel).parent.mkdir(parents=True, exist_ok=True)
+        (skill / rel).write_text("x", encoding="utf-8")
+    (skill / "SKILL.md").write_text("s", encoding="utf-8")
+    # 本地狀態（LOCAL_ONLY 但非工具產物）：還原時需要，必須留在備份
+    (claude_dir / "settings.local.json").write_text("{}", encoding="utf-8")
+    (claude_dir / ".sync-state.json").write_text("{}", encoding="utf-8")
+
+    dest = tmp_path / "backup" / ".claude"
+    sync_mod.backup_claude_dir(claude_dir, dest)
+
+    assert (dest / "skills" / "x" / "SKILL.md").exists()
+    for name in (".ruff_cache", ".mypy_cache", "htmlcov", "x.egg-info"):
+        assert not (dest / "skills" / "x" / name).exists(), name
+    assert (dest / "settings.local.json").exists()
+    assert (dest / ".sync-state.json").exists()

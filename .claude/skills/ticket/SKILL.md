@@ -4,7 +4,7 @@ description: 'Use whenever the user wants to create, track, query, or manage tic
 argument-hint: '<subcommand> [args]'
 allowed-tools: Bash(ticket *), Read, Write, Edit, Grep, Glob
 metadata:
-  version: 2.49.5
+  version: 2.54.2
 ---
 
 # Ticket System
@@ -117,7 +117,7 @@ set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，
 /ticket <subcommand> [options]
 ```
 
-> **命令層級慣例**：`create` / `batch-create` / `show` / `handoff` / `resume` / `migrate` / `generate` 為**頂層命令**；`claim` / `complete` / `append-log` / `query` / `list` / `set-acceptance` 等狀態操作在 **`track` 之下**（`ticket track <op> ...`）。常見誤打：`ticket track create`、`ticket claim`。`append-log` 內容除位置參數外可用 `--content-file <path>` 自檔案逐字讀入（二擇一，內容不經命令列）。本標註僅說明既有慣例，零 CLI 行為變更。
+> **命令層級慣例**：`create` / `batch-create` / `show` / `handoff` / `resume` / `migrate` / `generate` 為**頂層命令**；`claim` / `complete` / `append-log` / `query` / `list` / `set-acceptance` 等狀態操作在 **`track` 之下**（`ticket track <op> ...`）。常見誤打：`ticket track create`、`ticket claim`。`append-log` 內容除位置參數外可用 `--content-file <path>` 自檔案逐字讀入（二擇一，內容不經命令列）。PC-093 延後語句守衛擋下 complete 或 phase 轉換、且 ticket md 無法以 Edit 修改時，以 `ticket track add-exempt-marker` 在命中行前補豁免標記，不改用 sed 或腳本寫檔（用法見 `references/track-command-update.md`〈補標記 — `add-exempt-marker`〉）。本標註僅說明既有慣例，零 CLI 行為變更。
 
 ## 子命令路由表
 
@@ -130,6 +130,7 @@ set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，
 | `track` | 追蹤和更新 Ticket 狀態：READ 操作（summary/query/dashboard/list/runqueue/board/5W1H/validate 等）與 UPDATE 操作（claim/complete/release/set-*/append-log/dispatch 等）；`list` 支援 `--wave`、`--status`、`--format`、`--top`、`--all` | `/ticket track summary` | `references/workflow-execute.md` | 〈執行流程決策樹〉〈更新操作決策樹〉〈批量操作決策樹〉〈完成判斷決策樹〉〈完成後同步提醒〉 |
 | `track` | 只需查詢決策路徑時讀本檔 | `ticket track query <id>` | `references/workflow-query.md` | 〈查詢流程決策樹〉 |
 | `track` | 需要 UPDATE/READ 完整旗標細節時讀本檔 | `ticket track claim <id>` / `ticket track complete <id> --as <agent>` / `ticket track complete <id> --no-stage` / `ticket track complete <id> --force` | `references/track-command.md` | 〈子命令總覽（全量對照 --help）〉〈READ 操作〉〈track runqueue 子命令（Scheduler）〉〈UPDATE 操作〉〈UPDATE 操作補充：commit 副作用與欄位語意〉〈track commit 子命令〉〈track set-exit-status 子命令〉〈Ticket 狀態與程式碼提交的 root 分離（worktree 場景）〉〈驗收條件操作詳解〉〈CLI 可修改欄位 vs 手動編輯欄位〉〈track deps / depth 子命令〉〈track parallel-check 子命令〉〈track board 子命令〉〈track audit 子命令〉〈track stale-list 子命令〉〈track stuck-anas 子命令〉〈track dashboard 子命令〉〈track list 子命令〉〈track dispatch 子命令〉〈track dispatch-validate 子命令〉〈track dispatch-readiness 子命令〉〈track dispatch-check 子命令〉〈track sessions 子命令〉〈track reclaim 子命令〉〈track activity 子命令〉〈track conflicts 子命令〉〈track onboard 子命令〉〈track hook-liveness 子命令〉〈track register-artifact / resolve-artifact / list-artifacts 子命令〉〈共用旗標語意（track 系列命令通用）〉〈空狀態字面規範（track 系列命令通用）〉<!-- rule8-exempt: relocation:自 references/track-command.md 逐字搬移 --> |
+| `track resolve` | 以舊票號（migrate 改號前）查出現行票號，依各票 `previous_ids`；找不到時 exit 1 | `ticket track resolve <舊票號>` | — | — |
 | `track dashboard` | PM 接手聚合視圖，見 track-command.md〈track dashboard 子命令〉 | `ticket track dashboard --top 5` | — | — |
 | `track list` | 預設 top 10 priority 排序，見 track-command.md〈track list 子命令〉 | `ticket track list --status pending --top 20` | — | — |
 | `track td-status` | TD 清單校準，見 track-command.md〈td-status — 校準 TD 清單（PC-094）〉 | `ticket track td-status <id>` | — | — |
@@ -142,7 +143,7 @@ set-who <id> --current <agent>`）——回報 PM 執行該指令重新指派，
 | `track dispatch` | 派發並落票，輸出代理人 prompt 骨架，見 track-command.md〈track dispatch 子命令〉 | `ticket track dispatch <id> --as <agent> --dry-run` | — | — |
 | `track commit` | 隔離索引精確提交（files 為 `where.files` 子集），見 track-command.md〈track commit 子命令〉 | `ticket track commit <id> -m "..." -- {exact files}` | — | — |
 | `track move-lines` | 依行範圍搬移文字並驗證行數守恆（src、dst 須在 `where.files` 內），見 track-command.md〈track move-lines 子命令〉 | `ticket track move-lines <id> --src <path> --lines 10-20 --dst <path> --at end` | — | — |
-| `track dispatch-check` | 列出目前活躍派發，見 track-command.md〈track dispatch-check 子命令〉 | `ticket track dispatch-check` | — | — |
+| `track dispatch-check` | 列出目前活躍派發；`--release <handle或id>` 明示放棄恢復本 session 的無票代理人，見 track-command.md〈track dispatch-check 子命令〉 | `ticket track dispatch-check` / `ticket track dispatch-check --release <handle>` | — | — |
 | `track` | 設定或釐清 Ticket 血緣/依賴/關聯欄位與 where.files 語意、阻擋情境判斷 | — | `references/field-semantics.md` | 〈適用範圍〉〈六欄位定義〉〈阻擋語意對照表〉〈用戶情境對照表〉〈欄位選擇決策樹〉〈反模式速查〉〈設計沿革〉〈相關文件〉 |
 | `track` | 查詢 Ticket 生命週期詳細規則（建立格式、驗收條件、決策樹路徑等） | — | `references/ticket-lifecycle-details.md` | 〈任務鏈後續步驟建議〉〈任務鏈 ID 格式〉〈Ticket 建立格式範本〉〈驗收條件 4V 格式要求〉〈Ticket 有效性驗證〉〈驗收前置條件檢查流程〉〈acceptance-gate-hook 技術細節〉〈驗收提示訊息模板〉〈P0 緊急任務處理〉〈簡化驗收檢查清單〉〈與其他流程的整合〉 |
 | `handoff` | 任務鏈管理與 Context 交接：支援自動判斷方向、指定交接到父/子/兄弟任務，含絕對指向（`--next`）與從 worklog 批次補建（`--from-worklog`）。五種交接情境 | `/ticket handoff <id> --to-sibling <id2>` | `references/workflow-handoff.md` | 〈交接流程決策樹〉〈狀態-命令映射規則〉〈任務鏈結束決策樹〉〈恢復流程決策樹〉 |

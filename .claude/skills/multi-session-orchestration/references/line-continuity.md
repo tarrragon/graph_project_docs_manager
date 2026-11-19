@@ -167,7 +167,7 @@ S1 已列了很久，但用戶其實已經回應過：多半是該線漏寫解�
 
 **備援：工具不可用時**（plugin 未載入、ToolSearch 查不到、工具回報無法判讀）依序執行：
 
-1. 以 `python3 .claude/skills/multi-session-orchestration/scripts/coordination_ticket.py --json` 自動解析協調票（active 版本中 `coordination: true` 且 `in_progress` 的票；結果為 none 或 multiple 時請用戶裁定），再以 `ticket track full <協調票>` 取得 `## Solution` 段。每條線以這一段中最後一行現行佇列行為準。Completion Info 中若有舊的佇列行，不要當作現況。
+1. 以 `python3 .claude/skills/multi-session-orchestration/scripts/coordination_ticket.py --json` 自動解析協調票（active 版本中 `coordination: true` 且 `in_progress` 的票；結果為 multiple 時列出候選請用戶裁定，為 none 時依下方〈協調票為 none 時〉處理），再以 `ticket track full <協調票>` 取得 `## Solution` 段。每條線以這一段中最後一行現行佇列行為準。Completion Info 中若有舊的佇列行，不要當作現況。
 2. 執行 `ListAgents`，記下每個同儕的名稱和本 session 的自稱。
 3. 讀 `~/.claude/sessions/*.json`，以 `cwd` 篩出本 repo 的 session，取得每個名稱對應的 `pid` 和 `sessionId`。
 4. 以每個 `sessionId` 的前 8 碼 grep `diagnostic.log`，取最後一筆的 `source` 和時間。
@@ -190,6 +190,23 @@ for f in glob.glob(os.path.expanduser('~/.claude/sessions/*.json')):
     print(d.get('name'), d['pid'], sid, d.get('status'), last or '來源不明')
 EOF
 ```
+
+### 協調票為 none 時
+
+`coordination_ticket.py` 回傳 none，或 `line_status` 回報「active 版本沒有標記 `coordination: true` 的進行中票」時，主控不自行判定要不要開線。依序處理：
+
+1. **分辨成因**，讀 `docs/todolist.yaml`：
+   - 沒有 status 為 active 的版本：上一版已完成，下一版還沒轉 active（版本空窗）。這時先做發版後回饋檢查：執行 `python3 .claude/skills/framework-issue/scripts/feedback.py` 列出上一版發版後的回饋，依 `.claude/pm-rules/version-progression.md`〈版本生命週期〉「發版後回饋檢查」分診。有承諾未達成的回報就先發 patch，沒有才以 `version-release start --version <下一版>` 轉 active。
+   - 有 active 版本，但沒有帶 `coordination: true` 的進行中票。
+2. **以 AskUserQuestion 問用戶開工作線或單一線**。問題內寫明成因。不以「目前只有一個 session」推定為單一線。
+3. **依裁定記錄**：
+
+| 裁定 | 動作 | 記錄位置 |
+|------|------|---------|
+| 開工作線 | 沒有 active 版本時，先把要做的版本轉 active。以 `ticket create --coordination` 建協調票（既有票用 `ticket track set-coordination <票號>`），並依 §5 列開線計畫表，經用戶確認後才開線 | 協調票 Solution：〈主控接續〉段寫明成因、用戶裁定與為開線所做的變更 |
+| 單一線 | 不建協調票，繼續處理手上的票 | 當前處理的票的 Solution：寫〈主控接續〉段與用戶裁定。下次接續時先讀這張票 |
+
+**Why**：沒有協調票時，主控看不出用戶要的是多線還是單線。自行判定單一線會跳過開線計畫表與用戶確認，而且裁定只留在對話裡，下一次 `/clear` 之後就找不到了。**Action**：none 一律先問；把裁定寫在上表的位置，讓下一次接續讀得到。
 
 ---
 
@@ -227,7 +244,7 @@ for f in ~/.claude/sessions/*.json; do python3 -c 'import json,sys; d=json.load(
 
 **步驟**：
 
-1. 依 §3 步驟 1 找到協調票，讀 `## Solution` 段最後幾段，找出前一個主控最後處理的事項和各線的現行佇列。
+1. 依 §3 步驟 1 找到協調票，讀 `## Solution` 段最後幾段，找出前一個主控最後處理的事項和各線的現行佇列。找不到協調票時，依 §3〈協調票為 none 時〉先問用戶開工作線或單一線，再做後續步驟。用戶裁定單一線時，步驟 3 的〈主控接續〉段改寫進當前處理的票。
 2. 呼叫 `line_status`（§3 主路徑；不可用時依 §3 步驟 2 到 5）判讀每條線的接續狀態。用戶常常在清除主控的同時，也清除其他線，所以不能沿用前一個主控的判斷。
 3. 在協調票追加〈主控接續（<clear 或 compact>，<日期 時間>）〉段，內容包括：
    - 各線狀態（格式同 §3 步驟 6）
@@ -276,7 +293,7 @@ for f in ~/.claude/sessions/*.json; do python3 -c 'import json,sys; d=json.load(
 | step | 意義 | 結果欄位 |
 |------|------|---------|
 | `sent` | 已呼叫跨 session 傳送 | `isDelivered=true`；或 `isDelivered=false` 加 `reason=<拒絕原因>` |
-| `skipped` | 判定不送 | `reason=`：`no-session-name`（狀態檔比對不到 sessionId）、`coordinator`（主控自身）、`lane-not-found`（名稱比對不到現行佇列行）、`lane-ended`（已收線） |
+| `skipped` | 判定不送 | `reason=`：`no-session-name`（狀態檔比對不到 sessionId）、`coordinator`（主控自身）、`lane-not-found`（名稱比對不到現行佇列行）、`lane-ended`（已收線）、`coordinator-not-found`（本專案 checkout 下沒有帶 sessionId 的存活主控）、`coordinator-ambiguous`（不只一個主控）。收件主控以 sessionId 定址，不用裸名稱 |
 | `config-unavailable` | 專案設定讀不到或不成立 | `detail=<判定>：<訊息>` |
 | `state-unavailable` | session 狀態檔或協調票讀不到 | `detail=session 狀態：<訊息>` 或 `detail=協調票：<訊息>` |
 | `error` | 過程中丟出例外 | `detail=<例外訊息>` |

@@ -7,8 +7,9 @@
 r"""
 Ticket File Access Guard Hook - PreToolUse Hook
 
-功能: 阻止直接 Read/Edit/Write ticket 檔案，引導使用 /ticket 指令
-- 阻止 Read 整個 ticket 檔案 -> 引導使用 /ticket track query 或 full
+功能: 阻止直接 Edit frontmatter／Write ticket 檔案，引導使用 /ticket 指令
+- 放行 Read ticket 檔案，並以 additionalContext 提示查詢建議用 ticket track full
+  （讀檔不改資料；Edit body 前必須先 Read，阻擋 Read 會使 body 編輯實際做不到）
 - 阻止 Edit frontmatter 欄位 -> 引導使用 /ticket track set-* 或 claim/complete
 - 阻止 Write 建立/覆寫 ticket -> 引導使用 /ticket create
 - 允許 ticket-tracker.py / ticket-creator.py 內部呼叫
@@ -21,9 +22,12 @@ Ticket File Access Guard Hook - PreToolUse Hook
   ^docs/work-logs/.*/tickets/.*\.md$
 
 行為:
-  - Read ticket 檔案: 阻止，返回 exit code 2
+  - Read ticket 檔案: 允許並附查詢建議（additionalContext），返回 exit code 0
   - Edit frontmatter: 阻止，返回 exit code 2
   - Edit body 區段: 允許，返回 exit code 0
+  - 判定方式: 讀目標檔，old_string 任一出現位置落在 frontmatter（首兩條 --- 之間）
+    即視為 frontmatter 編輯；讀檔失敗、無 frontmatter、找不到 old_string 時
+    退回 is_body_section_edit 的字面判定
   - Write ticket 檔案: 阻止，返回 exit code 2（強制使用 /ticket create）
   - 內部呼叫: 允許，返回 exit code 0
 
@@ -45,11 +49,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "hooks"))
 
 from lib import (
     setup_hook_logging, run_hook_safely, get_project_root, save_check_log,
-    read_json_from_stdin, emit_hook_output, get_handoff_recovery_ticket_ids
+    read_json_from_stdin, emit_hook_output
 )
 
+from lib.checkout_identity import strip_root_prefix, strip_same_repo_checkout_prefix
+
 from datetime import datetime
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 # ============================================================================
 # 常數定義
@@ -65,11 +71,24 @@ TICKET_PATH_PATTERNS = [
     r"^docs/work-logs/.*/tickets/.*\.md$",
 ]
 
-# 允許 Edit 的 body 區段標題（不含 frontmatter）
-ALLOWED_BODY_SECTIONS = [
+# 現行 body 章節：與 ticket_system/constants.py 的 CANONICAL_BODY_SECTIONS
+# 逐項對應（本 hook 以 PEP 723 單檔執行，不 import ticket_system；一致性由
+# 測試比對該常數守住）。
+CANONICAL_BODY_SECTION_HEADINGS = [
+    "## Task Summary",
     "## Problem Analysis",
+    "## 重現實驗結果",
     "## Solution",
     "## Test Results",
+    "## Context Bundle",
+    "## NeedsContext",
+    "## Exit Status",
+    "## Spawn Requests",
+    "## Completion Info",
+]
+
+# 舊版模板與中文別名的章節標題，存量票仍可能使用
+LEGACY_BODY_SECTION_HEADINGS = [
     "## Execution Log",
     "## Notes",
     "## Phase",
@@ -80,6 +99,16 @@ ALLOWED_BODY_SECTIONS = [
     "## 備註",
     "## 階段",
 ]
+
+# 允許 Edit 的 body 區段標題（不含 frontmatter）
+ALLOWED_BODY_SECTIONS = CANONICAL_BODY_SECTION_HEADINGS + LEGACY_BODY_SECTION_HEADINGS
+
+# Read ticket 檔案時給模型的查詢建議（放行，不阻擋）
+READ_QUERY_HINT = (
+    "已放行讀取 ticket 檔案。查詢建議用 CLI："
+    "ticket track full {id}（完整內容）、ticket track query {id}（摘要）、"
+    "ticket track log {id}（執行日誌）。frontmatter 欄位以 ticket track set-* 修改。"
+)
 
 # Frontmatter 欄位模式
 FRONTMATTER_FIELD_PATTERN = r"^(id|title|type|status|version|priority|parent_id|children|blockedBy|who|what|when|where|why|how|assigned|started_at|completed_at|created|updated):"
@@ -100,11 +129,14 @@ def normalize_path(file_path: str) -> str:
     """
     normalized = file_path.replace("\\", "/")
 
-    project_root = str(get_project_root()).replace("\\", "/")
-    if normalized.startswith(project_root):
-        normalized = normalized[len(project_root):]
-        if normalized.startswith("/"):
-            normalized = normalized[1:]
+    project_root = str(get_project_root())
+    # 根前綴剝除含磁碟機代號大小寫與目錄邊界；不在專案根之下時，同 repo 的
+    # 相鄰 checkout（worktree）以該 checkout 根剝除，使其票檔同樣受本守衛管轄
+    relative = strip_root_prefix(normalized, project_root)
+    if relative is None:
+        relative = strip_same_repo_checkout_prefix(file_path, project_root)
+    if relative is not None:
+        normalized = relative
 
     if normalized.startswith("./"):
         normalized = normalized[2:]
@@ -178,6 +210,58 @@ def is_body_section_edit(old_string: str, logger) -> bool:
     return True
 
 
+def frontmatter_end_offset(content: str) -> Optional[int]:
+    """回傳 frontmatter 區段結束位置（含收尾 --- 行）；無 frontmatter 時回傳 None。
+
+    frontmatter 定義為檔案開頭 `---` 行到下一個 `---` 行之間（含兩條分隔線）。
+    """
+    lines = content.splitlines(keepends=True)
+    if not lines or lines[0].rstrip("\r\n") != "---":
+        return None
+    offset = len(lines[0])
+    for line in lines[1:]:
+        offset += len(line)
+        if line.rstrip("\r\n") == "---":
+            return offset
+    return None
+
+
+def old_string_overlaps_frontmatter(
+    file_path: str, old_string: str, logger
+) -> Optional[bool]:
+    """依 old_string 在檔案中的實際位置判定是否觸及 frontmatter。
+
+    回傳 True＝任一出現位置與 frontmatter 重疊；False＝全部出現位置都在
+    frontmatter 之後；None＝無法判定（讀檔失敗、無 frontmatter、找不到
+    old_string），由呼叫端退回字面判定。
+    """
+    if not old_string:
+        return None
+    path = Path(file_path)
+    if not path.is_absolute():
+        path = get_project_root() / normalize_path(file_path)
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.warning(f"位置判定讀檔失敗，退回字面判定: {file_path}: {e}")
+        return None
+
+    fm_end = frontmatter_end_offset(content)
+    if fm_end is None:
+        logger.info(f"位置判定找不到 frontmatter，退回字面判定: {file_path}")
+        return None
+
+    start = content.find(old_string)
+    if start < 0:
+        logger.info(f"位置判定找不到 old_string，退回字面判定: {file_path}")
+        return None
+    while start >= 0:
+        if start < fm_end:
+            return True
+        start = content.find(old_string, start + 1)
+    return False
+
+
 def is_new_file_write(file_path: str) -> bool:
     """檢查是否為新檔案寫入"""
     project_dir = get_project_root()
@@ -190,30 +274,20 @@ def is_new_file_write(file_path: str) -> bool:
 # ============================================================================
 
 def check_read_permission(file_path: str, logger) -> Tuple[bool, str]:
-    """檢查 Read 操作權限"""
+    """檢查 Read 操作權限。
+
+    ticket 檔案一律放行：讀檔不改資料，cat／grep／ticket track full 皆可讀到
+    同樣內容；且 Edit body 區段前必須先 Read，阻擋 Read 會使設計上放行的
+    body 編輯實際做不到。查詢建議由 main 以 additionalContext 附上。
+    """
     if is_internal_call():
         return True, "內部呼叫允許"
 
     if not is_ticket_file(file_path):
         return True, "非 ticket 檔案，允許讀取"
 
-    ticket_id = extract_ticket_id_from_path(file_path)
-    recovery_ticket_ids = get_handoff_recovery_ticket_ids(
-        logger, project_root=get_project_root()
-    )
-    if ticket_id and ticket_id in recovery_ticket_ids:
-        logger.debug(f"Handoff 恢復模式（限定 {ticket_id}）: 允許讀取 {file_path}")
-        return True, f"Handoff 恢復模式允許（限定 {ticket_id}）"
-
-    reason = (
-        "禁止直接讀取 ticket 檔案。\n"
-        "請使用以下指令：\n"
-        "  - /ticket track query {id}  - 查詢 ticket 資訊\n"
-        "  - /ticket track full {id}   - 輸出完整 ticket 內容\n"
-        "  - /ticket track log {id}    - 輸出執行日誌"
-    )
-    logger.warning(f"阻止讀取 ticket 檔案: {file_path}")
-    return False, reason
+    logger.info(f"放行讀取 ticket 檔案（附查詢建議）: {file_path}")
+    return True, "ticket 檔案允許讀取（查詢建議用 ticket track full）"
 
 
 def check_edit_permission(file_path: str, old_string: str, logger) -> Tuple[bool, str]:
@@ -224,9 +298,13 @@ def check_edit_permission(file_path: str, old_string: str, logger) -> Tuple[bool
     if not is_ticket_file(file_path):
         return True, "非 ticket 檔案，允許編輯"
 
-    # 檢查是否為 body 區段編輯
-    if is_body_section_edit(old_string, logger):
-        logger.info(f"允許編輯 ticket body 區段: {file_path}")
+    # 先依 old_string 在檔案中的位置判定；無法判定時退回字面判定
+    overlaps = old_string_overlaps_frontmatter(file_path, old_string, logger)
+    if overlaps is False:
+        logger.info(f"允許編輯 ticket body 區段（位置判定）: {file_path}")
+        return True, "body 區段編輯允許"
+    if overlaps is None and is_body_section_edit(old_string, logger):
+        logger.info(f"允許編輯 ticket body 區段（字面判定）: {file_path}")
         return True, "body 區段編輯允許"
 
     # 阻止 frontmatter 欄位編輯
@@ -240,7 +318,11 @@ def check_edit_permission(file_path: str, old_string: str, logger) -> Tuple[bool
         "  - /ticket track set-who {id} {value}   - 更新 who 欄位\n"
         "  - /ticket track set-priority {id} {value} - 更新優先級\n"
         "  - /ticket track append-log {id} --section {section} {content} - 追加執行日誌\n"
+        "  - /ticket track set-where {id} ... - 更新 where（含 where.files 的 ::read／::write 後綴）\n"
+        "  - ticket migrate - 變更 version／wave（隨 ID 一起遷移）\n"
         "\n"
+        "判定依 old_string 在檔案中的位置：只要觸及 frontmatter（首兩條 --- 之間）即阻擋，\n"
+        "body 章節內的編輯不受影響。\n"
         "若 `ticket track --help` 也找不到對應該欄位的命令，代表該欄位缺少合法\n"
         "更新途徑（PC-BAL-047）——請建 ticket 回報，不要繞道直接改檔。"
     )
@@ -266,7 +348,11 @@ def check_write_permission(file_path: str, logger) -> Tuple[bool, str]:
         "或使用 SKILL：\n"
         "  /ticket create ...\n"
         "\n"
-        "這將確保編號正確且符合規範。"
+        "這將確保編號正確且符合規範。\n"
+        "\n"
+        "若要修改既有 ticket 的內容，改用以下兩條途徑之一：\n"
+        "  - 以 Edit 修改 body 章節內的文字（old_string 不觸及 frontmatter 即放行）\n"
+        "  - ticket track append-log {id} --section <章節> --replace <內容>（整段覆寫指定章節）"
     )
     logger.warning(f"阻止直接 Write ticket 檔案: {file_path}")
     return False, reason
@@ -276,10 +362,33 @@ def check_write_permission(file_path: str, logger) -> Tuple[bool, str]:
 # Hook 輸出生成
 # ============================================================================
 
-def _emit_permission_output(is_allowed: bool, reason: str) -> None:
-    """生成並輸出 Hook 權限決策 JSON"""
-    decision = "allow" if is_allowed else "deny"
-    emit_hook_output("PreToolUse", permission_decision=decision, permission_decision_reason=reason)
+def _emit_permission_output(
+    is_allowed: bool, reason: str, additional_context: Optional[str] = None
+) -> None:
+    """輸出 Hook 決策 JSON（additional_context 給模型看的提示）
+
+    放行時不帶 permissionDecision：allow 會略過平台的權限提示（例如工作目錄外
+    的 Read），等於代用戶核可；本 hook 只負責擋 ticket 檔案的違規寫入，放行時
+    交回平台權限流程。有提示才輸出 additionalContext，沒有提示則不輸出。
+    """
+    if is_allowed:
+        if additional_context:
+            emit_hook_output("PreToolUse", additional_context=additional_context)
+        return
+    emit_hook_output(
+        "PreToolUse",
+        additional_context=additional_context,
+        permission_decision="deny",
+        permission_decision_reason=reason,
+    )
+
+
+def read_hint_for(tool_name: str, file_path: str) -> Optional[str]:
+    """Read ticket 檔案（非內部呼叫）時回傳查詢建議，其餘回傳 None。"""
+    if tool_name != "Read" or is_internal_call() or not is_ticket_file(file_path):
+        return None
+    ticket_id = extract_ticket_id_from_path(file_path)
+    return READ_QUERY_HINT.replace("{id}", ticket_id or "<id>")
 
 
 
@@ -297,12 +406,8 @@ def main() -> int:
         # 讀取 JSON 輸入
         input_data = read_json_from_stdin(logger)
         if not input_data:
-            logger.warning("輸入為空或解析失敗，返回預設允許")
-            emit_hook_output(
-                "PreToolUse",
-                permission_decision="allow",
-                permission_decision_reason="輸入為空或解析失敗，預設允許",
-            )
+            # fail-open：不輸出 decision，交回平台權限流程（不代為核可）
+            logger.warning("輸入為空或解析失敗，不輸出決策（交回平台權限流程）")
             return EXIT_ALLOW
 
         logger.debug(f"輸入 JSON: {json.dumps(input_data, ensure_ascii=False)[:200]}...")
@@ -330,7 +435,9 @@ def main() -> int:
         else:
             is_allowed, reason = True, "未知工具類型，預設允許"
 
-        _emit_permission_output(is_allowed, reason)
+        _emit_permission_output(
+            is_allowed, reason, additional_context=read_hint_for(tool_name, file_path)
+        )
 
         log_entry = f"""[{datetime.now().isoformat()}]
   Tool: {tool_name}
@@ -346,11 +453,11 @@ def main() -> int:
         return exit_code
 
     except Exception as e:
-        logger.error(f"Hook 執行錯誤: {type(e).__name__}: {e}")
-        emit_hook_output(
-            "PreToolUse",
-            permission_decision="allow",
-            permission_decision_reason=f"Hook 執行錯誤，預設允許: {str(e)}",
+        # fail-open：不輸出 decision，交回平台權限流程；stderr + 日誌雙通道（規則 4）
+        logger.error(f"Hook 執行錯誤: {type(e).__name__}: {e}", exc_info=True)
+        sys.stderr.write(
+            f"[ticket-file-access-guard] Hook 執行錯誤，未判定即放行（交回平台權限流程）: "
+            f"{type(e).__name__}: {e}\n"
         )
         return EXIT_ALLOW
 

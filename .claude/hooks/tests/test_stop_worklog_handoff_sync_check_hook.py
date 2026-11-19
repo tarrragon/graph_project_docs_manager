@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -714,7 +715,7 @@ class TestMainStdinIntegration:
         """mock detect_sync_drift 攔截 input_data 並回傳 None（避免實際輸出）。"""
 
         def fake_detect_sync_drift(
-            project_root, session_start, logger, input_data=None
+            project_root, session_start, logger, input_data=None, git_root=None
         ):
             captured["input_data"] = input_data
             captured["session_start"] = session_start
@@ -731,7 +732,7 @@ class TestMainStdinIntegration:
         self._patch_main_dependencies(monkeypatch, hook_mod, captured)
         payload = {
             "background_tasks": [{"id": "bg-1", "status": "running"}],
-            "session_start_timestamp": 1234.5,
+            "transcript_path": "/nonexistent/transcript.jsonl",
         }
         monkeypatch.setattr(
             hook_mod.sys, "stdin", _FakeStdin(json.dumps(payload), tty=False)
@@ -785,6 +786,151 @@ class TestMainStdinIntegration:
             hook_mod.main()
         assert exc_info.value.code == 0
         assert captured["input_data"] == {}, "non-dict JSON 應 fallback 至空 dict"
+
+
+def _run_stop_hook(root: Path, tmp_path: Path, session_start: float, hook_path: Path = HOOK_PATH):
+    """以真實形狀 Stop payload 執行 hook；transcript 首筆時間設為 session_start。"""
+    transcript = tmp_path / "session.jsonl"
+    transcript.write_text(
+        json.dumps({"type": "custom-title", "sessionId": "s"}) + "\n"
+        + json.dumps({
+            "type": "attachment",
+            "timestamp": datetime.fromtimestamp(session_start, timezone.utc)
+            .isoformat().replace("+00:00", "Z"),
+        }) + "\n",
+        encoding="utf-8",
+    )
+    payload = {
+        "hook_event_name": "Stop",
+        "session_id": "s",
+        "transcript_path": str(transcript),
+        "cwd": str(root),
+        "stop_hook_active": False,
+    }
+    env = os.environ.copy()
+    env.update({"CLAUDE_PROJECT_DIR": str(root), "HOOK_TEST_ISOLATION": "1"})
+    return subprocess.run(
+        [sys.executable, str(hook_path)],
+        input=json.dumps(payload), capture_output=True, text=True,
+        env=env, timeout=60,
+    )
+
+
+class TestSessionStartFromTranscript:
+    """session 起點取自 transcript 首筆帶 timestamp 的紀錄。
+
+    Stop payload 沒有 session_start_timestamp（官方欄位：session_id、
+    transcript_path、cwd 等共同欄位，加 stop_hook_active 等）；讀該鍵恆為 0，
+    依賴 session 起點的 mtime 過濾、增量掃描、第 7 格偵測全數停用。
+    """
+
+    _FIRST_TS = "2026-11-18T02:11:48.569Z"
+    _FIRST_EPOCH = 1794967908.569
+
+    def _run_main(self, monkeypatch, hook_mod, payload: dict) -> float:
+        captured: dict = {}
+        TestMainStdinIntegration._patch_main_dependencies(
+            None, monkeypatch, hook_mod, captured
+        )
+        monkeypatch.setattr(
+            hook_mod.sys, "stdin", _FakeStdin(json.dumps(payload), tty=False)
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            hook_mod.main()
+        assert exc_info.value.code == 0
+        return captured["session_start"]
+
+    def _transcript(self, tmp_path: Path, lines: list) -> Path:
+        path = tmp_path / "session.jsonl"
+        path.write_text(
+            "\n".join(l if isinstance(l, str) else json.dumps(l) for l in lines) + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def test_first_timestamp_becomes_session_start(self, monkeypatch, hook_mod, tmp_path):
+        transcript = self._transcript(tmp_path, [
+            {"type": "custom-title", "sessionId": "s"},
+            {"type": "attachment", "timestamp": self._FIRST_TS},
+            {"type": "user", "timestamp": "2026-11-18T09:00:00.000Z"},
+        ])
+        start = self._run_main(
+            monkeypatch, hook_mod, {"transcript_path": str(transcript)}
+        )
+        assert start == pytest.approx(self._FIRST_EPOCH, abs=0.01)
+
+    def test_session_start_timestamp_key_is_not_a_source(self, monkeypatch, hook_mod):
+        start = self._run_main(
+            monkeypatch, hook_mod, {"session_start_timestamp": 1234.5}
+        )
+        assert start == 0
+
+    def test_missing_transcript_falls_back_to_zero(self, monkeypatch, hook_mod, tmp_path):
+        start = self._run_main(
+            monkeypatch, hook_mod, {"transcript_path": str(tmp_path / "none.jsonl")}
+        )
+        assert start == 0
+
+    def test_real_payload_reports_session_handoff_and_skips_old_one(self, tmp_path):
+        """正向對照（端到端）：真實形狀 Stop payload，session 起點取自 transcript。
+
+        同一份 worklog：baseline 已有跨 session 的舊交接段（W17-900），本 session
+        新增交接段（W17-079），兩者 pending 都沒有對應。改後警告只列本 session 的
+        079，舊段落的 900 被增量掃描略過。
+        """
+        root, worklog = make_project_root(
+            tmp_path,
+            worklog_content="## 舊紀錄\n\n**下一站**：`0.18.0-W17-900`（歷史交接，非本 session）。\n",
+            ticket_status_map={
+                "0.18.0-W17-900": "pending",
+                "0.18.0-W17-079": "pending",
+            },
+        )
+        _init_git_repo(root)
+        _commit_all(root, "baseline")
+
+        session_start = time.time() + 2
+        with worklog.open("a", encoding="utf-8") as f:
+            f.write("\n**下一站**：`0.18.0-W17-079`（本 session 新交接）。\n")
+        os.utime(worklog, (session_start + 5, session_start + 5))
+
+        result = _run_stop_hook(root, tmp_path, session_start)
+
+        assert result.returncode == 0
+        message = json.loads(result.stdout)["systemMessage"]
+        assert "0.18.0-W17-079" in message
+        assert "0.18.0-W17-900" not in message
+
+    def test_real_payload_old_handoff_only_stays_silent(self, tmp_path):
+        """反向對照（端到端）：本 session 未改 worklog，只有跨 session 的舊交接段。
+
+        改前 session 起點為 0，mtime 過濾停用、全文掃描，舊段落的 W17-900 被
+        報為缺失；改後以 transcript 起點判定 worklog 早於本 session，不報。
+        """
+        root, worklog = make_project_root(
+            tmp_path,
+            worklog_content="## 舊紀錄\n\n**下一站**：`0.18.0-W17-900`（歷史交接，非本 session）。\n",
+            ticket_status_map={"0.18.0-W17-900": "pending"},
+        )
+        _init_git_repo(root)
+        _commit_all(root, "baseline")
+        session_start = time.time() + 2
+        os.utime(worklog, (session_start - 60, session_start - 60))
+
+        result = _run_stop_hook(root, tmp_path, session_start)
+
+        assert result.returncode == 0
+        assert "0.18.0-W17-900" not in result.stdout
+
+    def test_unparsable_timestamp_falls_back_to_zero(self, monkeypatch, hook_mod, tmp_path):
+        transcript = self._transcript(tmp_path, [
+            "not json",
+            {"type": "attachment", "timestamp": "yesterday"},
+        ])
+        start = self._run_main(
+            monkeypatch, hook_mod, {"transcript_path": str(transcript)}
+        )
+        assert start == 0
 
 
 # ===========================================================================
@@ -905,3 +1051,92 @@ def test_session_incremental_diff_control_without_flag_rewrites_index(hook_mod, 
     before = index.read_bytes()
     _REAL_RUN(stripped, check=True, capture_output=True)
     assert index.read_bytes() != before, "對照不成立：fixture 無鑑別力"
+
+
+# ---------------------------------------------------------------------------
+# 3.3.0-W1-204.1.2.9：共用狀態根與 worklog 所屬 checkout 的 git 根
+# ---------------------------------------------------------------------------
+
+
+class TestDetectActiveVersionRealShape:
+    """active 版本偵測須涵蓋現行 todolist 形狀：欄位間隔、status 值帶引號。"""
+
+    _TODOLIST = (
+        "versions:\n"
+        "  - version: \"0.17.0\"\n"
+        "    description: \"上一版\"\n"
+        "    status: \"completed\"\n"
+        "  - version: \"0.18.0\"\n"
+        "    description: \"本版\"\n"
+        "    codename: \"x\"\n"
+        "    status: \"active\"\n"
+    )
+
+    def _root(self, tmp_path: Path, content: str) -> Path:
+        todolist = tmp_path / "docs" / "todolist.yaml"
+        todolist.parent.mkdir(parents=True)
+        todolist.write_text(content, encoding="utf-8")
+        return tmp_path
+
+    def test_interleaved_fields_and_quoted_status(self, tmp_path, hook_mod):
+        root = self._root(tmp_path, self._TODOLIST)
+        assert hook_mod._detect_active_version(root) == "0.18.0"
+
+    def test_v_prefix_stripped(self, tmp_path, hook_mod):
+        root = self._root(tmp_path, "versions:\n  - version: v0.18.0\n    status: active\n")
+        assert hook_mod._detect_active_version(root) == "0.18.0"
+
+    def test_no_active_returns_none(self, tmp_path, hook_mod):
+        root = self._root(tmp_path, "versions:\n  - version: \"0.17.0\"\n    status: \"completed\"\n")
+        assert hook_mod._detect_active_version(root) is None
+
+
+class TestLinkedWorktreeSharedStateRoot:
+    """session 在 linked worktree（WT），共用狀態讀主倉庫（SR），增量 git 跟 worklog 走。"""
+
+    def _setup(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("HOOK_TEST_ISOLATION", raising=False)
+        main, worklog = make_project_root(
+            tmp_path,
+            worklog_content="## 舊紀錄\n\n**下一站**：`0.18.0-W17-900`（歷史交接）。\n",
+            pending_ticket_ids=set(),
+            ticket_status_map={"0.18.0-W17-900": "pending", "0.18.0-W17-079": "pending"},
+        )
+        _init_git_repo(main)
+        _commit_all(main, "baseline")
+        wt = tmp_path / "wt"
+        _git(main, "worktree", "add", "-q", "-b", "wt-branch", str(wt))
+        return main, wt, worklog, time.time()
+
+    def _append_new_handoff(self, worklog, session_start):
+        with worklog.open("a", encoding="utf-8") as f:
+            f.write("\n**下一站**：`0.18.0-W17-079`（本 session 新交接）。\n")
+        os.utime(worklog, (session_start + 5, session_start + 5))
+
+    def test_increment_still_catches_new_section_from_worktree(self, tmp_path, monkeypatch, hook_mod):
+        main, wt, worklog, ss = self._setup(tmp_path, monkeypatch)
+        self._append_new_handoff(worklog, ss)
+        result = hook_mod.detect_sync_drift(main, ss, MagicMock(), git_root=wt)
+        assert result is not None
+        assert "0.18.0-W17-079" in result
+        assert "0.18.0-W17-900" not in result
+
+    def test_no_new_section_stays_silent_not_full_text(self, tmp_path, monkeypatch, hook_mod):
+        main, wt, worklog, ss = self._setup(tmp_path, monkeypatch)
+        os.utime(worklog, (ss + 5, ss + 5))
+        assert hook_mod.detect_sync_drift(main, ss, MagicMock(), git_root=wt) is None
+
+    def test_e1_control_git_root_wt_falls_back_to_full_text(self, tmp_path, monkeypatch, hook_mod):
+        """E1 對照：增量 git 根改用 WT，增量退回全文而誤報歷史交接（鑑別上一個測試）。"""
+        main, wt, worklog, ss = self._setup(tmp_path, monkeypatch)
+        os.utime(worklog, (ss + 5, ss + 5))
+        monkeypatch.setattr(hook_mod, "owning_checkout_root", lambda p: str(wt))
+        result = hook_mod.detect_sync_drift(main, ss, MagicMock(), git_root=wt)
+        assert result is not None and "0.18.0-W17-900" in result
+
+    def test_stop_flag_stays_on_session_root(self, tmp_path, monkeypatch):
+        module = _load_hook_module()
+        seen = []
+        monkeypatch.setattr(module, "_is_blocked_this_session", lambda r, l: seen.append(r) or True)
+        module.detect_sync_drift(tmp_path / "sr", 0, MagicMock(), git_root=tmp_path / "wt")
+        assert seen == [tmp_path / "wt"]

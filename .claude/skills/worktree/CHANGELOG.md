@@ -2,6 +2,32 @@
 
 新到舊。版號規則與兩個住址（本檔與 `SKILL.md` frontmatter 的 `metadata.version`）見專案的 skill 同步規範。
 
+**Version**: 1.10.0（2026-11-18）— 合併閘門加選匯入改動套件的其他 skill：
+- 改動落在某 skill 的頂層套件（skill 根或 `scripts/` 下帶 `__init__.py` 的目錄，如 `ticket_system`）時，掃描合併快照內其他帶 `tests/` 的 skill，有 .py 以行首（含縮排）`from`／`import` 匯入該套件者加選其套件。原本只掃 hooks／scripts，3.3.0 一次 `ticket_system/lib/version.py` 改動讓 version-release 的交叉核對測試紅燈，閘門沒跑到。
+- 閘門輸出新增一行 `[合併前測試] 跨 skill 匯入加選套件：skill:<名稱>（匯入 <套件名>）`。只比對套件不比對單檔模組；改動不在套件內時選擇結果不變。
+- 測試：`tests/test_merge_gate.py` 補 E1 對照（同一改動，有／無匯入者選出的套件不同）、閘門實跑印出理由，以及單檔同名、前綴相似名、無 pytest 測試的匯入者三個不加選的對照。
+- 對齊版號住址：`pyproject.toml` 的 `version` 由 1.0.0 改為 1.10.0。
+
+**Version**: 1.9.0（2026-11-17）— 合併閘門自動批次：
+- 取得名額的一筆（領導者）把佇列中可共存的分支併成一個候選，全批只跑一次所選套件（各成員套件的聯集）。每批最多 4 張，環境變數 `MERGE_GATE_BATCH_MAX` 可覆寫，設 1 即停用批次、恢復逐筆。可共存條件：同專案、同 target；改動檔（merge-base 到分支）與已入選者互不重疊，票面與 topic-assignments 不計；不含專案宣告檔；分支 head 與排隊時記錄的一致，且排隊者仍存活。
+- 候選以 commit-tree 依序組成鏈，每票各有自己的 merge commit 與合併訊息，整批以單次 CAS 寫入。鏈尾紅燈時對前綴對半測試：綠燈前綴先寫入，單一分支仍紅者拒絕並附失敗輸出，其餘照寫，整批不退回。
+- 被併入的票讀領導者的裁決：已寫入就回報成功並標明來源，不重跑套件、不重複同步共用 checkout。等待逾時、被取消或中斷時，分支已是 target 的祖先也回報成功，來源標為批次識別字串，或標為「未經本閘門」（由閘門外的合併寫入）。
+- 閘門日誌的開始行與結束行，屬於批次時在結果欄之後多一個 `｜批次 <識別字串>` 欄位，領導者與被併入的票共用同一字串。自行解析 `worktree-merge.log` 的工具要容許這個欄位。
+- 名額排隊檔可帶額外欄位，名額目錄新增 claim 與 verdict 旁置檔，供領導者與被併入的票交換入選與裁決；排隊者行程不存在時清除。
+- 測試：新增 `tests/test_merge_gate_batch.py`（組批條件、前綴對半、被併入者的回報與逾時），框架 lib 的名額測試同步補上旁置檔案例。
+
+**Version**: 1.8.0（2026-11-14）— 合併閘門支援不使用 FVM 的 Flutter 專案，另有守衛與 SessionStart 稽核的修正：
+- 合併閘門的 Flutter 呼叫方式改由框架 lib 的 `flutter_launcher.launch_argv` 依快照判定：快照有 `.fvmrc` 或 `.fvm/fvm_config.json` 時為 `fvm flutter test`／`fvm flutter pub get`，否則為 `flutter test`／`flutter pub get`。原本寫死 `fvm`，未使用 FVM 的專案無法通過閘門。宣告檔中的 `command`、`generate` 由專案寫定，閘門不補 `fvm` 前綴。SKILL.md 套件表與產物生成段同步。
+- SKILL.md 補一段：`worktree merge` 不可再以 `run-with-timeout.py` 包裝（外層計時會把閘門內的排隊時間算進逾時），需長時間等待時改用背景執行並把輸出寫檔。
+- `worktree-remove-deliverable-check-hook.py` 的 Guard C 在 `git status` 查詢失敗或路徑不存在時改為阻擋 remove，並列出改用絕對路徑、先查狀態、改用 `git worktree prune` 三種處置；hook 以 `fail_closed` 執行。原本共用層把查詢失敗與無變更都回傳空清單，Guard C 因此放行，而 `remove --force` 會刪除未提交的修改且不可逆。
+- `session-start-merged-worktree-audit-hook.py`：ahead=0 的 worktree 若分支沒有自己的提交（剛自 main 建立）、工作區有未提交變更或未追蹤檔，或無法判定，改列為進行中，不給清理建議；孤兒票稽核改讀共用狀態根。
+- `worktree-commit-before-dispatch-hook.py`：找票、比對目標票是否已同步、訊息中的相對路徑改用共用狀態根（linked worktree 內為主 checkout）；未同步訊息補「常見來源是 `ticket track dispatch` 寫入的派發日誌 commit，需在 dispatch 之後再推送一次」。
+- `worktree-branch-check-hook.py`：未提交變更的計數單位由「個未追蹤檔案」改為「個未提交變更」（計數本來就含已修改、已暫存與未追蹤）。
+- 測試：`tests/conftest.py` 接上 hook-logs 洩漏哨兵；上述各項補對照測試。
+- 移除框架檔內的專案層級票號（規則 8 存量清理），改為自足敘述或佔位符；僅註解與 docstring，行為不變。
+
+**Version**: 1.7.1（2026-11-11）— 合併閘門內建的 Flutter 對應（`fvm flutter test`）只在合併快照根目錄有 `pubspec.yaml` 時生效；沒有時，`lib/`、`docs/` 等慣例目錄的改動視為範圍外、只印 WARNING，非 Flutter 專案不再被誤選 Flutter 套件。專案宣告檔指定的套件不受影響。git 查詢失敗時保守視為有 `pubspec.yaml`。
+
 **Version**: 1.7.0（2026-11-10）— cleanup 與合併閘門的五項修正：
 - cleanup Level 1（tarrragon/claude#120、#118）：`git status` 失敗時改拋 `WorkingTreeStatusUnavailable`，Level 1 與 merge 前置檢查接住後阻擋並印原因（`--force` 對 Level 1 仍無效）；原本失敗時計數回 0 而放行。Level 2 認得已併入 base 的分支，不推遠端的流程不再恆警告。
 - 快照清理（tarrragon/claude#120）：`merge_gate._remove_snapshot` 在 worktree remove／prune 逾時或無法啟動時寫 stderr 與 `worktree-merge.log`，不再往外拋而蓋掉閘門結果；目錄仍在時另印「快照未移除」。新增 `scripts/xcode_derived_data.py`：worktree 移除後刪除 WorkspacePath 位於該 worktree 內的 Xcode DerivedData，非 macOS 或根目錄不存在時不動，刪除失敗只警告。

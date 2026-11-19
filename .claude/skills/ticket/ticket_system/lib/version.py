@@ -5,12 +5,14 @@
 """
 import logging
 import re
+import sys
+from datetime import datetime
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 from .constants import WORK_LOGS_DIR
-from .paths import get_project_root
+from .paths import get_ticket_state_root
 from .ui_constants import VERSION_PREFIX, VERSION_PREFIX_LENGTH
 
 
@@ -20,7 +22,9 @@ def get_current_version() -> Optional[str]:
 
     優先級：
     1. 解析 todolist.yaml 的 versions 列表，找 status=active 的第一個
-    2. Fallback: 掃描 work-logs 目錄取最高版本號（向後相容）
+    2. todolist.yaml 頂層 current_version（專案自訂格式，僅為相容既有 consumer
+       保留；框架不引導新專案使用，錯誤提示也不提及）
+    3. Fallback: 掃描 work-logs 目錄取最高版本號（向後相容）
 
     Returns:
         Optional[str]: 版本字串（如 "v0.31.0"），若無版本目錄返回 None
@@ -78,7 +82,7 @@ def _find_next_active_version(current_version: str) -> Optional[str]:
     Returns:
         Optional[str]: 版本號（無 v 前綴），若無則 None
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
@@ -118,7 +122,7 @@ def get_active_versions() -> list[str]:
     Returns:
         list[str]: 版本字串列表（如 ["v0.31.0"]），若無則回傳空列表
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
@@ -149,7 +153,7 @@ def _parse_todolist_active_version() -> Optional[str]:
     Returns:
         Optional[str]: 版本字串（如 "v0.31.0"），解析失敗回傳 None
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
@@ -186,7 +190,7 @@ def _scan_worklog_directories() -> Optional[str]:
     Returns:
         Optional[str]: 版本字串（如 "v0.31.0"），若無版本目錄返回 None
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     work_logs = root / WORK_LOGS_DIR
 
     if not work_logs.exists():
@@ -358,7 +362,7 @@ def validate_version_registered(version: str) -> tuple[bool, str]:
     """
     from .messages import ErrorMessages
 
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
@@ -446,7 +450,7 @@ def is_version_registered(version: str) -> bool:
         bool: 已註冊，或 todolist.yaml 不存在（向後相容）時回傳 True；
               版本不在 todolist.yaml 的 versions 列表中則回傳 False
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
@@ -489,7 +493,7 @@ def suggest_version_for_ticket(
     Returns:
         (suggested_version, reason) 或 None（無法判斷）
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
     if not todolist_path.exists():
         return None
@@ -598,6 +602,19 @@ def _suggest_next_major(
     return (suggested, "新功能歸大版本")
 
 
+def _report_scope_gate_fail_open(root, reason: str) -> None:
+    """凍結閘 fail-open 時寫 stderr 並追加日誌檔（日誌寫入失敗只回報 stderr）。"""
+    msg = f"[WARNING] is_version_scope_frozen: {reason}，凍結閘放行（fail-open）"
+    sys.stderr.write(msg + "\n")
+    try:
+        log_dir = root / ".claude" / "hook-logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with open(log_dir / "version-scope-gate.log", "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now().isoformat()} {msg}\n")
+    except OSError as e:
+        sys.stderr.write(f"[WARNING] is_version_scope_frozen: 日誌檔寫入失敗 ({e})\n")
+
+
 def is_version_scope_frozen(version: str) -> bool:
     """判斷指定版本在 todolist.yaml 是否標記 scope: frozen。
 
@@ -612,10 +629,11 @@ def is_version_scope_frozen(version: str) -> bool:
         版本不存在、scope 缺席、scope 非 "frozen"、或檔案不存在/解析失敗
         時回傳 False
     """
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
 
     if not todolist_path.exists():
+        _report_scope_gate_fail_open(root, f"todolist.yaml 不存在 ({todolist_path})")
         return False
 
     try:
@@ -623,9 +641,8 @@ def is_version_scope_frozen(version: str) -> bool:
         with open(todolist_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except Exception as e:
-        logger.warning(
-            f"is_version_scope_frozen: 解析 todolist.yaml 失敗 "
-            f"({type(e).__name__}: {e})，視為未凍結"
+        _report_scope_gate_fail_open(
+            root, f"解析 todolist.yaml 失敗 ({type(e).__name__}: {e})"
         )
         return False
 
@@ -670,7 +687,7 @@ def find_open_successor(base_version: str) -> Optional[str]:
     if base_tuple is None:
         return None
 
-    root = get_project_root()
+    root = get_ticket_state_root()
     todolist_path = root / "docs" / "todolist.yaml"
     if not todolist_path.exists():
         return None

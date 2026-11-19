@@ -76,7 +76,10 @@ def test_drift_covered_by_three_forms(tmp_path):
     for name in sorted(hook.GITIGNORE_EXPECTED):
         # 交替使用 glob / 目錄 / 檔名三形式表達涵蓋
         idx = sorted(hook.GITIGNORE_EXPECTED).index(name)
-        if idx % 3 == 0:
+        # 巢狀名稱（寫在 skills/<name>/ 等深處）用 `.claude/<名稱>/` 涵蓋不到，
+        # 這是 is_nested_name_covered 刻意的判定；指派依排序位置輪流，集合增減會
+        # 讓巢狀名稱輪到目錄形式，故巢狀名稱輪到目錄形式時改用裸名形式。
+        if idx % 3 == 0 and name not in hook.NESTED_LOCAL_ONLY_NAMES:
             lines.append(f".claude/{name}/")     # 目錄形式
         elif idx % 3 == 1:
             lines.append(f"**/{name}")           # glob 形式
@@ -142,12 +145,12 @@ def test_uses_git_utils_get_project_root():
 # ---------------------------------------------------------------------------
 # 8. 巢狀名稱（.skill-sync-base）的 drift 判定與建議文字
 # ---------------------------------------------------------------------------
-def _gitignore_with(hook, tmp_path, nested_line: str) -> Path:
-    """涵蓋其餘所有名稱，只讓巢狀名稱的寫法可變。"""
-    from lib.sync_exclude_manifest import NESTED_LOCAL_ONLY_NAMES
+def _gitignore_with(hook, tmp_path, nested_line: str, tested: str = ".skill-sync-base") -> Path:
+    """涵蓋其餘所有名稱，只讓受測巢狀名稱（tested）的寫法可變；其他巢狀名稱用標準條目。"""
+    from lib.sync_exclude_manifest import required_gitignore_entry
     lines = [
-        f".claude/{n}" for n in sorted(hook.GITIGNORE_EXPECTED)
-        if n not in NESTED_LOCAL_ONLY_NAMES
+        required_gitignore_entry(n) for n in sorted(hook.GITIGNORE_EXPECTED)
+        if n != tested
     ]
     lines.append(nested_line)
     return _make_gitignore(tmp_path, "\n".join(lines) + "\n")

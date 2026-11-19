@@ -39,16 +39,36 @@ from ticket_system.lib.version import (
 
 
 class TestIsVersionScopeFrozen:
-    def test_todolist_missing_not_frozen(self, monkeypatch, tmp_path):
+    def test_todolist_missing_not_frozen(self, monkeypatch, tmp_path, capsys):
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert is_version_scope_frozen("0.1.0") is False
+        err = capsys.readouterr().err
+        assert "todolist.yaml 不存在" in err and "fail-open" in err
+        log = tmp_path / ".claude" / "hook-logs" / "version-scope-gate.log"
+        assert "todolist.yaml 不存在" in log.read_text(encoding="utf-8")
+
+    def test_todolist_parse_failure_stderr_and_log(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "todolist.yaml").write_text(
+            "versions: [unclosed", encoding="utf-8"
+        )
+        monkeypatch.setattr(
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
+        )
+        assert is_version_scope_frozen("0.1.0") is False
+        err = capsys.readouterr().err
+        assert "解析 todolist.yaml 失敗" in err and "fail-open" in err
+        log = tmp_path / ".claude" / "hook-logs" / "version-scope-gate.log"
+        assert "解析 todolist.yaml 失敗" in log.read_text(encoding="utf-8")
 
     def test_scope_field_absent_not_frozen(self, monkeypatch, tmp_path):
         _write_todolist(tmp_path, [{"version": "0.1.0", "status": "active"}])
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert is_version_scope_frozen("0.1.0") is False
 
@@ -58,7 +78,7 @@ class TestIsVersionScopeFrozen:
             [{"version": "0.1.0", "status": "active", "scope": "open"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert is_version_scope_frozen("0.1.0") is False
 
@@ -68,7 +88,7 @@ class TestIsVersionScopeFrozen:
             [{"version": "0.1.0", "status": "active", "scope": "frozen"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert is_version_scope_frozen("0.1.0") is True
 
@@ -78,7 +98,7 @@ class TestIsVersionScopeFrozen:
             [{"version": "0.1.0", "status": "active", "scope": "frozen"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert is_version_scope_frozen("9.9.9") is False
 
@@ -408,7 +428,7 @@ class TestExecuteWithTmpTodolistFixture:
             [{"version": "0.1.0", "status": "active", "scope": "frozen"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         monkeypatch.setattr(
             "ticket_system.commands.create.resolve_version",
@@ -436,7 +456,7 @@ class TestExecuteWithTmpTodolistFixture:
             [{"version": "0.1.0", "status": "active", "scope": "open"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         monkeypatch.setattr(
             "ticket_system.commands.create.resolve_version",
@@ -512,7 +532,7 @@ class TestValidateVersionRegisteredAcceptsPlanned:
             [{"version": "0.2.0", "status": "planned"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         is_valid, error_msg = validate_version_registered("0.2.0")
         assert is_valid is True
@@ -525,7 +545,7 @@ class TestValidateVersionRegisteredAcceptsPlanned:
             [{"version": "0.0.9", "status": "completed"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         is_valid, error_msg = validate_version_registered("0.0.9")
         assert is_valid is False
@@ -598,7 +618,7 @@ class TestExecuteCreatesTicketInPlannedVersion:
             [{"version": "0.2.0", "status": "planned"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         build_mock = self._install_mocks_without_version_registered_stub(
             monkeypatch, "0.2.0"
@@ -617,7 +637,7 @@ class TestExecuteCreatesTicketInPlannedVersion:
             [{"version": "0.0.9", "status": "completed"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         build_mock = self._install_mocks_without_version_registered_stub(
             monkeypatch, "0.0.9"
@@ -730,7 +750,7 @@ class TestFindOpenSuccessor:
             ],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert find_open_successor("0.1.1") == "0.2.0"
 
@@ -743,13 +763,13 @@ class TestFindOpenSuccessor:
             ],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert find_open_successor("0.1.1") is None
 
     def test_todolist_missing_returns_none(self, monkeypatch, tmp_path):
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         assert find_open_successor("0.1.0") is None
 
@@ -769,7 +789,7 @@ class TestSuggestOverflowVersionOpenSuccessorPriority:
             ],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         result = suggest_overflow_version("0.1.1", "IMP", "修復")
         assert result == ("0.2.0", "路由至最近的開放後繼版本")
@@ -787,7 +807,7 @@ class TestSuggestOverflowVersionOpenSuccessorPriority:
             ],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         result = suggest_overflow_version("0.1.1", "IMP", "修復")
         assert result == ("0.1.2", "修復/改善/分析/文件類型歸下一個 patch（相對凍結版本 patch+1）")
@@ -802,7 +822,7 @@ class TestSuggestOverflowVersionOpenSuccessorPriority:
             [{"version": "0.1.1", "status": "active", "scope": "frozen"}],
         )
         monkeypatch.setattr(
-            "ticket_system.lib.version.get_project_root", lambda: tmp_path
+            "ticket_system.lib.version.get_ticket_state_root", lambda: tmp_path
         )
         fix_result = suggest_overflow_version("0.1.1", "IMP", "修復")
         assert fix_result == (

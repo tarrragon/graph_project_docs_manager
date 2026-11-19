@@ -33,7 +33,7 @@ try:
     from .messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
     from .merge_cas import (
         CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas,
-        precheck_merge_conflict,
+        precheck_merge_conflict, resolve_main_checkout_root,
     )
     from .merge_gate import (
         GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CLEAR, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
@@ -55,7 +55,7 @@ except ImportError:
     from messages import MergeMessages, CleanupMessages, CommonMessages, CreateMessages
     from merge_cas import (
         CheckResult, MergeOutcome, PreMergeCheck, _git_out, _verify_three_planes, merge_branch_cas,
-        precheck_merge_conflict,
+        precheck_merge_conflict, resolve_main_checkout_root,
     )
     from merge_gate import (
         GATE_MAX_RETRIES, GATE_ABORTED, GATE_PRECHECK_CLEAR, GATE_PRECHECK_CONFLICT, GATE_REFUSED, GATE_WRITTEN, MergeGate,
@@ -63,7 +63,7 @@ except ImportError:
         emit_gate_line, gate_line, gate_result_label,
     )
 
-# 動態定位專案根目錄（W1-118 修復：方案 D 雙策略 fallback）
+# 動態定位專案根目錄（雙策略 fallback）
 #
 # 背景：worktree skill 安裝為 uv tool 後，__file__ 位於 uv tool venv，
 #       原本的 `Path(__file__).parent * 5` 推導會指向 uv tool root 而非專案根目錄，
@@ -192,6 +192,11 @@ except ImportError as e:
         return any(branch.startswith(p) for p in _fallback_allowed_patterns)
 
 
+def _main_root() -> str:
+    """合併路徑的主 checkout 根（MR）：CAS repo、MergeGate 根、閘門日誌都用它，與 cleanup 同一份日誌。"""
+    return resolve_main_checkout_root(str(get_project_root()))
+
+
 # ===== 核心函式 =====
 
 
@@ -206,7 +211,7 @@ def is_valid_ticket_id(ticket_id: str) -> bool:
         bool: 格式合法返回 True，否則 False
 
     Example:
-        is_valid_ticket_id("0.1.1-W9-002.1")  # True
+        is_valid_ticket_id("<ticket-id>")  # True（合法格式）
         is_valid_ticket_id("my-feature")      # False
     """
     return bool(re.match(TICKET_ID_PATTERN, ticket_id))
@@ -225,7 +230,7 @@ def derive_branch_name(ticket_id: str) -> str:
         str: 分支名稱 (feat/{ticket_id})
 
     Example:
-        derive_branch_name("0.1.1-W9-002.1")  # "feat/0.1.1-W9-002.1"
+        derive_branch_name("<ticket-id>")  # "feat/<ticket-id>"
     """
     return f"feat/{ticket_id}"
 
@@ -241,8 +246,8 @@ def derive_worktree_path(ticket_id: str) -> str:
         str: worktree 絕對路徑
 
     Example:
-        derive_worktree_path("0.1.1-W9-002.1")
-        # "{worktree 父目錄}/ccsession-0.1.1-W9-002.1"
+        derive_worktree_path("<ticket-id>")
+        # "{worktree 父目錄}/ccsession-<ticket-id>"
     """
     project_root = get_project_root()
     project_name = os.path.basename(project_root)
@@ -269,13 +274,13 @@ def extract_ticket_id_from_branch(branch: str) -> Optional[str]:
     從分支名稱反推 Ticket ID
 
     Args:
-        branch: 分支名稱（如 "feat/0.1.1-W9-002.1"）
+        branch: 分支名稱（如 "feat/<ticket-id>"）
 
     Returns:
         str | None: Ticket ID，或 None 如果無法辨識
 
     Example:
-        extract_ticket_id_from_branch("feat/0.1.1-W9-002.1")  # "0.1.1-W9-002.1"
+        extract_ticket_id_from_branch("feat/<ticket-id>")  # "<ticket-id>"
         extract_ticket_id_from_branch("main")                  # None
     """
     if not branch.startswith(FEAT_PREFIX):
@@ -306,7 +311,7 @@ def get_worktree_ahead_behind(branch: str, base: str = DEFAULT_BASE_BRANCH) -> t
     計算分支相對於 base 的 ahead/behind commit 數
 
     Args:
-        branch: 分支名稱（短名稱，如 "feat/0.1.1-W9-002.1"）
+        branch: 分支名稱（短名稱，如 "feat/<ticket-id>"）
         base: 基礎分支，預設為 DEFAULT_BASE_BRANCH
 
     Returns:
@@ -315,7 +320,7 @@ def get_worktree_ahead_behind(branch: str, base: str = DEFAULT_BASE_BRANCH) -> t
             - behind: base 比 branch 多幾個 commit
 
     Example:
-        ahead, behind = get_worktree_ahead_behind("feat/0.1.1-W9-002.1", "main")
+        ahead, behind = get_worktree_ahead_behind("feat/<ticket-id>", "main")
         # 如果 branch 領先 3 commit，落後 0 commit：(3, 0)
     """
     try:
@@ -455,7 +460,7 @@ def _extract_version_from_ticket_id(ticket_id: str) -> Optional[str]:
     從 Ticket ID 提取版本號
 
     Args:
-        ticket_id: Ticket ID（如 "0.16.2-W5-001.3"）
+        ticket_id: Ticket ID（如 "<ticket-id>"）
 
     Returns:
         str | None: 版本號（如 "0.16.2"），或 None
@@ -729,7 +734,7 @@ def _cleanup_failed_create(branch_name: str, worktree_path: str) -> None:
 
     前置驗證已確保分支與路徑在 add 前不存在，故兩者若存在皆為本次所建。
     """
-    root = str(get_project_root())
+    root = _main_root()  # 僅作日誌根；git 步驟仍在呼叫端 cwd 執行
     # 逾時被殺的 worktree 會停在 locked initializing，需雙 --force 才能移除
     _run_cleanup_step(root, "worktree remove", worktree_path,
                       ["worktree", "remove", "--force", "--force", worktree_path])
@@ -1143,7 +1148,7 @@ def _merge_build_output(
 
     Args:
         ticket_id: Ticket ID
-        branch_name: 分支名稱（如 "feat/0.1.1-W9-002"）
+        branch_name: 分支名稱（如 "feat/<ticket-id>"）
         ahead: 分支領先 main 的 commit 數
         behind: 分支落後 main 的 commit 數
         warnings: 需要顯示的警告訊息列表（可為空）
@@ -1281,7 +1286,7 @@ def _merge_log_pre_acceptance(label: str, reason: str, tag: str = "合併前驗�
     line = f"[{tag}] target={label} reason={reason}"
     print(line)
     try:
-        log_dir = Path(get_project_root()) / ".claude" / "logs"
+        log_dir = Path(_main_root()) / ".claude" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         with open(log_dir / "worktree-merge.log", "a", encoding="utf-8") as fh:
             fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%S')} {line}\n")
@@ -1371,12 +1376,12 @@ def cmd_merge(
                 return 1
             _merge_log_pre_acceptance(label, skip_gate_reason, tag="略過合併前測試")
         else:
-            pre_merge_check = MergeGate(get_project_root(), runner=gate_runner)
+            pre_merge_check = MergeGate(_main_root(), runner=gate_runner)
             max_retries = GATE_MAX_RETRIES
     cleanup_args = cleanup_suggestion_args(ticket_id, branch)
     if isinstance(pre_merge_check, MergeGate):
         return _merge_through_gate(pre_merge_check, branch_name, cleanup_args, max_retries, merge_message)
-    outcome = merge_branch_cas(branch_name, repo=get_project_root(), pre_merge_check=pre_merge_check,
+    outcome = merge_branch_cas(branch_name, repo=_main_root(), pre_merge_check=pre_merge_check,
                                max_retries=max_retries, message=merge_message)
     return _print_merge_outcome(outcome, cleanup_args)
 
@@ -1400,6 +1405,9 @@ def _compose_merge_message(branch_name: str, message: Optional[str], ticket: Opt
     return None
 
 
+_BATCH_LANDED = "[合併] 分支已由 {via} 寫入 {commit}；本行程不重複同步共用 checkout"
+
+
 def _merge_through_gate(
     gate: MergeGate, branch_name: str, cleanup_args: str, max_retries: Optional[int],
     message: Optional[str] = None,
@@ -1409,12 +1417,12 @@ def _merge_through_gate(
     名額未取得（預估拒絕、等待逾時、訊號）是預期內結果：說明行已由名額閘門輸出，這裡只回傳
     其結束碼（拒絕／逾時為 125）；其餘例外記一行「中止」後原樣再拋，保留 traceback。
     """
-    root = get_project_root()
+    root = _main_root()
     ok, base_head = _git_out(["rev-parse", DEFAULT_BASE_BRANCH], root)
     base_head = base_head if ok else "未知"
 
     def record(phase: str, commit: str, result: Optional[str] = None) -> None:
-        emit_gate_line(root, gate_line(phase, DEFAULT_BASE_BRANCH, branch_name, commit, result))
+        emit_gate_line(root, gate_line(phase, DEFAULT_BASE_BRANCH, branch_name, commit, result, gate.batch_id))
 
     record("開始", base_head)
     try:
@@ -1425,10 +1433,20 @@ def _merge_through_gate(
             return 1
         record("預檢", base_head, GATE_PRECHECK_CLEAR)
         outcome = merge_branch_cas(branch_name, repo=root, pre_merge_check=gate, max_retries=max_retries,
-                                   message=message, hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
+                                   message=message, batch=gate.batch_hooks(branch_name, DEFAULT_BASE_BRANCH, message),
+                                   hold=gate.hold(branch_name, DEFAULT_BASE_BRANCH))
     except SlotWaitRefused as refused:
-        record("結束", base_head, GATE_REFUSED if refused.exit_code == 125 else GATE_ABORTED)
-        return refused.exit_code
+        # 等待逾時或被取消時，領導者可能已寫入本票：以「分支是 target 祖先」為準，不回報失敗
+        outcome = gate.landed_outcome(DEFAULT_BASE_BRANCH, require_claim=False)
+        if outcome is None:
+            record("結束", base_head, GATE_REFUSED if refused.exit_code == 125 else GATE_ABORTED)
+            return refused.exit_code
+    except KeyboardInterrupt:
+        landed = gate.landed_outcome(DEFAULT_BASE_BRANCH, require_claim=False)
+        if landed is not None:
+            print(_BATCH_LANDED.format(via=landed.via, commit=landed.commit_sha))
+        record("結束", landed.commit_sha if landed else base_head, GATE_WRITTEN if landed else GATE_ABORTED)
+        raise
     except BaseException:  # 非預期例外與中斷：留一行紀錄後原樣再拋
         record("結束", base_head, GATE_ABORTED)
         raise
@@ -1443,7 +1461,11 @@ def _print_merge_outcome(outcome: MergeOutcome, cleanup_args: str) -> int:
     if not outcome.ok:
         print(MergeMessages.MERGE_FAILED.format(error=outcome.error))
         return 1
-    bad = _verify_three_planes(get_project_root(), outcome.synced, outcome.commit_sha)
+    if outcome.via:  # 他方已寫入並同步共用 checkout：不重複同步與核對
+        print(_BATCH_LANDED.format(via=outcome.via, commit=outcome.commit_sha))
+        print(MergeMessages.MERGE_SUCCESS.format(cleanup_args=cleanup_args))
+        return 0
+    bad = _verify_three_planes(_main_root(),outcome.synced, outcome.commit_sha)
     print(MergeMessages.CAS_RESULT.format(
         commit=outcome.commit_sha, attempts=outcome.attempts, synced=len(outcome.synced), bad=len(bad)))
     for path in outcome.skipped:
@@ -1586,7 +1608,7 @@ def main():
     )
     create_parser.add_argument(
         "ticket_id",
-        help="Ticket ID (例如：0.1.1-W9-002.1)"
+        help="Ticket ID (格式：<version>-W<wave>-<seq>)"
     )
     create_parser.add_argument(
         "--base",
@@ -1618,7 +1640,7 @@ def main():
     merge_parser.add_argument(
         "ticket_id",
         nargs="?",
-        help="Ticket ID (例如：0.1.1-W9-002)；與 --branch 擇一"
+        help="Ticket ID (格式：<version>-W<wave>-<seq>)；與 --branch 擇一"
     )
     merge_parser.add_argument(
         "--branch",

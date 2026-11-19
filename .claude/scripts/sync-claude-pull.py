@@ -25,6 +25,7 @@ Safety net:
 """
 
 import argparse
+import copy
 import filecmp
 import json
 import os
@@ -41,12 +42,16 @@ try:
 except ImportError:
     yaml = None
 
-# 排除分類與 should_exclude 由 SSOT manifest 統一提供（ARCH-020，W1-027）。
+# 排除分類與 should_exclude 由 SSOT manifest 統一提供（ARCH-020）。
 # pull 端的三方合併用 should_exclude 過濾 LOCAL_ONLY / 憑證檔，避免本地 runtime
 # state 被遠端 delta 蓋掉，與 push/status 端共用同一判定避免漂移。
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from lib.sync_exclude_manifest import (  # noqa: E402
+    ALL_TOOL_ARTIFACT_PATTERNS,
     LOCAL_ONLY_PATTERNS,
+    TOOL_ARTIFACT_DIR_SUFFIXES,
+    is_preserved as _is_preserved,  # preserve 判定與 push 共用（目錄項以前綴比對）
+    preserve_touches_dir as _preserve_touches_dir,
     should_exclude_on_pull as should_exclude,  # pull 方向多排除 .github/（發佈通道資產）
     should_exclude_skill,
     _is_skill_path,
@@ -70,6 +75,15 @@ from lib.skill_version_diff import (  # noqa: E402
     report_skill_repo_drift,
 )
 from lib.executable_bits import restore_shebang_exec_bits  # noqa: E402
+# base 與 pin 存在入版控的 sync-base.json，與 push/status 共用同一讀寫入口
+from lib.sync_base_store import (  # noqa: E402
+    BASE_SHA_FIELD,
+    PINNED_VERSION_FIELD,
+    read_sync_base_field,
+    write_sync_base_field,
+)
+from lib.hook_registry import COMMAND_TEMPLATE, merge_dispatch_registry  # noqa: E402
+from lib.project_hook_registry import manifest_commands, sync as project_hook_registry_sync  # noqa: E402
 
 # skill-sync 是零框架依賴的獨立 uv 套件，未安裝為本腳本的 import 路徑；以 sys.path
 # 取用其 public API（與 sync-claude-push.py 對稱）。report_skill_repo_drift 內部
@@ -90,20 +104,32 @@ REPO_URL = "https://github.com/tarrragon/claude.git"
 # shallow clone 取不到 base commit；改用較寬的 300s timeout 容納 full / blob:none clone。
 GIT_CLONE_TIMEOUT_SECONDS = 300
 
+# 全量 overlay 等待確認而中止（SyncAborted.NON_INTERACTIVE）的專屬結束碼。
+# 避開 0（成功）、1（其他中止與使用者回答 N）、2（argparse 參數錯誤）；
+# /sync-pull 判斷表依此碼進入確認步驟，--confirm-overlay 後續相關檢查可沿用。
+EXIT_CONFIRM_REQUIRED = 10
+
+# --confirm-overlay <sha> 接受的最短 SHA 前綴長度（git 預設 short sha 為 7）。
+MIN_BOUND_SHA_LENGTH = 7
+
 # sync-pull 完成後的 hook import 煙霧測試（issue #10 斷裂 4）。
 # py_compile 只檢查語法不執行 import，無法偵測上游 lib 重構 / 新增 dependency
-# 導致的 runtime import 斷裂；本驗證複用 W2-007 產出的 test-hook-imports.sh。
+# 導致的 runtime import 斷裂；本驗證複用 test-hook-imports.sh。
 HOOK_IMPORT_TEST_RELPATH = "scripts/test-hook-imports.sh"
-HOOK_IMPORT_TEST_TIMEOUT_SECONDS = 120
+HOOK_IMPORT_TEST_TIMEOUT_SECONDS = 300
+# post-sync 檢查中「未驗證」的項目名稱；pull 收尾時於 stderr 末段摘要
+_UNVERIFIED_CHECKS: list[str] = []
+# test-hook-imports.sh 在有 hook 無法判定（依賴環境不可用）時印出的摘要行開頭
+HOOK_IMPORT_INCOMPLETE_MARKER = "Hook import check incomplete:"
 
-# 同步狀態檔與 base SHA 欄位（與 status 端 SSOT 一致，W1-025 schema）。
+# 本機同步狀態檔（pending base、自動登記紀錄等）。base 與 pin 不在此檔，
+# 見 lib/sync_base_store.py。
 SYNC_STATE_FILENAME = ".sync-state.json"
-BASE_SHA_FIELD = "last_synced_base_sha"
 
 # 三方合併衝突暫存目錄（M3：local-only，不推送）：SYNC_CONFLICTS_DIR 定義在
 # lib/sync_conflict_residue.py，頂部匯入。
 
-# 版本檔衝突自動採 upstream 的白名單（相對 .claude/ 的路徑，1.0.0-W1-084）。
+# 版本檔衝突自動採 upstream 的白名單（相對 .claude/ 的路徑）。
 # 背景：push 腳本只 bump 遠端 repo 的 VERSION / CHANGELOG.md，本地副本永遠 stale，
 # 屬每次 pull 必重演的系統性衝突，無人工判斷價值。自動採 upstream 時仍寫
 # .sync-conflicts/ 對照副本（含衝突標記），保留人工事後檢視的依據。
@@ -113,6 +139,8 @@ GIT_HTTP_LOW_SPEED_TIME_SECONDS = "30"
 
 # Changed files display limit
 MAX_CHANGED_FILES_DISPLAY = 3
+# cleanup_stale_files 為變空的目錄加在 removed 條目的字尾；對帳端據此分流（不計入檔案數）
+EMPTY_DIR_SUFFIX = "/ (empty dir)"
 
 # 大檔案比對閾值（超過此大小只比 size，不做全量內容比對）
 _LARGE_FILE_THRESHOLD = 1_048_576  # 1MB
@@ -121,20 +149,24 @@ _LARGE_FILE_THRESHOLD = 1_048_576  # 1MB
 
 # 本地專有：只存在於本地，同步時不刪除也不覆蓋
 #
-# 名稱集改由 manifest 的 LOCAL_ONLY_PATTERNS 推導（0.2.1-W3-240），不再本檔獨立
+# 名稱集改由 manifest 的 LOCAL_ONLY_PATTERNS 推導，不再本檔獨立
 # 維護第二份清單——原 SKIP_DURING_SYNC（O(1) 名稱早退，效能層）與 should_exclude
 # 消費的 LOCAL_ONLY_PATTERNS（完整路徑比對，正確性層）為雙 SOT，曾漂移 6 項
 # （.sync-conflicts / .version-release.yaml / TASK_AVOIDANCE_FIX_MODE /
-# dispatch-active.lock / scheduled_tasks.lock / sync-skills.yaml，0.2.1-W3-152）。
+# dispatch-active.lock / scheduled_tasks.lock / sync-skills.yaml）。
 # 推導後兩者結構上不可能再漂移；LOCAL_ONLY_PATTERNS 本身即名稱集，故 SKIP_DURING_SYNC
 # 仍保有 O(1) 名稱早退特性，未退化為逐項 should_exclude 路徑比對。
 # 分類定義（A - Runtime state / B - Local-only settings / C - Session-bound log）
 # 見 .claude/lib/sync_exclude_manifest.py 與 .claude/references/sync-exclusion-guide.md。
 SKIP_DURING_SYNC = REMOTE_ONLY | LOCAL_ONLY_PATTERNS
 
-# Q（0.19.1-W1-021）：備份 .claude 時排除的工具產物，避免備份 bloat / 變慢
-# / 遇 broken symlink 拋例外。主同步本身已排除這些，備份須一致。
-BACKUP_IGNORE_PATTERNS = ("__pycache__", ".pytest_cache", ".venv")
+# Q：備份 .claude 時排除的工具產物，避免備份 bloat / 變慢
+# / 遇 broken symlink 拋例外。由 manifest 的工具產物類別推導，不在本檔另列名單
+# （原為獨立宣告的 3 個名稱，manifest 新增 .ruff_cache 等之後即漂移）。
+# 只取工具產物、不取 LOCAL_ONLY 全集：備份供使用者手動還原，本地狀態必須留在備份內。
+BACKUP_IGNORE_PATTERNS = tuple(sorted(ALL_TOOL_ARTIFACT_PATTERNS)) + tuple(
+    f"*{suffix}" for suffix in sorted(TOOL_ARTIFACT_DIR_SUFFIXES)
+)
 
 # 同步後還原 executable bit 的判準（首行 shebang 即 +x，非 shebang 不動）在
 # lib/executable_bits.py，與 sync-claude-push.py 共用（tarrragon/claude#21）。
@@ -144,7 +176,11 @@ BACKUP_IGNORE_PATTERNS = ("__pycache__", ".pytest_cache", ".venv")
 
 # extract_skill_versions / format_skill_version_diff / report_skill_repo_drift /
 # SKILL_DRIFT_PREVIEW_LIMIT 已提升至 .claude/lib/skill_version_diff.py，由本檔
-# 頂部 import（0.2.1-W3-356：消除與 sync-claude-push.py 的逐字重複）。
+# 頂部 import（消除與 sync-claude-push.py 的逐字重複）。
+
+
+class PreserveParseError(ValueError):
+    """備用解析器無法可靠解析 sync-preserve.yaml（訊息含原因、位置、處置）。"""
 
 
 def load_preserve_list(claude_dir: Path) -> set[str]:
@@ -153,7 +189,7 @@ def load_preserve_list(claude_dir: Path) -> set[str]:
     若檔案不存在，回傳空集合（合法情境：專案未定義 preserve 清單）。
     若檔案存在但解析失敗，fail-loud（stderr 警告 + raise），不靜默回空集合。
 
-    H（0.19.1-W1-021）：靜默回空集合會關閉全部 preserve 保護，導致本地
+    H：靜默回空集合會關閉全部 preserve 保護，導致本地
     特化檔案（settings.local.json 等）被遠端覆蓋。違反 quality-baseline
     規則 4（禁止靜默失敗），故 malformed preserve 改為 fail-loud。
 
@@ -209,29 +245,30 @@ def load_preserve_list(claude_dir: Path) -> set[str]:
     for line in content.splitlines():
         if "\t" in line:
             # tab 縮排是 YAML 語法錯誤，簡易解析器無法可靠處理
-            sys.stderr.write(
-                f"[sync-pull] preserve 清單含 tab 縮排，簡易解析器無法可靠解析，"
-                f"sync 中止以避免關閉全部 preserve 保護: {preserve_file}\n"
-            )
-            raise ValueError(
-                f"sync-preserve.yaml 含 tab 縮排，無法在無 PyYAML 環境下安全解析："
-                f"{preserve_file}"
+            raise PreserveParseError(
+                f"sync-preserve.yaml 含 tab 縮排，無 PyYAML 時無法可靠解析"
+                f"（位置：{preserve_file}）。處置：改用空白縮排，或安裝 PyYAML 後重跑。"
             )
         stripped = line.strip()
         if stripped.startswith("#") or not stripped:
             continue
-        if stripped == "preserve:":
+        # 鍵行值：去除 YAML 行尾註解（'#' 前須有空白才算註解）與所有空白
+        key_value = re.split(r"\s#", stripped[len("preserve:"):], maxsplit=1)[0]
+        key_value = "".join(key_value.split())
+        is_preserve_key = stripped.startswith("preserve:")
+        if is_preserve_key and key_value == "":
             in_preserve = True
             continue
-        if stripped.startswith("preserve:"):
-            # 'preserve: [...]' 等 inline flow 清單，簡易解析器無法處理
-            sys.stderr.write(
-                f"[sync-pull] preserve 清單使用 inline flow 格式，簡易解析器無法"
-                f"可靠解析，sync 中止以避免關閉全部 preserve 保護: {preserve_file}\n"
-            )
-            raise ValueError(
-                f"sync-preserve.yaml 使用 inline flow 清單，無法在無 PyYAML 環境下"
-                f"安全解析：{preserve_file}"
+        if is_preserve_key and key_value == "[]":
+            # 合法 YAML、語意為空清單（有 PyYAML 時同樣解析為空）
+            in_preserve = False
+            continue
+        if is_preserve_key:
+            # 非空 inline flow 清單，簡易解析器無法處理
+            raise PreserveParseError(
+                f"sync-preserve.yaml 使用非空 inline flow 清單，無 PyYAML 時無法"
+                f"可靠解析（位置：{preserve_file}）。處置：改寫成區塊清單"
+                f"（preserve: 後每行 '- path'），或安裝 PyYAML 後重跑。"
             )
         if in_preserve and stripped.startswith("- "):
             paths.add(stripped[2:].strip())
@@ -384,10 +421,15 @@ def clone_repo(temp_dir: Path) -> None:
 # ============================================================================
 
 
-def read_base_sha(claude_dir: Path) -> str | None:
-    """讀取 .sync-state.json 中的 last_synced_base_sha（W1-025 schema）。
+# sentinel：區分「完全未帶 --bump」與「帶 --bump 但無版本值」（後者的 argparse
+# 值為 None，語意等同 bump 至 latest；兩者不可共用同一個 None）。
+_BUMP_NOT_SET = object()
 
-    無檔案 / 無欄位 / 解析失敗皆回傳 None（向後相容：觸發全量 overlay fallback）。
+
+def read_base_sha(claude_dir: Path) -> str | None:
+    """讀取 last_synced_base_sha（sync-base.json，缺值時回退舊位置 .sync-state.json）。
+
+    無檔案 / 無欄位 / 解析失敗皆回傳 None（觸發全量 overlay fallback）。不寫檔。
 
     參數:
         claude_dir: .claude 目錄路徑
@@ -395,38 +437,19 @@ def read_base_sha(claude_dir: Path) -> str | None:
     傳回:
         str | None: 上次同步的上游 base commit SHA，無則 None
     """
-    state_file = claude_dir / SYNC_STATE_FILENAME
-    if not state_file.exists():
-        return None
-    try:
-        data = json.loads(state_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    sha = data.get(BASE_SHA_FIELD)
-    return sha if isinstance(sha, str) and sha else None
+    return read_sync_base_field(claude_dir, BASE_SHA_FIELD)
 
 
 def write_base_sha(claude_dir: Path, base_sha: str) -> None:
-    """同步成功後，將上游 HEAD SHA 寫入 .sync-state.json 的 last_synced_base_sha。
+    """同步成功後，將上游 HEAD SHA 寫入 sync-base.json 的 last_synced_base_sha。
 
-    保留既有欄位（如 last_push_hash），僅覆寫 base SHA 單一欄位（H1：禁雙欄位）。
+    單一 base 欄位（H1：禁雙欄位）；舊位置的 base、pin 同時遷移到 sync-base.json。
 
     參數:
         claude_dir: .claude 目錄路徑
         base_sha: 本次同步上游 HEAD 的 commit SHA
     """
-    state_file = claude_dir / SYNC_STATE_FILENAME
-    data: dict = {}
-    if state_file.exists():
-        try:
-            data = json.loads(state_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            data = {}
-    data[BASE_SHA_FIELD] = base_sha
-    state_file.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    write_sync_base_field(claude_dir, BASE_SHA_FIELD, base_sha)
 
 
 # 衝突輪的待確認 base（tarrragon/claude#88）。衝突輪不推進 base，改把本輪上游
@@ -461,14 +484,40 @@ def read_pending_base_sha(claude_dir: Path) -> str | None:
     return sha if isinstance(sha, str) and sha else None
 
 
-def write_pending_base_sha(claude_dir: Path, pending_sha: str | None) -> None:
-    """寫入（或以 None 清除）待確認 base，保留其他欄位。"""
+PENDING_DELTA_FILES_FIELD = "pending_delta_files"
+
+
+def write_pending_base_sha(
+    claude_dir: Path, pending_sha: str | None, delta_files: list[str] | None = None
+) -> None:
+    """寫入（或以 None 清除）待確認 base，保留其他欄位。
+
+    delta_files：該輪上游 A/M 檔（相對 .claude/），供 resolve_done 核對本地是否都在。
+    """
     data = _load_sync_state(claude_dir)
     if pending_sha:
         data[PENDING_BASE_SHA_FIELD] = pending_sha
+        if delta_files is not None:
+            data[PENDING_DELTA_FILES_FIELD] = delta_files
     else:
         data.pop(PENDING_BASE_SHA_FIELD, None)
+        data.pop(PENDING_DELTA_FILES_FIELD, None)
     _save_sync_state(claude_dir, data)
+
+
+def _pending_round_delta_files(
+    temp_dir: Path, base_sha: str, preserve: set[str]
+) -> list[str]:
+    """本輪上游 A/M 且屬同步範圍的檔案（相對 .claude/），已排序。"""
+    files = []
+    for repo_rel, status in compute_upstream_delta(temp_dir, base_sha).items():
+        claude_rel = _rel_under_claude(repo_rel)
+        if status not in ("A", "M") or claude_rel is None:
+            continue
+        if should_exclude(Path(claude_rel)) or claude_rel in preserve:
+            continue
+        files.append(claude_rel)
+    return sorted(files)
 
 
 def resolve_done(claude_dir: Path) -> int:
@@ -500,6 +549,17 @@ def resolve_done(claude_dir: Path) -> int:
         for hit in hits:
             sys.stderr.write(f"  - {hit}\n")
         return 1
+    recorded = _load_sync_state(claude_dir).get(PENDING_DELTA_FILES_FIELD) or []
+    missing = [rel for rel in recorded if not (claude_dir / rel).exists()]
+    if missing:
+        # 不新增拒絕條件（刻意刪除亦屬合法）；列出供操作者確認，exit code 不變
+        sys.stderr.write(
+            f"[sync-pull] 警示: 本輪上游 A/M 檔有 {len(missing)} 個本地缺漏"
+            "（可能是解衝突時被丟棄）；推進 base 後這些檔不會再自動帶入，"
+            "需要的話請手動從上游複製:\n"  # i18n-exempt
+        )
+        for rel in missing:
+            sys.stderr.write(f"  - {rel}\n")
     write_base_sha(claude_dir, pending)
     write_pending_base_sha(claude_dir, None)
     print_color(f"已將 pending base 升為 base SHA: {pending[:12]}", "green")  # i18n-exempt
@@ -519,14 +579,13 @@ def warn_pending_base(claude_dir: Path) -> str | None:
     return pending
 
 
-# 版本 pin 欄位（與 .sync-state.json 其他欄位共存）。值為 "latest" 或 "vX.Y.Z"
-# （亦接受無 v 前綴的 X.Y.Z）。未設或 "latest" 時 target = 上游 HEAD（向後相容）。
-PINNED_VERSION_FIELD = "pinned_version"
+# 版本 pin（存於 sync-base.json，欄位名見 lib/sync_base_store.py）。值為 "latest" 或
+# "vX.Y.Z"（亦接受無 v 前綴的 X.Y.Z）。未設或 "latest" 時 target = 上游 HEAD。
 PIN_LATEST = "latest"
 
 
 def read_pinned_version(claude_dir: Path) -> str | None:
-    """讀取 .sync-state.json 中的 pinned_version（pin-aware pull）。
+    """讀取 pinned_version（sync-base.json，缺值時回退舊位置；pin-aware pull）。
 
     無檔案 / 無欄位 / 解析失敗皆回傳 None。None 與 "latest" 在 resolve_target_ref
     皆解析為上游 HEAD（向後相容：未設 pin 的既有 consumer 行為不變）。
@@ -537,15 +596,7 @@ def read_pinned_version(claude_dir: Path) -> str | None:
     傳回:
         str | None: pin 值（"latest" 或版本字串），未設則 None
     """
-    state_file = claude_dir / SYNC_STATE_FILENAME
-    if not state_file.exists():
-        return None
-    try:
-        data = json.loads(state_file.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    value = data.get(PINNED_VERSION_FIELD)
-    return value if isinstance(value, str) and value else None
+    return read_sync_base_field(claude_dir, PINNED_VERSION_FIELD)
 
 
 def resolve_target_ref(temp_dir: Path, pinned_version: str | None) -> str:
@@ -594,29 +645,16 @@ def resolve_target_ref(temp_dir: Path, pinned_version: str | None) -> str:
 
 
 def update_pinned_version(claude_dir: Path, version: str | None) -> None:
-    """--bump：更新 .sync-state.json 的 pinned_version 欄位。
+    """--bump：更新 sync-base.json 的 pinned_version 欄位。
 
     version 為 None 時設為 "latest"（bump 至最新）；否則設為指定版本字串。
-    保留既有欄位（last_synced_base_sha 等），僅覆寫 pinned_version 單一欄位。
-    無 .sync-state.json 時建立新檔。
+    保留既有欄位（last_synced_base_sha），僅覆寫 pinned_version；無檔時建立。
 
     參數:
         claude_dir: .claude 目錄路徑
         version: 目標 pin 版本；None 表示 "latest"
     """
-    state_file = claude_dir / SYNC_STATE_FILENAME
-    data: dict = {}
-    if state_file.exists():
-        try:
-            data = json.loads(state_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            data = {}
-    data[PINNED_VERSION_FIELD] = version if version else PIN_LATEST
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    write_sync_base_field(claude_dir, PINNED_VERSION_FIELD, version if version else PIN_LATEST)
 
 
 def is_base_reachable(temp_dir: Path, base_sha: str) -> bool:
@@ -674,10 +712,45 @@ def compute_upstream_delta(temp_dir: Path, base_sha: str) -> dict[str, str]:
     return delta
 
 
-def _read_upstream_blob(temp_dir: Path, sha: str, rel_path: str) -> bytes | None:
+class BaseBlobReadError(RuntimeError):
+    """base 版本的檔案存在但讀取失敗（與「base 無此路徑」不同）。"""
+
+    def __init__(self, sha: str, rel_path: str, stderr: bytes) -> None:
+        detail = stderr.decode("utf-8", errors="replace").strip()
+        super().__init__(
+            f"無法讀取 base {sha[:12]} 的 {rel_path}（{detail}）；"
+            "處置：確認網路與上游 remote 可達後重跑 sync-pull，"
+            "本次未套用任何變更"
+        )
+
+
+class PendingBaseBlobReadError(BaseBlobReadError):
+    """pending base 版本的檔案讀取失敗；訊息標明是 pending base 並給 pending 專用處置。"""
+
+    def __init__(self, sha: str, rel_path: str, stderr: bytes) -> None:
+        detail = stderr.decode("utf-8", errors="replace").strip()
+        RuntimeError.__init__(
+            self,
+            f"無法讀取 pending base {sha[:12]} 的 {rel_path}（{detail}）；"
+            "處置：網路或 remote 暫時不可達 -> 確認後重跑 sync-pull；"
+            "若 pending base 已不存在於上游（上游改寫歷史）-> 重跑仍會失敗，"
+            "且不要執行 --resolve-done（它會把不存在的 SHA 升為 base）："
+            "先確認同步範圍內已無衝突標記，再從 .claude/.sync-state.json 刪除 "
+            "pending_base_sha 與 pending_delta_files 兩個欄位後重跑，"
+            "本次以舊 base 合併；本次未套用任何變更",  # i18n-exempt
+        )
+
+
+def _read_upstream_blob(
+    temp_dir: Path, sha: str, rel_path: str,
+    error_cls: type[BaseBlobReadError] = BaseBlobReadError,
+) -> bytes | None:
     """讀取上游 repo 在 sha 版本下指定路徑的檔案內容（git show sha:path）。
 
     路徑不存在於該版本時回 None（例如 A 狀態檔在 base 無內容）。
+    路徑存在但讀取失敗（如 partial clone 的 promisor 不可達）時 fail-loud 拋
+    BaseBlobReadError，不與「base 無此檔」混為同值，否則 local==base 會被
+    誤判為 add/add 整檔衝突。
 
     參數:
         temp_dir: 上游 repo clone 路徑
@@ -685,15 +758,27 @@ def _read_upstream_blob(temp_dir: Path, sha: str, rel_path: str) -> bytes | None
         rel_path: 相對 repo root 的路徑
 
     傳回:
-        bytes | None: 檔案內容，不存在回 None
+        bytes | None: 檔案內容，base 確實無此路徑回 None
+
+    拋出:
+        BaseBlobReadError: 無法判定路徑是否存在，或路徑存在但內容讀取失敗
     """
+    tree = subprocess.run(
+        ["git", "ls-tree", sha, "--", rel_path],
+        cwd=str(temp_dir),
+        capture_output=True,
+    )
+    if tree.returncode != 0:
+        raise error_cls(sha, rel_path, tree.stderr)
+    if not tree.stdout.strip():
+        return None
     result = subprocess.run(
         ["git", "show", f"{sha}:{rel_path}"],
         cwd=str(temp_dir),
         capture_output=True,
     )
     if result.returncode != 0:
-        return None
+        raise error_cls(sha, rel_path, result.stderr)
     return result.stdout
 
 
@@ -784,7 +869,7 @@ def three_way_merge_file(
       - conflict True 表示 local 與 upstream 各自修改同一處，需人工處理
 
     合併規則：
-      - 本地已刪除（local_deleted）：保留刪除，回 (None, False)（W10-092 遷移天然保留）
+      - 本地已刪除（local_deleted）：保留刪除，回 (None, False)（遷移天然保留）
       - upstream 新增（base 無、local 無）：直接採 upstream
       - 三方齊備：用 git merge-file 做標準三方合併，衝突回 (..., True)
       - 純二進位差異無法 merge 時退化為衝突標記
@@ -1074,7 +1159,7 @@ def _should_skip_sync_item(item: Path, rel: Path) -> bool:
 
 
 def _make_should_exclude_ignore(src_root: Path, base_prefix: Path):
-    """建構 shutil.copytree 用的 ignore callback，逐層套用 should_exclude（0.2.1-W3-148）。
+    """建構 shutil.copytree 用的 ignore callback，逐層套用 should_exclude。
 
     shutil.copytree 走訪來源樹每一層時會呼叫 ignore(dir_path, names)，
     dir_path 為當前層絕對路徑。本函式在每次呼叫時重建該層相對 .claude 的路徑
@@ -1165,8 +1250,13 @@ def sync_directory(
         if item.is_dir():
             if dest_item.exists():
                 count += sync_directory(item, dest_item, preserve, rel, project_root, skills_config)
+            elif _preserve_touches_dir(str(rel).replace("\\", "/"), preserve):
+                # 整批複製捷徑會繞過逐檔的 preserve 判定，把本地已刪除的本地特化
+                # 帶回來；preserve 清單涉及此目錄時改走逐項迴圈。
+                dest_item.mkdir(parents=True)
+                count += sync_directory(item, dest_item, preserve, rel, project_root, skills_config)
             else:
-                # 0.2.1-W3-148：shutil.copytree 為新目錄樹的整批複製捷徑，
+                # shutil.copytree 為新目錄樹的整批複製捷徑，
                 # shutil.ignore_patterns 只按純名稱比對 SKIP_DURING_SYNC，不會
                 # 逐層呼叫 should_exclude——若新目錄樹內巢狀含 project-integration/
                 # 等 per-project 落地層，會被整批帶入（繞過上方逐項 should_exclude
@@ -1188,15 +1278,15 @@ def sync_directory(
                     f"   跳過復活本地刻意刪除檔: {rel_str}", "yellow"
                 )
                 continue
-            if rel_str in preserve:
+            if _is_preserved(rel_str, preserve):
                 if not dest_item.exists():
-                    print_color(f"   本地特化檔案不存在（可能已刪除）: {rel_str}", "yellow")  # i18n-exempt
+                    print_color(f"   sync-preserve 列入的檔案不存在（可能已刪除）: {rel_str}", "yellow")  # i18n-exempt
                 else:
                     try:
                         if _files_differ(item, dest_item):
-                            print_color(f"   本地特化檔案有遠端更新可用: {rel_str}", "yellow")  # i18n-exempt
+                            print_color(f"   sync-preserve 列入的檔案有遠端更新可用: {rel_str}", "yellow")  # i18n-exempt
                         else:
-                            print_color(f"   保留本地特化檔案: {rel_str}", "green")  # i18n-exempt
+                            print_color(f"   保留 sync-preserve 列入的檔案: {rel_str}", "green")  # i18n-exempt
                     except (FileNotFoundError, OSError):
                         print_color(f"   警告: 無法比對檔案 {rel_str}", "yellow")  # i18n-exempt
                 continue
@@ -1396,11 +1486,11 @@ def cleanup_stale_files(
                 # Remove empty directories after cleaning files
                 if item.exists() and not any(item.iterdir()):
                     item.rmdir()
-                    removed.append(f"{rel}/ (empty dir)")
+                    removed.append(f"{rel}{EMPTY_DIR_SUFFIX}")
             elif rel not in remote_files:
                 rel_str = str(rel).replace("\\", "/")
-                if rel_str in preserve:
-                    print_color(f"   保留本地特化檔案: {rel_str}", "green")
+                if _is_preserved(rel_str, preserve):
+                    print_color(f"   保留 sync-preserve 列入的檔案: {rel_str}", "green")
                     continue
                 if _is_git_tracked(f".claude/{rel_str}", project_root):
                     # 本地累積內容：移至 .sync-conflicts，不靜默刪除
@@ -1451,6 +1541,11 @@ def reconcile_declared_deletions(
           excess = 超出宣稱的檔清單（actual_removed 超過 declared_count 的尾段）；
                    實際 <= 宣稱時為空清單
     """
+    actual_removed_files = [r for r in actual_removed if not r.endswith(EMPTY_DIR_SUFFIX)]
+    empty_dir_count = len(actual_removed) - len(actual_removed_files)
+    if empty_dir_count:
+        print_color(f"   另移除 {empty_dir_count} 個變空的目錄（不計入對帳）", "green")
+    actual_removed = actual_removed_files
     actual_count = len(actual_removed)
     if actual_count == declared_count:
         return True, []
@@ -1528,7 +1623,7 @@ def preview_overlay_changes(
                 _walk(item, rel)
                 continue
             rel_str = str(rel).replace("\\", "/")
-            if rel_str in preserve:
+            if _is_preserved(rel_str, preserve):
                 continue
             if rel not in remote_files:
                 will_delete.append(
@@ -1551,7 +1646,7 @@ def preview_overlay_changes(
                 _walk_upstream(item, rel)
                 continue
             rel_str = str(rel).replace("\\", "/")
-            if rel_str in preserve:
+            if _is_preserved(rel_str, preserve):
                 continue
             local_item = claude_dir / rel
             if not local_item.exists() and _is_intentionally_deleted(
@@ -1615,32 +1710,99 @@ def warn_conflict_residue(claude_dir: Path) -> list[str]:
 # （tarrragon/claude#88：只掃 pull 同步範圍，非同步範圍檔案含標記字樣不計入）。
 
 
-def warn_upstream_deleted_residue(residue: list[str]) -> None:
-    """pull 結尾通報「上游已刪除但本地分歧而保留」之檔（缺口 1，W8-037）。
+def detect_upstream_renames(temp_dir: Path, base_sha: str) -> dict[str, tuple[str, int]]:
+    """base..HEAD 之間上游的改名配對，只供回報使用：{舊路徑: (新路徑, 相似度%)}。
+
+    compute_upstream_delta 刻意以 --no-renames 套用（rename 退化為 D + A），
+    此處另以 -M 取配對，讓「上游已刪除但本地已修改而保留」的提示能標明改名後繼，
+    不影響任何套用行為。路徑為相對 .claude/。git 失敗時回空 dict 並寫 stderr。
+    """
+    try:
+        result = run_git(
+            ["diff", "-M", "--name-status", "--diff-filter=R", "-z", base_sha, "HEAD"],
+            cwd=str(temp_dir),
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        sys.stderr.write(f"[sync-pull] 改名偵測失敗，提示不含改名後繼: {exc}\n")
+        return {}
+    if result.returncode != 0:
+        sys.stderr.write(
+            f"[sync-pull] 改名偵測失敗，提示不含改名後繼: {result.stderr.strip()}\n"
+        )
+        return {}
+    # -z 格式："R<相似度>\0<舊路徑>\0<新路徑>\0"
+    fields = result.stdout.split("\0")
+    renames: dict[str, tuple[str, int]] = {}
+    for i in range(0, len(fields) - 2, 3):
+        status, old, new = fields[i], fields[i + 1], fields[i + 2]
+        if not status.startswith("R"):
+            continue
+        old_rel, new_rel = _rel_under_claude(old), _rel_under_claude(new)
+        if old_rel is None or new_rel is None:
+            continue
+        similarity = int(status[1:]) if status[1:].isdigit() else 0
+        renames[old_rel] = (new_rel, similarity)
+    return renames
+
+
+def _settings_registered_scripts(claude_dir: Path) -> set[str] | None:
+    """settings.json 目前註冊的腳本路徑；讀不到或不是合法 JSON 時回 None。"""
+    try:
+        data = json.loads((claude_dir / "settings.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return _collect_registered_hook_script_paths(data) if isinstance(data, dict) else None
+
+
+def warn_upstream_deleted_residue(
+    residue: list[str],
+    renames: dict[str, tuple[str, int]] | None = None,
+    registered_scripts: set[str] | None = None,
+) -> None:
+    """pull 結尾通報「上游已刪除但本地分歧而保留」之檔（缺口 1）。
 
     背景：上游 delta 標記某框架檔為刪除，但本地已修改過該檔，three_way_merge_file
     保留本地（conflict=False），不進 .sync-conflicts/，pull 原本完全無通報——客製過
     框架檔後被上游刪除的孤兒於是靜默殘留。此處於 pull 結尾把這些案例列出（stdout
     可見），鏡像 warn_conflict_residue 模式。
 
-    措辭刻意非阻擋（W8-037 Premortem R1）：保留的檔可能是應清理的孤兒，也可能是
+    措辭刻意非阻擋（Premortem R1）：保留的檔可能是應清理的孤兒，也可能是
     刻意客製，腳本無法自動判別，故僅提醒不自動刪、不阻擋、不視為失敗。
+
+    改名前身（tarrragon/claude#68）：上游其實是改名移位時，單列路徑讀起來像本地
+    客製。有改名配對的檔逐行標明新路徑與相似度，舊路徑仍在 settings.json 註冊時
+    一併標明（新舊兩支會同時執行）。
 
     參數:
         residue: apply_upstream_delta 回傳的上游已刪保留檔清單（相對 .claude/）
+        renames: detect_upstream_renames 的配對；None 表示未偵測
+        registered_scripts: settings.json 已註冊的腳本路徑；None 表示未知
     """
     if not residue:
         return
+    renames = renames or {}
     print_color(
         f"提醒: {len(residue)} 個檔案上游已刪除，但本地版本已修改而保留:",
         "yellow",
     )
     for rel in sorted(residue):
-        print_color(f"   ! {rel}")
+        line = f"   ! {rel}"
+        if rel in renames:
+            new_rel, similarity = renames[rel]
+            line += f"（上游已改名為 {new_rel}，相似度 {similarity}%）"
+            if registered_scripts and rel in registered_scripts:
+                line += "；settings.json 仍註冊舊路徑，新舊兩支會同時執行"
+        print_color(line)
     print_color(
         "   若為應清理的孤兒請手動移除；若為刻意客製可忽略此提醒。",
         "yellow",
     )
+    if any(rel in renames for rel in residue):
+        print_color(
+            "   標明改名者是上游改名的前身：把本地修改移到新路徑後刪除舊檔；"
+            "settings.json 仍註冊舊路徑時，同時刪除該筆註冊。",
+            "yellow",
+        )
 
 
 def _rel_under_claude(repo_rel_path: str) -> str | None:
@@ -1662,12 +1824,12 @@ def _rel_under_claude(repo_rel_path: str) -> str | None:
 # 背景：上游框架 repo 與本專案各自獨立累積 error-pattern PC 編號。pull 把上游
 # PC 檔帶入時，同一 PC 號可能已被本地不同 pattern 佔用（如上游 PC-165 auq-dispatch
 # vs 本地 PC-165 false-positive-fix-chain）。本 session 手動以 PC-171 重編號處置，
-# 此處將該流程自動化為 import-time 強制層（W1-014 瑕疵 D）。
+# 此處將該流程自動化為 import-time 強制層。
 # ============================================================================
 
 import re as _re  # noqa: E402
 
-# 刻意只認 flat 凍結核心格式（PC-NNN），不拓寬至前綴格式（1.0.0-W1-019.2 決策）。
+# 刻意只認 flat 凍結核心格式（PC-NNN），不拓寬至前綴格式（決策）。
 # 本子系統是 flat 整數撞號解析（int(group(1)) + numbers: dict[int,str] +
 # _next_available_pc_number 整數遞增）。Model 1 前綴格式（PC-V1-001）天生不參與
 # flat 撞號——各專案在自己前綴空間累加，零協調防碰撞。現值 regex 對前綴檔匹配失敗
@@ -1866,8 +2028,13 @@ def apply_upstream_delta(
     base_sha: str,
     preserve: set[str] | None = None,
     skills_config: dict | None = None,
+    pending_base_sha: str | None = None,
 ) -> tuple[int, list[str], list[str]]:
     """以三方合併方式套用上游 delta，原子置換只搬 delta 涉及的檔案（H2）。
+
+    pending_base_sha：衝突輪未解除的待確認 base。base 無此檔、pending base 有此檔
+    且本地已存在時，以 pending blob 作合併基準（該檔是前一輪帶入，本地增補不是
+    add/add 衝突）；不改變 base 不推進的語意。
 
     流程：
       1. compute_upstream_delta 取 .claude/ 範圍的 A/M/D 變更
@@ -1888,12 +2055,12 @@ def apply_upstream_delta(
         tuple[int, list[str], list[str]]: (套用成功檔數, 衝突檔清單,
             上游已刪除但本地分歧而保留之檔清單)
 
-    上游刪除但本地分歧保留（缺口 1，W8-037）：
+    上游刪除但本地分歧保留（缺口 1）：
         上游 delta 標記某檔為 D（刪除），但本地已修改過該檔（local != base），
         three_way_merge_file 回 (local_content, False)——保留本地、不視為衝突、
         不進 .sync-conflicts/。此路徑使「客製過框架檔後被上游刪除」的孤兒靜默殘留，
         pull 無任何通報。此處收集這些案例於第三個回傳值，由呼叫端 pull 結尾通報，
-        鏡像 W1-084 .sync-conflicts 殘留警告模式（非阻擋、非自動刪，僅提醒人工判斷）。
+        鏡像 .sync-conflicts 殘留警告模式（非阻擋、非自動刪，僅提醒人工判斷）。
     """
     if preserve is None:
         preserve = set()
@@ -1907,8 +2074,12 @@ def apply_upstream_delta(
 
     applied = 0
     conflicts: list[str] = []
-    # 上游已刪除但本地分歧而保留（缺口 1，W8-037）：靜默殘留候選清單
+    # 上游已刪除但本地分歧而保留（缺口 1）：靜默殘留候選清單
     upstream_deleted_residue: list[str] = []
+    # 上游 M 但本地缺檔且無法判定刪除/從未取得者，結尾以 stderr 警示
+    unknown_missing: list[str] = []
+    # preserve 命中且上游有 delta 而未套用的檔：(相對路徑, 改動類型)
+    preserve_skipped: list[tuple[str, str]] = []
     # 回滾記錄：(目標路徑, 備份路徑 or None 表原本不存在)
     rollback_log: list[tuple[Path, Path | None]] = []
     # PC 撞號偵測索引（瑕疵 D）：合併前一次性掃描本地 error-patterns。
@@ -1957,8 +2128,13 @@ def apply_upstream_delta(
             # M4：preserve 與 LOCAL_ONLY / 憑證在合併前先過濾，完全跳過判定
             if should_exclude(rel_path):
                 continue
-            if claude_rel in preserve:
-                print_color(f"   保留本地特化檔案（跳過 delta）: {claude_rel}", "green")  # i18n-exempt
+            if _is_preserved(claude_rel, preserve):
+                label = PRESERVE_DELTA_LABELS.get(status, status)
+                print_color(
+                    f"   保留 sync-preserve 列入的檔案（上游有改動未套用，{label}）: {claude_rel}",
+                    "yellow",
+                )
+                preserve_skipped.append((claude_rel, label))
                 continue
             if skills_config is not None:
                 skill_name = _is_skill_path(rel_path)
@@ -1987,7 +2163,29 @@ def apply_upstream_delta(
             local_exists = local_file.exists()
             # 本地刪除：上游有但本地無，且 base 有（曾存在後被本地刪除）
             base_content = _read_upstream_blob(temp_dir, base_sha, repo_rel)
+            if (
+                base_content is None and local_exists and pending_base_sha
+                and status in ("A", "M")
+            ):
+                base_content = _read_upstream_blob(
+                    temp_dir, pending_base_sha, repo_rel,
+                    error_cls=PendingBaseBlobReadError,
+                )
             local_deleted = (not local_exists) and (base_content is not None) and (status != "A")
+            if local_deleted and status == "M":
+                # base 有此檔、本地缺，不一定是本地刪除——base 可能是在本地從未
+                # 取得該檔時推進的。以本地 git 歷史區分。
+                ever_had = _local_ever_had_path(project_root, claude_rel)
+                if ever_had is False:
+                    # 本地從未取得：視為上游新增，帶入
+                    local_deleted = False
+                    base_content = None
+                    print_color(
+                        f"   本地從未取得此檔，自上游帶入: {claude_rel}", "green"
+                    )  # i18n-exempt
+                elif ever_had is None:
+                    # 無法判定：保守沿用刪除語意，但結尾明確警示，不靜默略過
+                    unknown_missing.append(claude_rel)
 
             upstream_file = temp_dir / repo_rel  # 上游 repo root 直接對應 .claude/
             upstream_path = upstream_file if status in ("A", "M") else None
@@ -2007,7 +2205,7 @@ def apply_upstream_delta(
                 conflict_target.parent.mkdir(parents=True, exist_ok=True)
                 conflict_target.write_bytes(merged_bytes)
 
-                # 版本檔系統性衝突自動採 upstream（1.0.0-W1-084）：
+                # 版本檔系統性衝突自動採 upstream：
                 # 本地版本檔必 stale（push 只 bump 遠端），自動以 upstream 覆蓋，
                 # .sync-conflicts/ 仍留對照副本。非版本檔走下方寫回工作區路徑。
                 if (
@@ -2071,7 +2269,7 @@ def apply_upstream_delta(
                     applied += 1
                 continue
 
-            # 缺口 1（W8-037）：上游刪除（status==D → upstream_path is None）但本地
+            # 缺口 1：上游刪除（status==D → upstream_path is None）但本地
             # 分歧而保留——three_way_merge_file 回 (local_content, False)，merged 即
             # 本地原內容。收集為靜默殘留候選，於 pull 結尾通報供人工判斷孤兒/客製。
             # 排除 local_deleted（本地已刪走 merged is None 路徑）與本地未改（已跟刪）。
@@ -2089,7 +2287,51 @@ def apply_upstream_delta(
         sys.stderr.write(f"apply_upstream_delta 失敗已回滾: {exc}\n")
         raise
 
+    if unknown_missing:
+        sys.stderr.write(
+            f"[sync-pull] 警示: {len(unknown_missing)} 個上游已修改的檔案本地缺漏，"
+            "且無法判定是本地刪除或從未取得（非 git 專案或 git 失敗），已略過未帶入；"
+            "需要的話請手動從上游複製:\n"  # i18n-exempt
+        )
+        for rel in unknown_missing:
+            sys.stderr.write(f"  - {rel}\n")
+
+    _report_preserve_skipped(preserve_skipped)
     return applied, conflicts, upstream_deleted_residue
+
+
+PRESERVE_DELTA_LABELS = {"A": "新增", "M": "修改", "D": "刪除"}
+
+
+def _report_preserve_skipped(skipped: list[tuple[str, str]]) -> None:
+    """於 stderr 摘要列出 preserve 清單內、上游有改動而未套用的檔。"""
+    if not skipped:
+        return
+    lines = [f"[WARNING] preserve 清單內 {len(skipped)} 個檔上游有改動，未套用："]
+    lines.extend(f"  - {rel}（{label}）" for rel, label in skipped)
+    lines.append(
+        "處置：檢視上游改動後決定是否仍需 preserve；"
+        "不需要則自 preserve 清單移出後重跑 sync-pull。"
+    )
+    sys.stderr.write("\n".join(lines) + "\n")
+
+
+def _local_ever_had_path(project_root: Path, claude_rel: str) -> bool | None:
+    """本地 git 歷史（HEAD）是否曾含 .claude/<claude_rel>。
+
+    傳回 True＝曾存在（缺檔屬本地刪除）、False＝從未存在（本地從未取得）、
+    None＝無法判定（非 git 專案或 git 失敗）。
+    """
+    cwd = str(project_root)
+    inside = run_git(["rev-parse", "--is-inside-work-tree"], cwd=cwd)
+    if inside.returncode != 0:
+        return None
+    log = run_git(
+        ["log", "-1", "--format=%H", "HEAD", "--", f".claude/{claude_rel}"], cwd=cwd
+    )
+    if log.returncode != 0:
+        return None
+    return bool(log.stdout.strip())
 
 
 def _atomic_write(target: Path, content: bytes, rollback_log: list) -> None:
@@ -2191,9 +2433,9 @@ def detect_changed_packages(project_root: Path) -> None:
 
 
 def backup_claude_dir(claude_dir: Path, dest: Path) -> None:
-    """備份 .claude 目錄至 dest，排除工具產物（Q，0.19.1-W1-021）。
+    """備份 .claude 目錄至 dest，排除工具產物（Q）。
 
-    使用 shutil.ignore_patterns 排除 __pycache__/.pytest_cache/.venv，
+    使用 shutil.ignore_patterns 排除 BACKUP_IGNORE_PATTERNS（manifest 工具產物類別），
     避免備份 bloat / 變慢 / 遇 broken symlink 拋例外。symlinks=False
     沿用主同步行為（複製 symlink 指向的內容而非連結本身）。
 
@@ -2209,7 +2451,216 @@ def backup_claude_dir(claude_dir: Path, dest: Path) -> None:
     )
 
 
-def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
+class SyncAborted(Exception):
+    """全量 overlay 確認未獲同意；main 據此非 0 結束。
+
+    reason：DECLINED（互動終端機回答非 y、EOF 或中斷）或 NON_INTERACTIVE
+    （stdin 非 tty 且未帶 --confirm-overlay，無從詢問）。
+    """
+
+    DECLINED = "declined"
+    NON_INTERACTIVE = "non_interactive"
+    # --confirm-overlay <sha> 綁定的 commit 與本次實際 target 不符（上游在兩次執行間移動）
+    SHA_MISMATCH = "sha_mismatch"
+
+    def __init__(
+        self, backup_dir: Path, reason: str = DECLINED, target_sha: str = ""
+    ) -> None:
+        super().__init__("full overlay 確認未獲同意")
+        self.backup_dir = backup_dir
+        self.reason = reason
+        self.target_sha = target_sha
+
+
+def _sha_matches(bound: str, target_sha: str) -> bool:
+    """綁定的 SHA（完整或至少 7 碼前綴）是否對應 target。"""
+    bound = bound.strip().lower()
+    return len(bound) >= MIN_BOUND_SHA_LENGTH and target_sha.lower().startswith(bound)
+
+
+def _confirm_full_overlay(
+    backup_dir: Path, confirm_overlay: bool | str, target_sha: str = ""
+) -> None:
+    """全量 overlay 套用前的確認（2026-11）。
+
+    確認來源依序：明示旗標 → 互動終端機 y/N。stdin 非 tty 且未帶旗標時無從
+    詢問，直接中止並指出旗標，不把 EOF 當成回答 N（/sync-pull command 以
+    AskUserQuestion 取得確認後帶旗標執行，腳本自己的 input() 在該環境必讀到 EOF）。
+
+    參數:
+        backup_dir: 備份目錄，中止時隨 SyncAborted 帶回 main
+        confirm_overlay: False 未帶；True 為裸 --confirm-overlay（不綁定，相容舊
+            sync-pull.md）；字串為 --confirm-overlay <sha>，須與 target_sha 相符
+        target_sha: 本次實際解析出的上游 commit
+
+    例外:
+        SyncAborted: 未獲確認（reason 為 NON_INTERACTIVE、DECLINED 或 SHA_MISMATCH）
+    """
+    if isinstance(confirm_overlay, str) and not _sha_matches(confirm_overlay, target_sha):
+        raise SyncAborted(backup_dir, reason=SyncAborted.SHA_MISMATCH, target_sha=target_sha)
+    if confirm_overlay:
+        print_color("  已帶 --confirm-overlay，套用全量 overlay。", "green")  # i18n-exempt
+        return
+    if not sys.stdin.isatty():
+        raise SyncAborted(backup_dir, reason=SyncAborted.NON_INTERACTIVE)
+    try:
+        answer = input("  Apply full overlay? [y/N] ").strip().lower()  # i18n-exempt
+    except (EOFError, KeyboardInterrupt):
+        answer = ""
+    if answer != "y":
+        print_color("  Aborted.", "yellow")  # i18n-exempt
+        raise SyncAborted(backup_dir)
+
+
+# 上游腳本較新時的重新執行。上游 repo root 對應本地 .claude/，
+# 故上游腳本相對路徑為 scripts/sync-claude-pull.py。
+UPSTREAM_SCRIPT_REL = "scripts/sync-claude-pull.py"
+SCRIPT_RERUN_GUARD_ENV = "SYNC_CLAUDE_PULL_RERUN_GUARD"
+
+
+class ScriptUpgradeRerun(Exception):
+    """上游腳本較本地新：本輪合併改由上游腳本重新執行，main 據此接手。
+
+    temp_dir 由 _clone_and_backup 補上（建立者才知道），main 在 finally 清理。
+    """
+
+    def __init__(self, upstream_sha: str, backup_dir: Path) -> None:
+        super().__init__("上游 sync-claude-pull.py 較新，改由上游版本重新執行")
+        self.upstream_sha = upstream_sha
+        self.backup_dir = backup_dir
+        self.temp_dir: Path | None = None
+
+
+def _local_script_path() -> Path:
+    """本地正在執行的腳本路徑（獨立函式供測試替換）。"""
+    return Path(__file__).resolve()
+
+
+def _decide_script_upgrade(
+    temp_dir: Path,
+    base_sha: str | None,
+    base_reachable: bool,
+    preserve: set[str],
+    claude_dir: Path,
+) -> tuple[bool, str | None]:
+    """判定本輪是否改由上游腳本執行。傳回 (是否重新執行, 不重新執行時的說明)。
+
+    不重新執行且無說明 = 無需處理（守衛已設、上游無腳本、兩者位元組相同）。
+    """
+    if os.environ.get(SCRIPT_RERUN_GUARD_ENV):
+        return False, None
+    upstream_script = temp_dir / UPSTREAM_SCRIPT_REL
+    if not upstream_script.is_file():
+        return False, None
+    try:
+        local_bytes = _local_script_path().read_bytes()
+        upstream_bytes = upstream_script.read_bytes()
+    except OSError as exc:
+        sys.stderr.write(f"[sync-pull] 無法比對腳本版本，沿用本地腳本: {exc}\n")
+        return False, None
+    if local_bytes == upstream_bytes:
+        return False, None
+    if UPSTREAM_SCRIPT_REL in preserve:
+        return False, "本地腳本列在 sync-preserve（preserve），沿用本地腳本執行本輪合併"
+    if base_reachable and base_sha:
+        base_bytes = _read_upstream_blob(temp_dir, base_sha, UPSTREAM_SCRIPT_REL)
+        if base_bytes is not None and local_bytes != base_bytes:
+            return False, "本地腳本與上次同步版本不同（本地特化），沿用本地腳本執行本輪合併"
+    return _upstream_version_is_newer(temp_dir, claude_dir)
+
+
+_STRICT_SEMVER_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)")
+
+
+def _read_version_tuple(version_file: Path) -> tuple[int, int, int] | None:
+    """嚴格解析 VERSION 檔的 major.minor.patch；讀不到或解析不了回 None。"""
+    try:
+        text = version_file.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    match = _STRICT_SEMVER_RE.match(text)
+    if not match:
+        return None
+    return tuple(int(g) for g in match.groups())  # type: ignore[return-value]
+
+
+def _upstream_version_is_newer(
+    temp_dir: Path, claude_dir: Path
+) -> tuple[bool, str | None]:
+    """只有上游 VERSION 數值高於本地 VERSION 時才允許重新執行。"""
+    upstream_v = _read_version_tuple(temp_dir / "VERSION")
+    local_v = _read_version_tuple(claude_dir / "VERSION")
+    if upstream_v is None or local_v is None:
+        return False, "VERSION 讀不到或無法解析（上游或本地），沿用本地腳本執行本輪合併"
+    if upstream_v > local_v:
+        return True, None
+    up_txt = ".".join(map(str, upstream_v))
+    local_txt = ".".join(map(str, local_v))
+    return False, (
+        f"上游版本 {up_txt} 不高於本地版本 {local_txt}，沿用本地腳本執行本輪合併"
+    )
+
+
+def _rerun_with_upstream_script(exc: ScriptUpgradeRerun, project_root: Path) -> int:
+    """以上游腳本重新執行本輪 pull，傳回子程序結束碼；finally 清理 temp_dir 與備份。"""
+    temp_dir = exc.temp_dir
+    try:
+        print_color(
+            f"上游 sync-claude-pull.py 已更新（上游 {exc.upstream_sha[:12]}），"
+            "改由上游版本執行本輪合併",
+            "green",
+        )
+        env = os.environ.copy()
+        env[SCRIPT_RERUN_GUARD_ENV] = "1"
+        result = subprocess.run(
+            [sys.executable, str(temp_dir / UPSTREAM_SCRIPT_REL), *sys.argv[1:]],
+            cwd=str(project_root),
+            env=env,
+        )
+        return result.returncode
+    except OSError as err:
+        sys.stderr.write(f"[sync-pull] 無法啟動上游腳本: {err}\n")
+        return 1
+    finally:
+        if temp_dir is not None:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        shutil.rmtree(exc.backup_dir, ignore_errors=True)
+
+
+def _write_overlay_list_file(
+    backup_dir: Path,
+    target_sha: str,
+    will_overwrite: list[str],
+    will_delete: list[tuple[str, bool]],
+    will_skip_resurrection: list[str],
+) -> Path:
+    """將全量 overlay dry-run 的完整清單（不截斷）寫入 backup_dir。
+
+    放 backup_dir 而非 .claude/：中止時 .claude/ 須不變，且備份目錄跨兩段式存活。
+    條目行格式與 stdout 一致，另記錄 target SHA 供與確認綁定的 commit 對照。
+
+    Returns:
+        清單檔路徑
+    """
+    lines = [f"target SHA: {target_sha}", ""]
+    lines.append(f"將覆蓋 {len(will_overwrite)} 個本地檔案")
+    lines += [f"~ {w}" for w in will_overwrite]
+    lines.append(f"本地獨有檔 {len(will_delete)} 個")
+    lines += [f"-> conflict: {r}" for r, t in will_delete if t]
+    lines += [f"- delete: {r}" for r, t in will_delete if not t]
+    lines.append(f"跳過復活 {len(will_skip_resurrection)} 個")
+    lines += [f"x skip-resurrection: {r}" for r in will_skip_resurrection]
+    list_file = backup_dir / "overlay-dry-run-list.txt"
+    list_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return list_file
+
+
+def _sync_with_backup(
+    project_root: Path,
+    temp_dir: Path,
+    confirm_overlay: bool | str = False,
+    bump_target: object = _BUMP_NOT_SET,
+) -> Path:
     """執行備份和同步操作。
 
     備份當前配置，然後同步遠端更新至本地。
@@ -2218,6 +2669,9 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     參數:
         project_root: 專案根目錄
         temp_dir: 臨時目錄（含遠端 repo 內容）
+        confirm_overlay: 全量 overlay 是否已由呼叫端明示確認（--confirm-overlay）
+        bump_target: --bump 目標（_BUMP_NOT_SET = 未帶 --bump；None = latest；
+            字串 = 指定版）。tag 解析成功後才寫入 pin，失敗時狀態檔不變。
 
     傳回:
         backup_dir: 備份目錄路徑
@@ -2235,7 +2689,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     # 載入本地特化檔案清單
     preserve = load_preserve_list(claude_dir)
     if preserve:
-        print_color(f"   載入 {len(preserve)} 個本地特化檔案路徑", "green")
+        print_color(f"   載入 {len(preserve)} 個 sync-preserve 路徑", "green")
         for rel_path in sorted(preserve):
             full_path = claude_dir / rel_path
             if not full_path.exists():
@@ -2255,8 +2709,15 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     # pin 特定版時 checkout 該 commit，使後續流程（diff/show/rev-parse HEAD）皆對齊
     # pinned target 而非上游最新 HEAD，收斂壞變更爆炸半徑。latest/未設時 target ==
     # HEAD，不 checkout，行為與現行完全一致（向後相容硬約束）。
-    pinned_version = read_pinned_version(claude_dir)
+    bumping = bump_target is not _BUMP_NOT_SET
+    pinned_version = bump_target if bumping else read_pinned_version(claude_dir)
     target_sha = resolve_target_ref(temp_dir, pinned_version)
+    if bumping:
+        update_pinned_version(claude_dir, pinned_version)
+        print_color(
+            f"已更新 pinned_version 為 {pinned_version or PIN_LATEST}",  # i18n-exempt
+            "green",
+        )
     head_sha = run_git(["rev-parse", "HEAD"], cwd=str(temp_dir)).stdout.strip()
     if target_sha != head_sha:
         print_color(
@@ -2271,7 +2732,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
             )
             sys.exit(1)
 
-    # 快照同步前 skill 版本（W2-001：pull 尾端輸出 skill 版本 diff 摘要）
+    # 快照同步前 skill 版本（pull 尾端輸出 skill 版本 diff 摘要）
     skill_versions_before = extract_skill_versions(claude_dir / "skills")
 
     # 決定同步策略：三方合併（有可達 base）或全量 overlay（向後相容 fallback）
@@ -2281,7 +2742,16 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     )
     use_full_overlay = should_use_full_overlay(claude_dir, base_reachable)
 
-    # W3-165：base SHA 是否可推進的判定旗標。full overlay 路徑無三方合併衝突
+    # 上游腳本較新時改由上游腳本執行本輪（在任何寫入 .claude/ 之前）
+    rerun, script_note = _decide_script_upgrade(
+        temp_dir, base_sha, base_reachable, preserve, claude_dir
+    )
+    if script_note:
+        sys.stderr.write(f"[sync-pull] {script_note}\n")
+    if rerun:
+        raise ScriptUpgradeRerun(target_sha, backup_dir)
+
+    # base SHA 是否可推進的判定旗標。full overlay 路徑無三方合併衝突
     # 概念（其 preserved_conflicts 是本地獨有檔轉存，非上游內容遺失），維持
     # 空清單即代表「無阻擋理由」；三方合併路徑於下方賦予實際衝突清單。
     conflicts: list[str] = []
@@ -2294,6 +2764,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
                 "降級為全量 overlay", "yellow"
             )
         print_color("更新 .claude 資料夾（全量 overlay）...")
+        print_color(f"   [dry-run] 上游 target SHA: {target_sha}", "yellow")  # i18n-exempt
         remote_files = collect_remote_files(temp_dir)
 
         # full overlay 前 dry-run 預覽（讓覆蓋/刪除/跳過復活在發生前可見）
@@ -2324,15 +2795,15 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
             for r in will_skip_resurrection[:50]:
                 print_color(f"     x skip-resurrection: {r}")
 
-        # 0.3.4-W2-006: overlay 有本地變更時需確認才執行
+        if will_overwrite or will_delete or will_skip_resurrection:
+            list_file = _write_overlay_list_file(
+                backup_dir, target_sha, will_overwrite, will_delete, will_skip_resurrection
+            )
+            print_color(f"   [dry-run] 完整清單檔: {list_file}", "yellow")  # i18n-exempt
+
+        # overlay 有本地變更時需確認才執行
         if will_overwrite or will_delete:
-            try:
-                answer = input("  Apply full overlay? [y/N] ").strip().lower()  # i18n-exempt
-            except (EOFError, KeyboardInterrupt):
-                answer = ""
-            if answer != "y":
-                print_color("  Aborted.", "yellow")  # i18n-exempt
-                return backup_dir
+            _confirm_full_overlay(backup_dir, confirm_overlay, target_sha)
 
         file_count = sync_directory(temp_dir, claude_dir, preserve, project_root=project_root, skills_config=skills_config)
         print_color(f"   已更新 {file_count} 個檔案", "green")
@@ -2372,7 +2843,8 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
         # A3 三方合併：只搬 base→HEAD delta 涉及的檔案，保留本地刪除與 runtime state
         print_color("更新 .claude 資料夾（三方合併）...")
         applied, conflicts, upstream_deleted_residue = apply_upstream_delta(
-            project_root, temp_dir, base_sha, preserve, skills_config
+            project_root, temp_dir, base_sha, preserve, skills_config,
+            pending_base_sha=read_pending_base_sha(claude_dir),
         )
         print_color(f"   已套用 {applied} 個 delta 變更", "green")
         if conflicts:
@@ -2393,16 +2865,21 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
             )
         else:
             print_color("   無衝突", "green")
-        # 缺口 1（W8-037）：上游已刪但本地分歧保留之檔，pull 結尾通報（非阻擋）
-        warn_upstream_deleted_residue(upstream_deleted_residue)
+        # 缺口 1：上游已刪但本地分歧保留之檔，pull 結尾通報（非阻擋）
+        if upstream_deleted_residue:
+            warn_upstream_deleted_residue(
+                upstream_deleted_residue,
+                renames=detect_upstream_renames(temp_dir, base_sha),
+                registered_scripts=_settings_registered_scripts(claude_dir),
+            )
 
-    # 全量反向比對：列出上游有但本地無的遺漏檔案（W1-001）
+    # 全量反向比對：列出上游有但本地無的遺漏檔案
     reverse_orphans = compute_reverse_orphan_candidates(
         claude_dir, temp_dir, preserve
     )
     _print_reverse_orphans(claude_dir, reverse_orphans)
 
-    # W3-165（IMP-BAL-002 根本修復第二項）：有未解衝突時不推進 base SHA，
+    # IMP-BAL-002 根本修復第二項：有未解衝突時不推進 base SHA，
     # 對齊 git merge 語意——衝突未解則 HEAD 不動。base 停留舊點使下次 pull
     # 從舊 base 重算 delta：已套用的檔此時本地已等於 upstream，三方合併對它們
     # 為 no-op；未解的衝突會被重新提出，直到人工處理（.sync-conflicts/ 解完後
@@ -2419,7 +2896,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     #
     # base 收斂（tarrragon/claude#88）：衝突輪把本輪上游 HEAD 記為 pending base，
     # 操作者解完衝突後以 --resolve-done 確認無殘留標記再升為 base，不需手改
-    # .sync-state.json。無衝突輪直接推進 base 並清除舊的 pending。
+    # 狀態檔。無衝突輪直接推進 base 並清除舊的 pending。
     head_result = run_git(["rev-parse", "HEAD"], cwd=str(temp_dir))
     upstream_head = head_result.stdout.strip() if head_result.returncode == 0 else ""
     if conflicts:
@@ -2428,7 +2905,11 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
             "yellow",
         )
         if upstream_head:
-            write_pending_base_sha(claude_dir, upstream_head)
+            write_pending_base_sha(
+                claude_dir,
+                upstream_head,
+                _pending_round_delta_files(temp_dir, base_sha, preserve),
+            )
             print_color(  # i18n-exempt
                 f"   已記錄 pending base: {upstream_head[:12]}；解完衝突後執行"  # i18n-exempt
                 " sync-pull --resolve-done 推進 base",  # i18n-exempt
@@ -2448,7 +2929,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
     print_color("檢查套件版本變更...")  # i18n-exempt
     detect_changed_packages(project_root)
 
-    # Skill 版本 diff 摘要（W2-001）
+    # Skill 版本 diff 摘要
     skill_versions_after = extract_skill_versions(claude_dir / "skills")
     skill_diff = format_skill_version_diff(skill_versions_before, skill_versions_after)
     if skill_diff:
@@ -2466,7 +2947,7 @@ def _sync_with_backup(project_root: Path, temp_dir: Path) -> Path:
             )
         print_color(skill_diff, "green")
 
-    # Skill 庫內容漂移檢查（0.2.1-W3-356：與 push 端對稱恢復）。pull 是本地
+    # Skill 庫內容漂移檢查（與 push 端對稱恢復）。pull 是本地
     # skills 被遠端覆寫的時刻，漂移在 pull 之後產生的機率高於 push 之後，
     # 原本只在 push 端呼叫使收尾區塊失去對稱性。比對邏輯與呈現格式與 push 端
     # 共用同一份 .claude/lib/skill_version_diff.py::report_skill_repo_drift。
@@ -2510,10 +2991,7 @@ def _finalize_sync(backup_dir: Path) -> None:
     print_color(f"如需還原，執行: cp -r {backup_dir}/.claude .")
     print()
     print_color("=== 新專案初始化提示 ===")
-    print_color("如果是新專案，請手動建立 CLAUDE.md:")
-    print_color("  1. cp .claude/templates/CLAUDE-template.md CLAUDE.md")
-    print_color("  2. 填入專案特定資訊")
-    print_color("  3. 驗證所有連結有效")
+    print_color("如果是新專案，依 .claude/README.md 〈首次安裝〉進行。")
 
 
 def _validate_environment(project_root: Path) -> None:
@@ -2531,7 +3009,11 @@ def _validate_environment(project_root: Path) -> None:
     check_uncommitted_changes(project_root)
 
 
-def _clone_and_backup(project_root: Path) -> tuple[Path, Path]:
+def _clone_and_backup(
+    project_root: Path,
+    confirm_overlay: bool | str = False,
+    bump_target: object = _BUMP_NOT_SET,
+) -> tuple[Path, Path]:
     """克隆遠端 repo 並執行備份和同步。
 
     建立臨時目錄、克隆遠端 repo、執行備份和同步操作。
@@ -2539,6 +3021,8 @@ def _clone_and_backup(project_root: Path) -> tuple[Path, Path]:
 
     參數:
         project_root: 專案根目錄路徑
+        confirm_overlay: 全量 overlay 是否已明示確認（--confirm-overlay）
+        bump_target: --bump 目標，原樣傳給 _sync_with_backup（見該函式說明）
 
     傳回:
         tuple[Path, Path]: (臨時目錄路徑, 備份目錄路徑)
@@ -2549,7 +3033,13 @@ def _clone_and_backup(project_root: Path) -> tuple[Path, Path]:
     print_color("從獨立 repo 拉取更新...", "yellow")
     temp_dir = Path(tempfile.mkdtemp())
     clone_repo(temp_dir)
-    backup_dir = _sync_with_backup(project_root, temp_dir)
+    try:
+        backup_dir = _sync_with_backup(
+            project_root, temp_dir, confirm_overlay, bump_target
+        )
+    except ScriptUpgradeRerun as rerun:
+        rerun.temp_dir = temp_dir
+        raise
     return temp_dir, backup_dir
 
 
@@ -2612,7 +3102,10 @@ def cleanup_old_backups(retention_days: int = DEFAULT_BACKUP_RETENTION_DAYS,
 
 
 def cleanup_legacy_github_dir(claude_dir: Path, temp_dir: Path) -> list[str]:
-    """清除 2.x 版 pull 帶入 .claude/.github/ 的殘留。
+    """清除與 canonical 相同的 .claude/.github/ 殘留。
+
+    來源依可觀測事實區分：.claude/.git 存在視為直接 clone canonical 帶入；
+    否則為舊版 pull 或手動複製帶入（中性描述）。
 
     與 canonical 根目錄 .github/ 同路徑且內容相同者刪除；內容不同或 canonical 無此檔者
     視為 consumer 自有，保留並輸出提示。傳回被保留的相對路徑清單。
@@ -2621,13 +3114,17 @@ def cleanup_legacy_github_dir(claude_dir: Path, temp_dir: Path) -> list[str]:
     if not legacy.is_dir():
         return []
     canonical = temp_dir / ".github"
+    if (claude_dir / ".git").exists():
+        origin = "直接 clone canonical 帶入"
+    else:
+        origin = "與 canonical 範本相同的殘留（舊版 pull 或手動複製帶入）"
     kept: list[str] = []
     for path in sorted(p for p in legacy.rglob("*") if p.is_file()):
         rel = path.relative_to(legacy)
         ref = canonical / rel
         if ref.is_file() and filecmp.cmp(path, ref, shallow=False):
             path.unlink()
-            print_color(f"   已清除 2.x 帶入的 .claude/.github/{rel.as_posix()}", "green")
+            print_color(f"   已清除 {origin}的 .claude/.github/{rel.as_posix()}", "green")
         else:
             kept.append(rel.as_posix())
             print_color(
@@ -2656,7 +3153,7 @@ def _complete_sync(temp_dir: Path, project_root: Path, backup_dir: Path) -> None
     cleanup_legacy_github_dir(project_root / ".claude", temp_dir)
     shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # 清理超期 backup_dir（W3-076）
+    # 清理超期 backup_dir
     print_color("清理超期備份目錄...")
     removed = cleanup_old_backups(DEFAULT_BACKUP_RETENTION_DAYS)
     if removed > 0:
@@ -2672,7 +3169,7 @@ def compute_orphan_candidates(
     upstream_dir: Path,
     preserve: set[str] | None = None,
 ) -> list[str]:
-    """列出本地 .claude/ 有但上游 HEAD 無之檔（孤兒候選，缺口 2，W8-037.3）。
+    """列出本地 .claude/ 有但上游 HEAD 無之檔（孤兒候選，缺口 2）。
 
     主動孤兒稽核：delta 路徑（base..HEAD）只看上次同步後的窗，看不到早於 base
     即已分歧的孤兒。本函式以「上游 HEAD 全檔集」對比「本地全檔集」做全量差集，
@@ -2682,7 +3179,7 @@ def compute_orphan_candidates(
     symlink；再排除 preserve 清單與 should_exclude（LOCAL_ONLY / 憑證），
     避免本地特化 / runtime state 被誤列為孤兒。
 
-    措辭刻意非阻擋（W8-037 Premortem R1）：列出之檔可能是應清理的孤兒，也可能是
+    措辭刻意非阻擋（Premortem R1）：列出之檔可能是應清理的孤兒，也可能是
     刻意本地特化，腳本無法自動判別，僅供人工判斷，不自動刪、不阻擋。
 
     參數:
@@ -2700,7 +3197,7 @@ def compute_orphan_candidates(
     orphans: list[str] = []
     for rel in local_files - upstream_files:
         rel_str = str(rel).replace("\\", "/")
-        if rel_str in preserve or should_exclude(rel):
+        if _is_preserved(rel_str, preserve) or should_exclude(rel):
             continue
         orphans.append(rel_str)
     return sorted(orphans)
@@ -2742,7 +3239,7 @@ def compute_reverse_orphan_candidates(
     reverse_orphans: list[str] = []
     for rel in upstream_files - local_files:
         rel_str = str(rel).replace("\\", "/")
-        if rel_str in preserve or should_exclude(rel):
+        if _is_preserved(rel_str, preserve) or should_exclude(rel):
             continue
         reverse_orphans.append(rel_str)
     return sorted(reverse_orphans)
@@ -2837,7 +3334,7 @@ def _list_base_files(temp_dir: Path, base_sha: str) -> set[str] | None:
     base_sha 不可達（force-push / GC / partial clone 未抓到）時回傳 None。
     呼叫端必須將 None 視為「無法預測」並明示降級，不可誤用為空集合——
     空集合會使所有正向孤兒被判定為「從未存在於 base」，產生「0 個將被
-    刪除」的假預覽，與本函式要修的缺陷同形（0.2.1-W3-146）。
+    刪除」的假預覽，與本函式要修的缺陷同形。
 
     參數:
         temp_dir: 上游 repo clone 路徑
@@ -2864,7 +3361,7 @@ def classify_orphans_by_base(
 
     三方合併的刪除判定依 base：base 有、上游已刪、本地未改的檔案會套用
     刪除 delta。故曾存在於 base 的正向孤兒會被下次 pull 刪除；從未進入
-    base 者屬本地特化，pull 不會動它（0.2.1-W3-146）。
+    base 者屬本地特化，pull 不會動它。
 
     參數:
         orphans: compute_orphan_candidates 產出的正向孤兒相對路徑清單
@@ -2936,10 +3433,10 @@ def _print_orphan_fallback(orphans: list[str], base_sha: str | None) -> None:
     """base sha 缺失或不可達：明示無法預測刪除，降級為現行單一清單。
 
     禁止靜默降級——不得省略「無法預測」措辭，避免使用者誤讀為「已確認
-    不會被刪除」（0.2.1-W3-146 acceptance 2）。
+    不會被刪除」（驗收條件之一）。
     """
     reason = (
-        "base sha 缺失（無 .sync-state.json 或 last_synced_base_sha 欄位）"  # i18n-exempt
+        "base sha 缺失（sync-base.json 與舊位置 .sync-state.json 都沒有 last_synced_base_sha）"  # i18n-exempt
         if base_sha is None
         else f"base sha {base_sha} 在上游不可達"  # i18n-exempt
     )
@@ -2951,7 +3448,10 @@ def _print_orphan_fallback(orphans: list[str], base_sha: str | None) -> None:
         "!",
     )
     print_color(  # i18n-exempt
-        "   若為應清理的孤兒請手動移除；若為刻意本地特化可忽略此提醒。",
+        "   沒有基準點，無法判定這些檔是否為本地特化。下次拉取走全量 overlay，"
+        "未列入 sync-preserve.yaml 者，已追蹤的會轉存到 .sync-conflicts/，"
+        "未追蹤的會被刪除。自建的檔請先列入 .claude/sync-preserve.yaml 再拉取；"
+        "應清理的孤兒請手動移除。",
         "yellow",
     )
 
@@ -2989,7 +3489,7 @@ def _print_orphan_audit(
     base_sha: str | None,
     base_files: set[str] | None,
 ) -> None:
-    """輸出正向孤兒稽核結果：先依大小寫分類，真孤兒分組措辭不變（0.2.1-W3-146），
+    """輸出正向孤兒稽核結果：先依大小寫分類，真孤兒分組措辭不變，
     大小寫變體改獨立區塊並明述不建議手動移除。
 
     大小寫變體判準與呈現對稱於 _print_reverse_orphans /
@@ -3007,7 +3507,7 @@ def _print_orphan_audit(
             呼叫時必須仍存在於磁碟
         orphans: 正向孤兒相對路徑清單（compute_orphan_candidates 原始輸出，
             尚未依大小寫分類）
-        base_sha: 讀取自 .sync-state.json 的 base commit SHA，缺失為 None
+        base_sha: 讀取自 sync-base.json 的 base commit SHA，缺失為 None
         base_files: base 版本檔案集合，base 缺失或不可達為 None
     """
     if not orphans:
@@ -3072,7 +3572,7 @@ def run_audit() -> None:  # i18n-exempt
     clone 上游 → 計算正向孤兒（本地有上游無）與反向孤兒（上游有本地無）
     → 若 base sha 可達，依三方合併規則將正向孤兒分為「將被刪除」與
     「將保留」；base sha 缺失或不可達則明示無法預測刪除，降級為現行
-    單一清單（0.2.1-W3-146：不可讓空集合靜默通過造成假預覽）。另列出
+    單一清單（不可讓空集合靜默通過造成假預覽）。另列出
     base..HEAD 之間待套用的純大小寫改名（資訊性，見
     detect_pending_case_renames 涵蓋範圍說明）。
     stdout 列出（非阻擋提醒）。不寫入任何本地檔，不更新 base SHA，純唯讀分支。
@@ -3129,7 +3629,7 @@ def verify_hook_imports(project_root: Path) -> int:
     py_compile 只檢查語法不執行 import，consumer sync-pull 後若上游 lib 重構或
     新增 dependency 導致 runtime import 斷裂（ModuleNotFoundError），同步主流程
     全綠卻在 hook 實際觸發時才崩潰。本函式呼叫 scripts/test-hook-imports.sh
-    （W2-007 產出）對所有 hook 做 import-level 煙霧測試。
+    對所有 hook 做 import-level 煙霧測試。
 
     腳本的失敗清單原本輸出至 stdout；本函式於非零 returncode 時將其轉發到
     stderr，使 sync-pull 的失敗訊號集中於 stderr 並回傳非零 exit code。
@@ -3143,6 +3643,7 @@ def verify_hook_imports(project_root: Path) -> int:
     傳回:
         test-hook-imports.sh 的 exit code（0=全通過或 graceful skip，非零=有失敗）
     """
+    _UNVERIFIED_CHECKS.clear()
     script = project_root / ".claude" / HOOK_IMPORT_TEST_RELPATH
     if not script.exists():
         print_color(f"   hook import 驗證腳本不存在，跳過: {script}", "yellow")  # i18n-exempt
@@ -3157,10 +3658,28 @@ def verify_hook_imports(project_root: Path) -> int:
             timeout=HOOK_IMPORT_TEST_TIMEOUT_SECONDS,
         )
     except (subprocess.TimeoutExpired, OSError) as exc:
-        print_color(f"   hook import 煙霧測試無法執行，跳過: {exc}", "yellow")  # i18n-exempt
+        reason = (
+            f"逾時（{HOOK_IMPORT_TEST_TIMEOUT_SECONDS} 秒）"
+            if isinstance(exc, subprocess.TimeoutExpired)
+            else f"無法執行（{exc}）"
+        )
+        # 結束碼維持 0（同步本體已完成），但 stderr 明示未驗證，不與通過同形
+        sys.stderr.write(  # i18n-exempt
+            f"\n[sync-pull] hook import 煙霧測試未驗證：{reason}。"
+            "處置：手動執行 bash .claude/scripts/test-hook-imports.sh\n"
+        )
+        _UNVERIFIED_CHECKS.append("hook import 煙霧測試（逾時或無法執行）")
         return 0
 
     if result.returncode == 0:
+        if HOOK_IMPORT_INCOMPLETE_MARKER in (result.stdout or ""):
+            # 依賴環境建不起來（uv 不存在、離線）的 hook 無法判定：示警但不阻擋，
+            # 且不可印「全數通過」，否則與真的通過同形
+            sys.stderr.write("\n[sync-pull] hook import 煙霧測試未完整：部分 hook 無法判定\n")  # i18n-exempt
+            sys.stderr.write(result.stdout)
+            print_color("   hook import 煙霧測試未完整（見上方無法判定清單），未阻擋同步", "yellow")  # i18n-exempt
+            _UNVERIFIED_CHECKS.append("hook import 煙霧測試（部分 hook 無法判定）")
+            return 0
         print_color("   hook import 煙霧測試全數通過", "green")  # i18n-exempt
         return 0
 
@@ -3174,12 +3693,36 @@ def verify_hook_imports(project_root: Path) -> int:
     return result.returncode
 
 
+def rebuild_local_hooks_from_registry(project_root: Path) -> str:
+    """pull 收尾依專案 hook 清冊重建 settings.local.json 的 hooks 區段；回傳報告。
+
+    失敗不改 pull 結束碼，但寫 stderr 並記日誌（品質基線規則 4）。
+    """
+    import logging
+
+    logger = logging.getLogger("project-hook-registry-sync")
+    try:
+        report = project_hook_registry_sync(project_root, logger)
+    except ImportError as e:
+        report = f"[project-hook-registry-sync] 缺 pyyaml，未重建 settings.local.json：{e}"  # i18n-exempt
+    except Exception as e:  # 重建失敗不中止 pull；錯誤以 stderr 呈現
+        report = f"[project-hook-registry-sync] 重建 settings.local.json 失敗：{e}"  # i18n-exempt
+    if report:
+        # 用 info 而非 warning：pull 未設定 logging handler，warning 會經 lastResort 再印一次 stderr
+        logger.info(report)
+        sys.stderr.write(report + "\n")
+    return report
+
+
 def verify_local_settings_no_hooks(project_root: Path) -> None:
     """Post-sync 告警：settings.local.json 不該含 hook 註冊（framework issue #11）。
 
-    框架 hook 一律註冊於 settings.json；settings.local.json 為 sync 排除檔
-    （local-only），框架版本遷移 / relocate 無法觸及，殘留註冊 relocate 後成幽靈
-    （ARCH-TUNL-001、PC-148 單一註冊來源原則）。本檢查於 sync-pull 完成後告警，
+    註冊分流（與 sync-pull.md〈幽靈註冊處置〉一致）：框架 hook 由上游註冊於
+    settings.json；專案自有 hook 寫進專案 hook 清冊（.claude/project-integration/
+    hook-registry.yaml），由框架產生 settings.local.json 的註冊，清冊產生的條目
+    不告警。其餘 local 註冊：settings.local.json 為 sync 排除檔（local-only），
+    框架版本遷移 / relocate 無法觸及，殘留註冊 relocate 後成幽靈
+    （ARCH-TUNL-001、PC-148）。本檢查於 sync-pull 完成後告警，
     warn-only 不阻擋同步——同步本體已完成，此為後置安全網，對齊 SessionStart
     find_local_hook_registrations 的偵測，補上「sync 端」的告警時機。
 
@@ -3195,14 +3738,32 @@ def verify_local_settings_no_hooks(project_root: Path) -> None:
     hooks = data.get("hooks") if isinstance(data, dict) else None
     if not isinstance(hooks, dict) or not hooks:
         return
-    events = ", ".join(sorted(hooks.keys()))
+    # 專案 hook 清冊產生的條目合法，不示警；與 coverage check 用同一判定（lib.project_hook_registry）。
+    # 清冊無法判定（無 pyyaml、格式錯誤）時回傳 None，照舊對全部條目示警並註明。
+    legitimate = manifest_commands(project_root)
+    unlisted_events = sorted({
+        event
+        for event, groups in hooks.items()
+        if isinstance(groups, list)
+        for group in groups
+        if isinstance(group, dict)
+        for hook in group.get("hooks", [])
+        if isinstance(hook, dict) and hook.get("command") not in (legitimate or set())
+    })
+    if not unlisted_events:
+        return
+    events = ", ".join(unlisted_events)
+    undetermined = "（專案 hook 清冊無法判定，全部列入）" if legitimate is None else ""  # i18n-exempt
     sys.stderr.write(
-        f"\n[sync-pull] 警告：settings.local.json 含 hook 註冊（事件: {events}）。\n"  # i18n-exempt
+        f"\n[sync-pull] 警告：settings.local.json 含不在專案 hook 清冊的 hook 註冊{undetermined}（事件: {events}）。\n"  # i18n-exempt
     )
     advice = (
         "   框架 hook 應只註冊於 settings.json（PC-148 單一註冊來源）；"  # i18n-exempt
         "settings.local.json 為 sync 排除檔，殘留註冊 relocate 後會成幽靈。"  # i18n-exempt
-        "修復：移至 settings.json，或執行 hook-registration-coverage-check.py --fix 清理幽靈。"  # i18n-exempt
+        "處置：幽靈註冊執行 hook-registration-coverage-check.py --fix 清理；"  # i18n-exempt
+        "框架 hook 上游已註冊者刪除 settings.local.json 的重複；"  # i18n-exempt
+        "上游未註冊的框架 hook 回報 framework issue；"  # i18n-exempt
+        "專案自有 hook 寫進 .claude/project-integration/hook-registry.yaml（見 sync-pull.md〈幽靈註冊處置〉）。"  # i18n-exempt
     )
     print_color(advice, "yellow")
 
@@ -3266,6 +3827,15 @@ def _warn_missing_optional_dependency(  # i18n-exempt
         pass  # 日誌檔寫入失敗不可阻斷主流程；stderr 已提供即時訊號
 
 
+def _warn_auto_register_skipped(rel_path: str, exc: Exception) -> None:  # i18n-exempt
+    """auto_register 因讀取/解析失敗略過時，寫 stderr 指出失敗檔與例外摘要。"""
+    summary = str(exc).splitlines()[0] if str(exc) else type(exc).__name__
+    sys.stderr.write(
+        f"[WARNING] auto_register 已略過：{rel_path} 讀取或解析失敗"
+        f"（{type(exc).__name__}: {summary}）\n"
+    )
+
+
 def auto_register_hooks(project_root: Path) -> int:  # i18n-exempt
     """Post-sync: reconcile hook-registry.yaml into settings.json."""
     claude_dir = project_root / ".claude"
@@ -3281,8 +3851,13 @@ def auto_register_hooks(project_root: Path) -> int:  # i18n-exempt
 
     try:
         registry_data = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        _warn_auto_register_skipped(".claude/config/hook-registry.yaml", exc)
+        return 0
+    try:
         settings_data = json.loads(settings_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, yaml.YAMLError):
+    except (OSError, ValueError) as exc:
+        _warn_auto_register_skipped(".claude/settings.json", exc)
         return 0
 
     excluded: set[str] = set()
@@ -3293,9 +3868,29 @@ def auto_register_hooks(project_root: Path) -> int:  # i18n-exempt
         except (OSError, ValueError):
             pass
 
-    registered_scripts = _collect_registered_hook_script_paths(settings_data)
+    listed_scripts = _listed_registry_scripts(registry_data, claude_dir, excluded)
+    dispatch_scripts = _collect_registered_hook_script_paths(
+        merge_dispatch_registry({}, project_root)
+    )
+    recorded = _load_auto_registered(claude_dir)
+
+    # 收回在新增之前做：上游改名時舊註冊先移除，新路徑才不會與舊路徑並存。
+    reclaimed = _reclaim_auto_registered(
+        settings_data, recorded, listed_scripts, dispatch_scripts
+    )
+    kept_recorded = recorded - set(reclaimed)
+
+    # 已登記 = settings.json 的註冊 + hook-dispatch-registry 的成員。
+    # dispatch registry 的 hook 由 hook-dispatcher 以 --group 執行；再以獨立項目寫進
+    # settings.json 時兩者 command 字串不同，Claude Code 不去重，每次事件執行兩次。
+    # 併入只作判斷用，寫回的仍是未併入的 settings_data。registry 讀取失敗時
+    # merge_dispatch_registry 已寫 stderr，此處退回只看 settings.json。
+    registered_scripts = _collect_registered_hook_script_paths(
+        merge_dispatch_registry(copy.deepcopy(settings_data), project_root)
+    )
 
     added = 0
+    added_commands: list[str] = []
 
     for filename, meta in (registry_data.get("hooks") or {}).items():
         if filename in excluded:
@@ -3304,13 +3899,16 @@ def auto_register_hooks(project_root: Path) -> int:  # i18n-exempt
             continue
         if f"hooks/{filename}" in registered_scripts:
             continue
-        cmd = f"$CLAUDE_PROJECT_DIR/.claude/hooks/{filename}"
+        # 一律帶 uv run --quiet 前綴（與 dispatch registry 併入時同一模板）：
+        # 裸路徑由 OS 依可執行位元與 shebang 執行，可執行位遺失即不執行且無訊號
+        cmd = COMMAND_TEMPLATE.format(path=f".claude/hooks/{filename}")
         event = meta.get("event", "")
         matcher = meta.get("matcher", "")
         timeout = meta.get("timeout")
         if not event:
             continue
         _insert_hook_into_settings(settings_data, event, matcher, cmd, timeout)
+        added_commands.append(cmd)
         added += 1
 
     for key, meta in (registry_data.get("skill_hooks") or {}).items():
@@ -3322,25 +3920,200 @@ def auto_register_hooks(project_root: Path) -> int:  # i18n-exempt
             continue
         if f"skills/{skill_name}/hooks/{filename}" in registered_scripts:
             continue
-        cmd = f"$CLAUDE_PROJECT_DIR/.claude/skills/{skill_name}/hooks/{filename}"
+        cmd = COMMAND_TEMPLATE.format(
+            path=f".claude/skills/{skill_name}/hooks/{filename}"
+        )
         event = meta.get("event", "")
         matcher = meta.get("matcher", "")
         timeout = meta.get("timeout")
         if not event:
             continue
         _insert_hook_into_settings(settings_data, event, matcher, cmd, timeout)
+        added_commands.append(cmd)
         added += 1
 
-    if added > 0:
+    if added > 0 or reclaimed:
         settings_path.write_text(
             json.dumps(settings_data, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+    if reclaimed:
+        print_color(
+            f"   收回 {len(reclaimed)} 筆先前自動登記、清冊已不列或已改由他處註冊的 hook:",  # i18n-exempt
+            "yellow",
+        )
+        for cmd in reclaimed:
+            print_color(f"     - {cmd}", "yellow")
+    if added > 0:
         print_color(f"   auto-registered {added} hooks into settings.json", "green")  # i18n-exempt
-    else:
+    elif not reclaimed:
         print_color("   all hooks already registered", "green")  # i18n-exempt
 
+    # 紀錄只留仍在 settings.json 的項目：使用者手動刪掉的 command 不再追蹤
+    present = {
+        hook.get("command", "")
+        for entries in settings_data.get("hooks", {}).values()
+        for entry in entries
+        for hook in entry.get("hooks", [])
+    }
+    final_recorded = (kept_recorded | set(added_commands)) & present
+    _save_auto_registered(claude_dir, final_recorded)
+    _warn_unrecorded_dispatch_duplicates(settings_data, final_recorded, dispatch_scripts)
+
     return added
+
+
+# .sync-state.json 中記錄 auto_register_hooks 寫進 settings.json 的 command 字串。
+# 收回只對這份紀錄內的項目做：沒有紀錄的項目無法證明是本工具產生（可能是上游
+# settings.json 原有或使用者手寫），一律不移除。
+AUTO_REGISTERED_FIELD = "auto_registered_hook_commands"
+
+
+def _load_auto_registered(claude_dir: Path) -> set[str]:
+    """讀取先前 auto_register 寫入的 command 紀錄；無紀錄或格式不符回空集合。"""
+    value = _load_sync_state(claude_dir).get(AUTO_REGISTERED_FIELD)
+    if not isinstance(value, list):
+        return set()
+    return {item for item in value if isinstance(item, str)}
+
+
+def _save_auto_registered(claude_dir: Path, commands: set[str]) -> None:
+    """寫回 command 紀錄，保留 .sync-state.json 其他欄位。
+
+    狀態檔存在但無法解析成 dict 時不寫入：_load_sync_state 對損毀檔回空 dict，
+    此時寫回會把損毀檔整個覆寫，原有欄位（基準點等）無從人工救回。
+    """
+    state_file = claude_dir / SYNC_STATE_FILENAME
+    if state_file.exists():
+        try:
+            parsed = json.loads(state_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            parsed = exc
+        if not isinstance(parsed, dict):
+            sys.stderr.write(
+                f"[sync-pull] {state_file} 無法解析，未寫入 hook 自動登記紀錄"
+                "（保留原檔供人工檢查；本次寫入的註冊下次 pull 不會被收回）\n"
+            )
+            return
+    data = _load_sync_state(claude_dir)
+    data[AUTO_REGISTERED_FIELD] = sorted(commands)
+    _save_sync_state(claude_dir, data)
+
+
+def _listed_registry_scripts(
+    registry_data: dict, claude_dir: Path, excluded: set[str]
+) -> set[str]:
+    """hook-registry.yaml 目前列出、檔案存在、未被排除的腳本路徑（與新增判準同一組條件）。"""
+    scripts: set[str] = set()
+    for filename in (registry_data.get("hooks") or {}):
+        if filename in excluded:
+            continue
+        if (claude_dir / "hooks" / filename).is_file():
+            scripts.add(f"hooks/{filename}")
+    for key in (registry_data.get("skill_hooks") or {}):
+        parts = key.split("/", 1)
+        if len(parts) != 2:
+            continue
+        rel = f"skills/{parts[0]}/hooks/{parts[1]}"
+        if (claude_dir / rel).is_file():
+            scripts.add(rel)
+    return scripts
+
+
+def _script_of(command: str) -> str | None:
+    match = _HOOK_CMD_SCRIPT_RE.search(command)
+    return match.group(1) if match else None
+
+
+def _reclaim_auto_registered(
+    settings_data: dict,
+    recorded: set[str],
+    listed_scripts: set[str],
+    dispatch_scripts: set[str],
+) -> list[str]:
+    """從 settings_data 移除該收回的紀錄項，回傳被移除的 command（就地修改）。
+
+    該收回：腳本已不在清冊（上游改名或移除），或已由 dispatch registry 執行，
+    或 settings.json 另有不在紀錄內的項目註冊同一腳本（再留著會跑兩次）。
+    """
+    if not recorded:
+        return []
+    others: set[str] = set()
+    for entries in settings_data.get("hooks", {}).values():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                command = hook.get("command", "")
+                if command not in recorded:
+                    script = _script_of(command)
+                    if script:
+                        others.add(script)
+
+    def should_reclaim(command: str) -> bool:
+        script = _script_of(command)
+        if script is None:
+            return False
+        return (
+            script not in listed_scripts
+            or script in dispatch_scripts
+            or script in others
+        )
+
+    reclaimed: list[str] = []
+    hooks_section = settings_data.get("hooks", {})
+    for event in list(hooks_section):
+        kept_entries = []
+        for entry in hooks_section[event]:
+            kept_hooks = []
+            for hook in entry.get("hooks", []):
+                command = hook.get("command", "")
+                if command in recorded and should_reclaim(command):
+                    reclaimed.append(command)
+                else:
+                    kept_hooks.append(hook)
+            if kept_hooks or not entry.get("hooks"):
+                entry["hooks"] = kept_hooks
+                kept_entries.append(entry)
+        if kept_entries:
+            hooks_section[event] = kept_entries
+        else:
+            del hooks_section[event]
+    return reclaimed
+
+
+def _warn_unrecorded_dispatch_duplicates(
+    settings_data: dict, recorded: set[str], dispatch_scripts: set[str]
+) -> None:
+    """沒有紀錄、但腳本已由 dispatch registry 執行的 settings.json 項目：只警告不移除。
+
+    典型來源是 dispatch registry 成員在去重修正前被自動登記進 settings.json，
+    當時沒有寫入紀錄，無法證明是本工具產生，故列出移除方法交 consumer 自行處理。
+    """
+    duplicates: list[tuple[str, str, str]] = []
+    for event, entries in settings_data.get("hooks", {}).items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):
+                command = hook.get("command", "")
+                if command in recorded:
+                    continue
+                if _script_of(command) in dispatch_scripts:
+                    duplicates.append((event, entry.get("matcher", ""), command))
+    if not duplicates:
+        return
+    print_color(
+        f"   警告: settings.json 有 {len(duplicates)} 筆 hook 也由 hook-dispatch-registry 執行，"  # i18n-exempt
+        "每次事件會執行兩次（未自動移除：沒有自動登記紀錄，無法確認不是手動加入）:",  # i18n-exempt
+        "yellow",
+    )
+    for event, matcher, command in duplicates:
+        print_color(
+            f"     - .claude/settings.json → hooks.{event}（matcher: {matcher or '（無）'}）: {command}",  # i18n-exempt
+            "yellow",
+        )
+    print_color(
+        "   處置：確認不是刻意保留後，從上列區段的 hooks 陣列刪除該筆 command 物件；"  # i18n-exempt
+        "該 hook 仍會由 hook-dispatcher 執行。",  # i18n-exempt
+        "yellow",
+    )
 
 
 def _insert_hook_into_settings(  # i18n-exempt
@@ -3367,13 +4140,8 @@ def _insert_hook_into_settings(  # i18n-exempt
     target["hooks"].append(hook_entry)
 
 
-# sentinel：區分「完全未帶 --bump」與「帶 --bump 但無版本值」（後者的 argparse
-# 值為 None，語意等同 bump 至 latest；兩者不可共用同一個 None）。
-_BUMP_NOT_SET = object()
-
-
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    """以 argparse 解析命令列參數（0.2.1-W3-164，PC-V1-001 / IMP-BAL-002 同家族防護）。
+    """以 argparse 解析命令列參數（PC-V1-001 / IMP-BAL-002 同家族防護）。
 
     Why：舊版手動 argv 比對（`if "--audit" in argv` / `if "--bump" in argv`）
     對 `--help` 與未知旗標 fail-open，兩者皆會落入正常同步主流程，觸發真實
@@ -3424,6 +4192,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="衝突解完後確認：無殘留標記才把 pending base 升為 base（不 clone、不同步）",  # i18n-exempt
     )
+    parser.add_argument(
+        "--confirm-overlay",
+        nargs="?",
+        const=True,
+        default=False,
+        metavar="SHA",
+        help=(  # i18n-exempt
+            "全量 overlay 已在呼叫端確認，套用時不再以 y/N 詢問（非互動環境必帶）。"
+            "可帶 dry-run 印出的 target SHA：與實際上游 commit 不符即中止（結束碼 10）；"
+            "不帶 SHA 則不綁定"
+        ),
+    )
     args = parser.parse_args(argv)
     if args.resolve_done and (args.audit or args.bump is not _BUMP_NOT_SET):
         parser.error("--resolve-done 不可與 --audit 或 --bump 併用")  # i18n-exempt
@@ -3441,12 +4221,12 @@ def main() -> None:
 
     旗標：
         --audit         唯讀孤兒稽核（列本地有上游無之檔），不執行同步主流程。
-        --bump [版本]   更新 .sync-state.json 的 pinned_version 後重跑同步。
+        --bump [版本]   更新 sync-base.json 的 pinned_version 後重跑同步。
                         無參數 = bump 至 latest；帶版本（如 v1.2.0）= pin 至該版。
         --resolve-done  衝突解完後確認：同步範圍內無殘留標記才把 pending base
                         升為 base；有殘留即拒絕（exit 1）並列出檔名。
 
-    參數解析改用 argparse（0.2.1-W3-164）：--help 印用法後 exit 0、未知旗標
+    參數解析改用 argparse：--help 印用法後 exit 0、未知旗標
     exit 2，兩者皆在解析階段中止，不落入下方同步主流程（PC-V1-001 /
     IMP-BAL-002 同家族防護，詳見 parse_args docstring）。
     """
@@ -3459,17 +4239,8 @@ def main() -> None:
         run_audit()
         return
 
-    # --bump [版本]：先更新 pin，再走正常同步流程套用新 pin 目標。
-    if args.bump is not _BUMP_NOT_SET:
-        target_version: str | None = args.bump
-        bump_root = find_project_root()
-        update_pinned_version(
-            bump_root / ".claude", target_version
-        )
-        print_color(
-            f"已更新 pinned_version 為 {target_version or PIN_LATEST}，重跑同步...",  # i18n-exempt
-            "green",
-        )
+    # --bump [版本]：不在此寫 pin；bump 目標往下傳，環境檢查與 tag 解析成功後
+    # 才由 _sync_with_backup 寫入（失敗時狀態檔不變）。
 
     print_color("開始從獨立 repo 拉取 .claude 更新...")
 
@@ -3482,15 +4253,49 @@ def main() -> None:
     warn_pending_base(project_root / ".claude")
 
     try:
-        temp_dir, backup_dir = _clone_and_backup(project_root)
+        temp_dir, backup_dir = _clone_and_backup(
+            project_root,
+            confirm_overlay=args.confirm_overlay,
+            bump_target=args.bump,
+        )
         _complete_sync(temp_dir, project_root, backup_dir)
     except subprocess.TimeoutExpired:
         print_color(f"git clone 超時（{GIT_CLONE_TIMEOUT_SECONDS} 秒），請檢查網路連線", "red")  # i18n-exempt
+        sys.exit(1)
+    except ScriptUpgradeRerun as rerun:
+        sys.exit(_rerun_with_upstream_script(rerun, project_root))
+    except SyncAborted as aborted:
+        if aborted.reason == SyncAborted.SHA_MISMATCH:
+            print_color("拉取已中止：--confirm-overlay 綁定的上游 commit 與本次實際 target 不符（上游在兩次執行間有新提交）。", "red")  # i18n-exempt
+            print_color(f"新的 target SHA: {aborted.target_sha}；上方為依新 target 重算的 dry-run 清單。", "red")  # i18n-exempt
+            print_color("未更新 .claude、未寫入基準點、未執行模板更新。", "red")  # i18n-exempt
+            print_color("處置：確認新清單後，以 --confirm-overlay <新 SHA> 重跑。", "red")  # i18n-exempt
+        elif aborted.reason == SyncAborted.NON_INTERACTIVE:
+            print_color("拉取已中止：全量 overlay 需要確認，但 stdin 不是互動終端機，無法詢問 y/N。", "red")  # i18n-exempt
+            print_color("未更新 .claude、未寫入基準點、未執行模板更新。", "red")  # i18n-exempt
+            print_color("處置：確認要套用時加上 --confirm-overlay 重跑；或在可互動的終端機重跑並回答 y。", "red")  # i18n-exempt
+        else:
+            print_color("拉取已中止：全量 overlay 未獲確認（回答非 y，或 stdin 為 EOF）。", "red")  # i18n-exempt
+            print_color("未更新 .claude、未寫入基準點、未執行模板更新。", "red")  # i18n-exempt
+            print_color("處置：在可互動的終端機重跑並回答 y，或先建立基準點後再拉取。", "red")  # i18n-exempt
+        print_color(f"備份位置: {aborted.backup_dir}", "yellow")  # i18n-exempt
+        sys.exit(
+            EXIT_CONFIRM_REQUIRED
+            if aborted.reason in (SyncAborted.NON_INTERACTIVE, SyncAborted.SHA_MISMATCH)
+            else 1
+        )
+    except BaseBlobReadError as blob_error:
+        # fail-loud 但不印 traceback：訊息已含處置；變更已於 apply 階段回滾
+        print_color(str(blob_error), "red")
+        sys.stderr.write(f"[sync-pull] 中止：{blob_error}\n")
         sys.exit(1)
 
     # post-sync: hook-registry.yaml -> settings.json auto-registration
     print_color("Hook 自動登記...")  # i18n-exempt
     auto_register_hooks(project_root)
+
+    # post-sync: 專案 hook 清冊 -> settings.local.json（與 SessionStart 共用同一函式）
+    rebuild_local_hooks_from_registry(project_root)
 
     # post-sync 安全網：settings.local.json 不該含 hook（issue #11，warn-only）
     verify_local_settings_no_hooks(project_root)
@@ -3503,6 +4308,17 @@ def main() -> None:
     marker_rc = check_conflict_marker_residue(project_root / ".claude")
     if marker_rc != 0:
         sys.exit(marker_rc)
+
+    report_unverified_summary()
+
+
+def report_unverified_summary() -> None:
+    """post-sync 檢查全部跑完後，若有未驗證項目，於 stderr 末段印一行摘要。"""
+    if not _UNVERIFIED_CHECKS:
+        return
+    sys.stderr.write(  # i18n-exempt
+        "[sync-pull] 未驗證項目：" + "、".join(_UNVERIFIED_CHECKS) + "\n"
+    )
 
 
 def check_conflict_marker_residue(claude_dir: Path) -> int:
@@ -3533,4 +4349,9 @@ def check_conflict_marker_residue(claude_dir: Path) -> int:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except PreserveParseError as preserve_error:
+        # fail-loud 但不印 traceback：可讀訊息 + 非 0 結束碼，避免關閉 preserve 保護
+        sys.stderr.write(f"[sync-pull] 中止：{preserve_error}\n")
+        sys.exit(1)

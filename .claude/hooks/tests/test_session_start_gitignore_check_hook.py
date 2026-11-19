@@ -72,19 +72,20 @@ def test_complete_gitignore_passes(tmp_path):
 # ---------------------------------------------------------------------------
 def test_missing_entry_warns(tmp_path):
     hook = load_hook_module()
-    # 故意缺 .claude/pm-status.json
-    entries = sorted(hook.REQUIRED_GITIGNORE_ENTRIES - {".claude/pm-status.json"})
+    # 故意缺 pm-status.json 的必要條目（巢狀形式 .claude/**/pm-status.json）
+    entry = ".claude/**/pm-status.json"
+    entries = sorted(hook.REQUIRED_GITIGNORE_ENTRIES - {entry})
     _make_gitignore(tmp_path, "\n".join(entries) + "\n")
     with patch.object(hook.subprocess, "run", return_value=_mk_ls_files("")):
         missing, tracked, exists = hook.run_checks(tmp_path, MagicMock())
     assert exists is True
-    assert ".claude/pm-status.json" in missing
+    assert entry in missing
     assert tracked == []
     output = hook.build_hook_output(missing, tracked, exists)
     assert "suppressOutput" in output
     assert output["suppressOutput"] is False
     ctx = output["hookSpecificOutput"]["additionalContext"]
-    assert ".claude/pm-status.json" in ctx
+    assert entry in ctx
     assert "WARNING" in ctx
 
 
@@ -190,7 +191,11 @@ def test_required_derived_from_manifest_sot():
     hook = load_hook_module()
     import sys
     sys.path.insert(0, str(HOOK_PATH.parent.parent / "lib"))
-    from sync_exclude_manifest import GITIGNORE_EXPECTED, NESTED_LOCAL_ONLY_NAMES
+    from sync_exclude_manifest import (
+        GITIGNORE_EXPECTED,
+        GITIGNORE_EXTRA_ENTRIES,
+        NESTED_LOCAL_ONLY_NAMES,
+    )
 
     def entry(n):
         return f".claude/**/{n}" if n in NESTED_LOCAL_ONLY_NAMES else f".claude/{n}"
@@ -200,10 +205,51 @@ def test_required_derived_from_manifest_sot():
         assert entry(name) in hook.REQUIRED_GITIGNORE_ENTRIES, (
             f"manifest 名稱 {name} 未被 derive 進 REQUIRED（雙 SOT 漂移）"
         )
-    # 反向：REQUIRED 中 .claude/ 範疇者必源自 manifest（coverage/ 等非 .claude extra 除外）
+    # 反向：REQUIRED 除 lib 明列的 GITIGNORE_EXTRA_ENTRIES 外，全部源自 manifest
     manifest_derived = {entry(n) for n in GITIGNORE_EXPECTED}
-    claude_scoped = {e for e in hook.REQUIRED_GITIGNORE_ENTRIES if e.startswith(".claude/")}
-    assert claude_scoped == manifest_derived
+    assert hook.REQUIRED_GITIGNORE_ENTRIES - GITIGNORE_EXTRA_ENTRIES == manifest_derived
+
+
+# ---------------------------------------------------------------------------
+# onboard 同源：REQUIRED 即 lib 的 required_gitignore_entries()（project-init onboard 讀同一函式）
+# ---------------------------------------------------------------------------
+def test_required_is_shared_lib_function():
+    import sys
+    hook = load_hook_module()
+    sys.path.insert(0, str(HOOK_PATH.parent.parent / "lib"))
+    from sync_exclude_manifest import required_gitignore_entries
+
+    assert hook.REQUIRED_GITIGNORE_ENTRIES == required_gitignore_entries()
+
+
+def test_missing_local_only_entry_reported_and_user_visible():
+    """正向對照：缺 settings.local.json 條目時報缺，且 systemMessage 列出該條目."""
+    import logging
+    hook = load_hook_module()
+    target = ".claude/**/settings.local.json"
+    entries = set(hook.REQUIRED_GITIGNORE_ENTRIES) - {target}
+
+    missing = hook.check_missing_entries(entries, logging.getLogger("t"))
+    output = hook.build_hook_output(missing, [], True)
+
+    assert missing == [target]
+    assert target in output["systemMessage"]
+    assert target in output["hookSpecificOutput"]["additionalContext"]
+
+
+def test_user_message_lists_tracked_and_missing_gitignore():
+    hook = load_hook_module()
+    output = hook.build_hook_output([".claude/logs"], [".claude/pm-status.json"], False)
+
+    message = output["systemMessage"]
+    assert "沒有 .gitignore" in message
+    assert ".claude/logs" in message
+    assert ".claude/pm-status.json" in message
+
+
+def test_clean_result_has_no_user_message():
+    hook = load_hook_module()
+    assert "systemMessage" not in hook.build_hook_output([], [], True)
 
 
 # ---------------------------------------------------------------------------
@@ -254,9 +300,27 @@ def test_ticket_lock_covered_variants_not_reported(tmp_path):
         assert _lock_missing(hook, sub, line + "\n") == [], line
 
 
-def test_ticket_root_under_claude_not_reported(tmp_path):
+def test_ticket_root_under_claude_reported_when_uncovered(tmp_path):
+    """正向對照：票庫在 .claude/ 下、.gitignore 沒涵蓋 → 報缺。"""
     hook = load_hook_module()
-    assert _lock_missing(hook, tmp_path, "", root_dir=".claude/tickets") == []
+    assert _lock_missing(hook, tmp_path, "", root_dir=".claude/tix") == [
+        ".claude/tix/**/*.md.lock"
+    ]
+
+
+def test_ticket_root_under_claude_covered_by_claude_lock_glob(tmp_path):
+    """反向對照：有 .claude/**/*.lock → 不報。"""
+    hook = load_hook_module()
+    assert _lock_missing(hook, tmp_path, ".claude/**/*.lock\n", root_dir=".claude/tix") == []
+
+
+def test_no_gitignore_with_ticket_root_under_claude_lists_lock(tmp_path):
+    """沒有 .gitignore、票庫在 .claude/ 下 → 缺項含該 lock 項。"""
+    hook = load_hook_module()
+    with patch.object(hook, "resolve_ticket_root_dir", return_value=".claude/tix"):
+        missing, _tracked, exists = hook.run_checks(tmp_path, MagicMock())
+    assert not exists
+    assert ".claude/tix/**/*.md.lock" in missing
 
 
 def test_resolve_ticket_root_dir_failure_falls_back(tmp_path):
@@ -328,3 +392,68 @@ def test_skill_sync_base_root_form_not_accepted_as_covering():
     assert ".claude/**/.skill-sync-base" not in hook.check_missing_entries(
         {".claude/**/.skill-sync-base"}, log
     )
+
+
+# __pycache__：只有根層條目須報缺漏（W1-176）
+def test_pycache_required_entry_is_nested_form():
+    hook = load_hook_module()
+    entries = [e for e in hook.REQUIRED_GITIGNORE_ENTRIES if e.endswith("__pycache__")]
+    assert entries == [".claude/**/__pycache__"]
+
+
+def test_pycache_root_only_entry_reported_missing():
+    import logging
+    hook = load_hook_module()
+    log = logging.getLogger("t")
+    for bad in (".claude/__pycache__", ".claude/__pycache__/"):
+        assert ".claude/**/__pycache__" in hook.check_missing_entries({bad}, log)
+
+
+def test_pycache_nested_or_bare_entry_not_reported():
+    import logging
+    hook = load_hook_module()
+    log = logging.getLogger("t")
+    for good in (".claude/**/__pycache__", "__pycache__/", "__pycache__"):
+        assert ".claude/**/__pycache__" not in hook.check_missing_entries({good}, log)
+
+
+# ---------------------------------------------------------------------------
+# 3.4.0-W1-300.1：宣告檔改進版控，舊 gitignore 條目提示可移除
+# ---------------------------------------------------------------------------
+def _complete_content(hook) -> str:
+    return "\n".join(sorted(hook.REQUIRED_GITIGNORE_ENTRIES)) + "\ndocs/**/*.md.lock\n"
+
+
+def test_retired_entries_reported_as_removable(tmp_path):
+    """正向對照：完整 .gitignore 另含兩條舊規則 → 報出可移除，且不算缺漏。"""
+    hook = load_hook_module()
+    _make_gitignore(
+        tmp_path,
+        _complete_content(hook) + ".claude/**/sync-preserve.yaml\n.claude/**/sync-skills.yaml\n",
+    )
+    log = MagicMock()
+    with patch.object(hook.subprocess, "run", return_value=_mk_ls_files("")):
+        missing, tracked, exists = hook.run_checks(tmp_path, log)
+    retired = hook.check_retired_entries(tmp_path, log)
+    assert missing == [] and tracked == []
+    assert retired == [".claude/**/sync-preserve.yaml", ".claude/**/sync-skills.yaml"]
+
+    output = hook.build_hook_output(missing, tracked, exists, retired)
+    assert output.get("suppressOutput") is False
+    context = output["hookSpecificOutput"]["additionalContext"]
+    assert "`.claude/**/sync-preserve.yaml` 可移除" in context
+    assert "2 條舊規則可移除" in output["systemMessage"]
+
+
+def test_no_retired_entries_stays_silent(tmp_path):
+    """負向對照：完整 .gitignore 無舊規則 → 仍為 suppressOutput。"""
+    hook = load_hook_module()
+    _make_gitignore(tmp_path, _complete_content(hook))
+    retired = hook.check_retired_entries(tmp_path, MagicMock())
+    assert retired == []
+    assert hook.build_hook_output([], [], True, retired) == {"suppressOutput": True}
+
+
+def test_retired_check_without_gitignore_returns_empty(tmp_path):
+    hook = load_hook_module()
+    assert hook.check_retired_entries(tmp_path, MagicMock()) == []

@@ -121,6 +121,21 @@ class TestParseArgsBump:
         assert args.audit is True
 
 
+class TestParseArgsConfirmOverlay:
+    """3.2.1-W1-002：全量 overlay 明示確認旗標。"""
+
+    def test_default_false(self):
+        assert pull.parse_args([]).confirm_overlay is False
+
+    def test_flag_sets_true(self):
+        assert pull.parse_args(["--confirm-overlay"]).confirm_overlay is True
+
+    def test_help_lists_flag(self, capsys):
+        with pytest.raises(SystemExit):
+            pull.parse_args(["--help"])
+        assert "--confirm-overlay" in capsys.readouterr().out
+
+
 class TestParseArgsReturnType:
     def test_returns_namespace(self):
         assert isinstance(pull.parse_args([]), argparse.Namespace)
@@ -136,7 +151,7 @@ class TestMainDoesNotEnterSyncOnHelpOrUnknownFlag:
         """acceptance 1：--help 不應進入 clone（main 應在 parse_args 階段即中止）。"""
         called = {"clone": False}
 
-        def _fake_clone_backup(_root):
+        def _fake_clone_backup(_root, **_kw):
             called["clone"] = True
             raise AssertionError("--help 不應觸發同步主流程")
 
@@ -153,7 +168,7 @@ class TestMainDoesNotEnterSyncOnHelpOrUnknownFlag:
         """acceptance 2：未知旗標不應進入 clone。"""
         called = {"clone": False}
 
-        def _fake_clone_backup(_root):
+        def _fake_clone_backup(_root, **_kw):
             called["clone"] = True
             raise AssertionError("未知旗標不應觸發同步主流程")
 
@@ -168,15 +183,15 @@ class TestMainDoesNotEnterSyncOnHelpOrUnknownFlag:
 
 
 class TestMainBumpRoutesCorrectly:
-    def test_bump_with_version_calls_update_pinned_version(self, monkeypatch, tmp_path):
-        """acceptance 3：--bump <版本> 更新 pin 後仍重跑同步（既有語意）。"""
+    def test_bump_with_version_passes_target_down(self, monkeypatch, tmp_path):
+        """acceptance 3（W1-304）：--bump <版本> 不在 main 寫 pin，目標傳給同步流程。"""
         recorded = {}
 
         def _fake_update_pinned(claude_dir, version):
-            recorded["claude_dir"] = claude_dir
-            recorded["version"] = version
+            recorded["written_in_main"] = True
 
-        def _fake_clone_backup(_root):
+        def _fake_clone_backup(_root, **kw):
+            recorded["version"] = kw.get("bump_target")
             recorded["sync_entered"] = True
             raise pull.subprocess.TimeoutExpired(cmd="git", timeout=1)
 
@@ -191,16 +206,18 @@ class TestMainBumpRoutesCorrectly:
             pull.main()
 
         assert recorded["version"] == "v1.2.0"
+        assert "written_in_main" not in recorded
         assert recorded.get("sync_entered") is True, "--bump 後仍應重跑同步流程（既有語意）"
 
     def test_bump_without_version_bumps_to_latest(self, monkeypatch, tmp_path, capsys):
-        """acceptance 3：--bump 不帶版本 = bump 至 latest。"""
+        """acceptance 3：--bump 不帶版本 = bump 至 latest（target 為 None）。"""
         recorded = {}
 
         def _fake_update_pinned(claude_dir, version):
-            recorded["version"] = version
+            recorded["written_in_main"] = True
 
-        def _fake_clone_backup(_root):
+        def _fake_clone_backup(_root, **kw):
+            recorded["version"] = kw.get("bump_target", "MISSING")
             raise pull.subprocess.TimeoutExpired(cmd="git", timeout=1)
 
         monkeypatch.setattr(pull, "find_project_root", lambda: tmp_path)
@@ -214,8 +231,7 @@ class TestMainBumpRoutesCorrectly:
             pull.main()
 
         assert recorded["version"] is None
-        out = capsys.readouterr().out
-        assert pull.PIN_LATEST in out
+        assert "written_in_main" not in recorded
 
     def test_no_bump_flag_skips_update_pinned_version(self, monkeypatch, tmp_path):
         """回歸：完全未帶 --bump 時不呼叫 update_pinned_version（既有語意不變）。"""
@@ -224,7 +240,7 @@ class TestMainBumpRoutesCorrectly:
         def _fake_update_pinned(claude_dir, version):
             called["update"] = True
 
-        def _fake_clone_backup(_root):
+        def _fake_clone_backup(_root, **_kw):
             raise pull.subprocess.TimeoutExpired(cmd="git", timeout=1)
 
         monkeypatch.setattr(pull, "find_project_root", lambda: tmp_path)
