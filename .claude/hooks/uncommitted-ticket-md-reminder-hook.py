@@ -9,12 +9,12 @@ Uncommitted Ticket MD Reminder Hook - PreToolUse Hook
 
 功能: git commit 前偵測 working tree 內「已修改但未 commit 的 ticket md」，
       以 additionalContext 輸出警告（不阻擋，exit 0），提醒人為將 ticket md 一併納入提交，
-      避免手動 Edit ticket body 後遺失（W8-002 ANA 方案 4：狀態偵測）。
+      避免手動 Edit ticket body 後遺失（採狀態偵測方案）。
 
 觸發時機: Bash 工具執行前（PreToolUse）
 
-設計定位（W8-002 結論）:
-  - auto-commit（W7-001）僅覆蓋 append-log 路徑；PM/agent 手動 Edit ticket md
+設計定位:
+  - ticket md auto-commit 僅覆蓋 append-log 路徑；PM/agent 手動 Edit ticket md
     後 body 停留 working tree，最長暴露窗口至下次 commit。
   - 本 hook 為「狀態偵測」——偵測「ticket md 已修改但未 commit」此危險狀態本身，
     覆蓋所有修改路徑（含手動 Edit），不限 git 還原時刻。
@@ -25,9 +25,13 @@ Uncommitted Ticket MD Reminder Hook - PreToolUse Hook
     CC runtime 當作 hook 失敗觸發 UI hook error，IMP-048）。
   - 內部例外與 debug 走檔案日誌（logger.debug/info）。
 
-行為: 不阻擋（exit 0）；偵測到 modified/staged/untracked ticket md → stderr 警告。
+行為: 不阻擋（exit 0）；只列「這次 commit 不會納入」的 ticket md，以 additionalContext 提醒：
+  - 裸 commit：worktree 欄非空白（暫存後又改、未暫存）與 untracked；已完整暫存者必定進 commit，不列
+  - commit -a／--all：只列 untracked
+  - 同一命令先精確 git add 的路徑視為會被提交
 """
 
+import logging
 import sys
 import re
 from pathlib import Path
@@ -43,8 +47,8 @@ try:
         read_json_from_stdin,
         emit_model_reminder,
     )
-    from lib.git_utils import get_uncommitted_files
-    from lib.git_command_parse import match_git_commit
+    from lib.git_utils import GitStatusError, get_uncommitted_files_strict
+    from lib.git_command_parse import match_git_commit, find_git_invocations
 except ImportError as e:
     # ImportError 不應 exit(1) 阻斷流程；降級為 no-op（fail-open）
     print(f"[Hook Import Warning] {Path(__file__).name}: {e}", file=sys.stderr)
@@ -76,11 +80,17 @@ except ImportError as e:
     def emit_model_reminder(event, text, *, audience="all", input_data=None):
         return None
 
-    def get_uncommitted_files():
+    class GitStatusError(RuntimeError):
+        pass
+
+    def get_uncommitted_files_strict(cwd=None):
         return []
 
     def match_git_commit(command, exclude_amend=True, base_dir=None):
         return False
+
+    def find_git_invocations(command, subcommands, base_dir=None, scan=False):
+        return []
 
 
 # ============================================================================
@@ -111,20 +121,78 @@ def is_ticket_md_path(file_path: str) -> bool:
     return bool(_TICKET_MD_PATTERN.search(file_path))
 
 
-def find_uncommitted_ticket_md() -> list[str]:
-    """
-    回傳 working tree 內所有未 commit 的 ticket md 路徑。
+_COMMIT_ALL_FLAGS = frozenset({"-a", "--all"})
+_SHORT_FLAG_CLUSTER = re.compile(r"^-[A-Za-z]+$")
+_BROAD_ADD_TOKENS = frozenset({"-A", "--all", ".", ":/"})
 
-    涵蓋 modified（已追蹤改動）、staged（已暫存）、untracked（新增）三類，
-    任一未進入 commit 的 ticket md 都屬遺失風險範圍。
+
+def _commit_form(command: str) -> tuple[bool, list[str], bool]:
+    """解析命令中的 commit 與 add：回傳 (commit 帶 -a, 同命令精確 add 的路徑, 是否廣域 add)。"""
+    invocations = find_git_invocations(command, {"commit", "add"}) or []
+    commit_all = False
+    added: list[str] = []
+    broad_add = False
+    for inv in invocations:
+        if inv.subcommand == "commit":
+            commit_all = commit_all or any(
+                t in _COMMIT_ALL_FLAGS or (_SHORT_FLAG_CLUSTER.match(t) and "a" in t[1:])
+                for t in inv.args
+            )
+        elif inv.subcommand == "add":
+            broad_add = broad_add or any(t in _BROAD_ADD_TOKENS for t in inv.args)
+            added.extend(t for t in inv.args if not t.startswith("-"))
+    return commit_all, added, broad_add
+
+
+def _path_added(path: str, added: list[str]) -> bool:
+    for raw in added:
+        candidate = raw[2:] if raw.startswith("./") else raw
+        if candidate and (path == candidate or candidate.endswith("/" + path)):
+            return True
+    return False
+
+
+def _will_be_committed(status: str, path: str, form: tuple[bool, list[str], bool]) -> bool:
+    """依 commit 形態判定該條目是否會進入這次 commit。"""
+    commit_all, added, broad_add = form
+    if broad_add or _path_added(path, added):
+        return True
+    if status == "??":
+        return False
+    if len(status) > 1 and status[1] == " ":
+        # worktree 欄空白：已完整暫存，裸 commit 提交的就是 index
+        return True
+    return commit_all
+
+
+def find_uncommitted_ticket_md(command: str = "") -> list[str]:
     """
+    回傳這次 commit 不會納入的 ticket md 路徑。
+
+    裸 git commit 提交 index：已完整暫存（porcelain 的 worktree 欄空白）的條目必定進
+    commit，不列出；worktree 欄非空白（暫存後又改、未暫存）與 untracked 才有遺失風險。
+    `-a` 會一併提交已追蹤的改動；同一命令先精確 git add 的路徑視為會被提交。
+    """
+    form = _commit_form(command) if command else (False, [], False)
     result = []
-    for file_status in get_uncommitted_files():
+    try:
+        file_statuses = get_uncommitted_files_strict()
+    except GitStatusError as exc:
+        # 失敗與「無未提交檔案」不可同形：三通道留痕後跳過本項提醒，不阻擋 commit
+        message = f"git status 失敗，未提交 ticket md 檢查已跳過（cwd={Path.cwd()}）: {exc}"
+        logging.getLogger("uncommitted-ticket-md-reminder").warning(message)
+        sys.stderr.write(f"[uncommitted-ticket-md-reminder] {message}\n")
+        # 平常提醒走 additionalContext（受眾含模型），跳過訊息同管道
+        emit_model_reminder(
+            "PreToolUse", f"[uncommitted-ticket-md-reminder] {message}"
+        )
+        return []
+    for file_status in file_statuses:
         path = file_status.file_path
         # Renamed/Copied 格式 "old -> new" 取新名比對
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
-        if is_ticket_md_path(path):
+        if is_ticket_md_path(path) and not _will_be_committed(file_status.status, path, form):
             result.append(path)
     return result
 
@@ -165,7 +233,7 @@ def main() -> int:
         logger.debug("跳過: 非 git commit 命令")
         return EXIT_SUCCESS
 
-    ticket_md_paths = find_uncommitted_ticket_md()
+    ticket_md_paths = find_uncommitted_ticket_md(command)
     if not ticket_md_paths:
         logger.debug("無未 commit 的 ticket md，靜默通過")
         return EXIT_SUCCESS
