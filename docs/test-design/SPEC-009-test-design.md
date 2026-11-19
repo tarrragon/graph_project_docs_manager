@@ -407,6 +407,12 @@ FR-06 驗收第 1 條（EVT-CORPUS-001 到達且內容與 M 不同 → 預警）
 
 FR-07 驗收第 1 條「每個帶 `error_source` 的事件在上表寫明分類」由 L-1 把事件集合與規格表綁住，L-4～L-8 逐一驗證分類。驗收第 2 條由 L-9、L-10 涵蓋。v1.2 新增的 `timedOut` 欄位由 L-11、L-12 涵蓋。1.1 的多檔失敗記錄方式由 L-13、L-14 涵蓋，事件集合由 L-15 涵蓋，整批一筆由 L-16、L-17 涵蓋，整批被擋時不記 `writeIssued` 由 L-18 涵蓋；L-13～L-18 的測試檔為 `test/unit/edit/multi_file_write_log_test.dart`。SPEC-009 v1.14 新增的五個事件與「由語意層記錄、下層不重記」由 L-19～L-25 涵蓋，測試檔同 L-1～L-12。
 
+**L-1 讀取規格檔的前提與已知限制**：L-1 執行時會讀 `docs/spec/edit/SPEC-009-edit-write-path.md` 的 FR-07 表，所以只改規格表也會改變 L-1 的結果。
+
+- **前提**：合併閘門的 `flutter` 套件 prefixes 含 `docs/spec/`（`.claude/project-integration/merge-gate.yaml`），經 worktree 合併的規格變更因此會跑 L-1。這個前提由 `test/unit/merge_gate/flutter_docs_prefix_guard_test.dart` 守住。
+- **已知限制**：直接提交到 main 的規格變更不經閘門，L-1 不會跑。main 上的 L-1 紅燈要等到下一個送閘門的分支才會出現，而且由那個與規格無關的分支承擔。
+- **約束**：FR-07 表增減成員時，必須與 `EditLogEvent` 的變更放在同一個分支，經閘門合併，不得直接在 main 提交。「直接提交被測試讀取的規格」是通用缺口，是否擴大到所有讀取 `docs/spec` 的測試，由 `1.1.0-W3-712` 評估。
+
 ### C session 寫入清單與事後追溯（FR-08）
 
 **測試檔**：`test/unit/edit/session_write_list_test.dart`
@@ -750,3 +756,4 @@ FR-03 驗收 #19 由 W-21、W-28；#20 由 W-24；#21 由 W-25；#22 由 W-20 �
 | 0.9 | 2026-11-13 | `1.1.0-W1-111.1` 第一輪審查修正（主控清單第 1～12、20～23 項，追加 N-1～N-3、N-5）：<br>- W-12 依〈`outputs` 本身不是 map〉表改正加入案（含的變體不列入、`written`），新增 `[SPEC-1]` 變體；新增 W-3b（SPEC 缺 `spec_refs`，FR-03 #18）；W-6 改用 `prop_design_only`；W-4 補其他子鍵不變；W-21(d) 改注入後處理的檔；W-28 注入位置對齊 FR-03 步驟、計入無注入那次、補暫存檔斷言；IT-E7-1 正向對照補 `source_proposal: null`。<br>- M 群組前言分開寫移除與加入的設定；M-11 補後置空白；M-12 補呼叫端正向對照，與 C-11 一起移到畫面狀態層；M-12b 補純量樣本。<br>- E-DEP-2 補 history 樣本；L-15 刪數字括號；新增 L-17（多檔整批各一筆 `writeIssued`、`writeAccepted`）、V-3b（封閉型別含 `partiallyWritten`）。<br>- FR-08 驗收編號對齊 v1.12 條目順序；§4.4 改引用 domain-map §3，不寫條數；§6 第 7 項不留事件數字；§1.6.1 用途欄對齊案例。 |
 | 0.10 | 2026-11-13 | `1.1.0-W1-111.1` 第二輪審查修正：V-3b 改為引用 FR-05 `WriteResult` 表（規則 10）；W-21(d) 注入點改為 W-20 序列中步驟 4 較晚的檔，不寫死檔名；§1.4 多檔注入補步驟 1 讀取與還原時的 fsync；§1.6.1 用途欄補齊；§5 將 M-12、C-11 改歸畫面狀態層；M-12b 純量樣本的正向對照寫明 M-5；L-17 對齊 FR-07（`writeIssued` 只記正向檔、`writeAccepted` 路徑為清單），新增 L-18（整批被擋時無 `writeIssued`、只有 `writeBlocked`）。 |
 | 0.11 | 2026-11-14 | `1.0.0-W3-553.12`，對應 SPEC-009 v1.14（主控依規格內部一致性定案）：<br>- L-1 判準不改（集合相等），寫明比對對象是 FR-07 表中未標（1.1）的成員，1.1 build 由 L-15 接手；理由是 FR-07 表含 1.1 列，1.0 build 不含這些值。<br>- L-6 補操作 enum 與 rename 前重讀、rename 兩步的分界；L-8 補「沒有驗證器層的另一筆失敗事件」。<br>- 新增 L-19～L-25：`editModeDetermined`（含 `rev-parse` 失敗不另記）、`baselineMeasured`、baseline 失敗不在寫入後重記（守衛，附正向對照）、`baselineNotReady` 不帶 `error_source`、`baselineFailed` 與 `validationJobFailed`、`tempDeleteFailed`、`snapshotFailed` 三擇一的邊界。 |
+| 0.12 | 2026-11-19 | `1.0.0-W3-553.12` Phase 4：L 組涵蓋說明後補〈L-1 讀取規格檔的前提與已知限制〉，把主控 2026-11-14 施行的暫行規則（FR-07 表增減須與 `EditLogEvent` 同分支經閘門）固化於 L-1 的測試設計；不改任何案例。 |
