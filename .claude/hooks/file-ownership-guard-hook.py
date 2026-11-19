@@ -29,7 +29,7 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # .claude/ — for `from lib.* import ...`
 
-from lib.hook_base import get_project_root  # noqa: E402
+from lib.hook_base import get_project_root, get_shared_state_root  # noqa: E402
 from lib.hook_logging import setup_hook_logging, run_hook_safely  # noqa: E402
 from lib.hook_io import read_json_from_stdin, emit_hook_output
 from lib.hook_ticket import (
@@ -38,7 +38,7 @@ from lib.hook_ticket import (
     extract_where_files_from_frontmatter,
     scan_ticket_files_by_version,
 )
-from lib.ticket_id_pattern import MATCH_GROUPED_STR
+from lib.ticket_id_pattern import MATCH_GROUPED_STR, extract_ticket_id_anchored
 
 # 讀寫意圖標記剝離改 import ticket_system 共用實作（比照
 # parallel-suggestion-hook.py 的落地方式）：PEP 723 單檔限制的是依賴解析，
@@ -86,8 +86,9 @@ CONFLICT_TYPE_UNRELATED = "unrelated"
 CONFLICT_TYPE_PARENT = "parent"
 CONFLICT_TYPE_NONE = "none"
 
-# 活躍狀態
-ACTIVE_STATUSES = {"pending", "in_progress"}
+# 計入衝突的狀態：只有正在改的票（in_progress）才會和派發目標搶同一批檔案；
+# pending 的票還沒有人在改，派發時不算衝突。
+ACTIVE_STATUSES = {"in_progress"}
 
 
 # ============================================================================
@@ -265,11 +266,11 @@ def _ensure_file_list(where_value: object) -> list[str]:
 
 
 def extract_ticket_id(input_data: dict) -> Optional[str]:
-    """從派發指令中提取 Ticket ID
+    """從派發 prompt 首行提取 Ticket ID；非 ticket 派發（首行無 ID）回 None
 
-    支援多種格式：
-    - toolInput.target_id: "0.1.2-W2-003"
-    - toolInput.ticket_id: "0.1.2-W2-003"
+    Agent 工具輸入沒有承載 Ticket ID 的欄位（只有 prompt、description、
+    subagent_type 等），派發目標只能從 prompt 首行解析。解析規則與派發身份
+    綁定一致：首行同時含多個票號時優先採『Ticket』標籤錨定的 ID。
 
     Args:
         input_data: PreToolUse Hook 的 stdin JSON
@@ -284,13 +285,11 @@ def extract_ticket_id(input_data: dict) -> Optional[str]:
     if not isinstance(tool_input, dict):
         return None
 
-    # 嘗試多個可能的欄位名稱
-    ticket_id = (
-        tool_input.get("target_id")
-        or tool_input.get("ticket_id")
-        or tool_input.get("id")
-    )
+    prompt = tool_input.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        return None
 
+    ticket_id = extract_ticket_id_anchored(prompt.strip().splitlines()[0])
     if not ticket_id:
         return None
 
@@ -327,7 +326,7 @@ def _extract_version_wave(ticket_id: str) -> tuple[str, int] | tuple[None, None]
     """從 Ticket ID 提取版本和 Wave
 
     Args:
-        ticket_id: Ticket ID 字串（如 "0.1.2-W2-003"）
+        ticket_id: Ticket ID 字串（格式 "<版本>-W<波次>-<序號>"）
 
     Returns:
         tuple: (version, wave) 或 (None, None)
@@ -476,7 +475,7 @@ def get_active_tickets(
         logger.warning("無法從 %s 提取版本和 Wave", target_ticket_id)
         return []
 
-    # 掃描 Ticket 檔案清單（W17-188 修復：改用共用 helper 支援雙結構）
+    # 掃描 Ticket 檔案清單（改用共用 helper 支援雙結構）
     ticket_files = scan_ticket_files_by_version(project_root, target_version, logger)
     if not ticket_files:
         logger.debug("Ticket 目錄不存在或無 ticket 檔案: v%s", target_version)
@@ -878,7 +877,7 @@ def main() -> int:
 
         logger.info("檢查 Ticket %s 的檔案所有權衝突", target_ticket_id)
 
-        project_root = get_project_root()
+        project_root = get_shared_state_root(get_project_root())
         conflicts = find_file_ownership_conflicts(
             target_ticket_id, project_root, logger
         )

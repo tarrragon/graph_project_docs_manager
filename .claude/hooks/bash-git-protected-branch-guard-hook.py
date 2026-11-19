@@ -6,8 +6,8 @@
 """
 Bash Git Protected-Branch Guard Hook - PreToolUse Hook
 
-功能: 封閉 branch-verify-hook 的 Bash 層繞道路徑（0.2.1-W3-151，PC-V1-012 實例），
-並封閉 0.2.1-W3-154 發現的 add-and-commit 串接繞道。
+功能: 封閉 branch-verify-hook 的 Bash 層繞道路徑（PC-V1-012 實例），
+並封閉後續發現的 add-and-commit 串接繞道。
 branch-verify-hook 只註冊於 Edit/Write matcher，以 file_path 判斷保護分支；
 Bash `git commit` 可達成同一後果（外部 repo 保護分支被寫入）卻不受檢查。
 本 hook 專責 Bash 路徑，與 branch-verify-hook（Edit/Write 路徑）分離。
@@ -17,7 +17,7 @@ Matcher: Bash
 Decision: "allow"（無輸出，沿用 bash-edit-guard-hook 慣例）| "deny"
 
 ============================================================
-方案取捨（0.2.1-W3-151 ticket Solution 摘要，完整記錄見 ticket md）
+方案取捨（原票 Solution 摘要，完整記錄見該 ticket md）
 ============================================================
 選定：另建專責 Bash 守衛（而非擴充 branch-verify-hook 加 Bash matcher）。
 
@@ -32,7 +32,7 @@ Decision: "allow"（無輸出，沿用 bash-edit-guard-hook 慣例）| "deny"
    GENERIC_EXEMPT_EXACT（SSOT）共用，而非各自維護一份清單。
 
 ============================================================
-add-and-commit 串接繞道與修復設計（0.2.1-W3-154）
+add-and-commit 串接繞道與修復設計
 ============================================================
 根因：PreToolUse 評估時機在 Bash 命令「執行前」。若命令為
 `git add X && git commit`，hook 評估當下 `add` 尚未真正跑，`git diff --cached`
@@ -57,9 +57,9 @@ commit 完成後會納入的檔案集合，三個來源取聯集：
 三者皆可列舉且聯集為空集合 → 真正 no-op，放行（不誤擋，acceptance 3）。
 
 ============================================================
--C 目標 shell 展開語法繞道與修復設計（0.2.1-W3-156）
+-C 目標 shell 展開語法繞道與修復設計
 ============================================================
-根因：0.2.1-W3-154 落地後 PM 以 scratchpad 臨時 repo 實測，同一違規情境
+根因：串接繞道修復落地後 PM 以 scratchpad 臨時 repo 實測，同一違規情境
 （外部 repo 在保護分支、add 非豁免檔後 commit）依 `-C` 目標的字面形式產生
 相反結果——目標為字面絕對路徑正確 deny；目標為 shell 變數（如
 `git -C $T add x && git -C $T commit`）時靜默放行。成因：PreToolUse 時機看到
@@ -77,7 +77,7 @@ pathspec 無法靜態列舉時採 fail-closed 的原則矛盾：兩種「不確�
    子行程，見下方殘留限制）。
 2. **純粹不含展開語法但無法解析**（相對路徑、或指向不存在的字面絕對路徑）
    → `outcome="unresolvable"`，維持 **fail-open**（allow，沿用
-   0.2.1-W3-151 既有邊界）。理由：該命令本身在真正執行時就會因路徑不存在
+   本 hook 既有邊界）。理由：該命令本身在真正執行時就會因路徑不存在
    而失敗，不需要 hook 額外把關。
 
 **已知且無法收口的殘留類別**：一旦 `-C` 目標含 shell 展開語法，hook
@@ -174,6 +174,7 @@ from lib.git_command_parse import (
 from lib.git_utils import (
     GENERIC_EXEMPT_EXACT,
     find_target_repo,
+    get_action_root,
     get_current_branch,
     get_project_root,
     is_protected_branch,
@@ -210,7 +211,7 @@ _SHORT_VALUE_FLAG_CHARS = frozenset("mcCFt")
 # stage-all，一律 fail-closed（範疇邊界：不嘗試用 git diff --name-only 反推）
 _SHORT_FLAG_RE = re.compile(r"^-[a-zA-Z]+$")
 
-# 0.2.1-W3-156：-C/cd 目標含 shell 展開語法（$變數/`反引號`/~家目錄）時，
+# -C/cd 目標含 shell 展開語法（$變數/`反引號`/~家目錄）時，
 # PreToolUse 看到的是未展開的原始文字，無法信任其字面內容，須 fail-closed。
 _SHELL_EXPANSION_RE = re.compile(r"[$`~]")
 
@@ -220,7 +221,6 @@ def _has_shell_expansion_syntax(s: str) -> bool:
 
     命令字串在 PreToolUse 時機為原始未展開文字，這些字元代表實際執行時
     的值會與此刻看到的字面文字不同，靜態比對其字面內容不可靠
-    （0.2.1-W3-156）。
     """
     if not s:
         return False
@@ -291,10 +291,10 @@ def _resolve_repo_root(repo_hint: str) -> Tuple[str, Optional[str]]:
     回傳 (outcome, target_root)：
     - outcome="resolved"：target_root 為實際 repo 根目錄。
     - outcome="shell_expansion"：repo_hint 含 $/`` ` ``/~ 等 shell 展開語法，
-      target_root 恆為 None，呼叫端應 fail-closed（0.2.1-W3-156）。
+      target_root 恆為 None，呼叫端應 fail-closed。
     - outcome="unresolvable"：不含展開語法但非絕對路徑，或指向不存在的
       git repo，target_root 恆為 None，呼叫端維持 fail-open（該命令本身
-      在真正執行時會失敗，範疇邊界沿用 0.2.1-W3-151）。
+      在真正執行時會失敗，範疇邊界沿用本 hook 既有設計）。
 
     repo_hint 可能指向 repo 內任意子目錄（git -C 語意），用 find_target_repo
     向上尋找 .git 標記取得真正的 repo 根目錄。
@@ -307,6 +307,19 @@ def _resolve_repo_root(repo_hint: str) -> Tuple[str, Optional[str]]:
     if target_root is None:
         return "unresolvable", None
     return "resolved", target_root
+
+
+def _resolve_host_root(payload: Dict[str, object]) -> str:
+    """host 為 payload.cwd 所屬 checkout；缺 cwd 時沿用 get_project_root。
+
+    情境 C（env=MAIN、cwd=linked worktree）下 get_project_root 恆回 MAIN，
+    與命令實際作用面不一致。缺 cwd 不呼叫 get_action_root，避免新增 stderr。
+    """
+    project_root = get_project_root()
+    cwd = payload.get("cwd")
+    if not cwd or not isinstance(cwd, str):
+        return str(project_root)
+    return str(get_action_root(payload, fallback_root=project_root))
 
 
 def _is_host_repo(target_root: str, host_root: str) -> bool:
@@ -347,7 +360,7 @@ def _parse_literal_paths(tokens: List[str], unenumerable_flags: "set") -> Option
         if tok == "--":
             continue
         if is_shell_redirection_token(tok):
-            continue  # shell 重導向 token（2>&1 等）不是路徑，略過（W3-156）
+            continue  # shell 重導向 token（2>&1 等）不是路徑，略過
         if tok.startswith("-"):
             continue  # 其餘 flag（如 -v/--verbose）不影響列舉，略過
         if not is_literal_pathspec_token(tok):
@@ -399,7 +412,7 @@ def _parse_commit_pathspec(tokens: List[str]) -> Tuple[bool, Optional[List[str]]
             continue
 
         if is_shell_redirection_token(tok):
-            i += 1  # shell 重導向 token（2>&1 等）不是路徑，略過（W3-156）
+            i += 1  # shell 重導向 token（2>&1 等）不是路徑，略過
             continue
 
         if tok.startswith("-"):
@@ -468,7 +481,7 @@ def build_bash_cross_repo_deny_message(
     """跨專案保護分支 Bash commit 的 deny 訊息，與 Write 路徑語意一致。
 
     附目標 repo/branch、非豁免檔案清單（或 fail-closed 說明）、可執行的
-    下一步指令（0.2.1-W3-149 依此決定執行方式）。
+    下一步指令（呼叫端依此決定執行方式）。
     """
     if fail_closed:
         files_block = (
@@ -509,7 +522,7 @@ def build_bash_cross_repo_deny_message(
 
 
 def build_shell_expansion_deny_message(repo_hint: str) -> str:
-    """`-C`/`cd` 目標含 shell 展開語法時的 deny 訊息（0.2.1-W3-156）。
+    """`-C`/`cd` 目標含 shell 展開語法時的 deny 訊息。
 
     PreToolUse 時機看到的是命令的原始未展開文字，`$` 變數 / 反引號指令
     替換 / `~` 家目錄展開的實際值只有 shell 真正執行時才知道，靜態比對
@@ -535,7 +548,7 @@ def _resolve_cross_repo_protected_target(
 
     回傳 (outcome, target)：
     - outcome="shell_expansion"：-C/cd 目標含 shell 展開語法，target=None，
-      呼叫端應 fail-closed deny（0.2.1-W3-156，無法區分是否恰好指向本專案，
+      呼叫端應 fail-closed deny（無法區分是否恰好指向本專案，
       見檔頭殘留限制說明）。
     - outcome="skip"：其餘安全放行條件（不含展開語法但無法解析 / 同 host
       repo / 無法取得分支 / 非保護分支），target=None，呼叫端允許。
@@ -614,11 +627,11 @@ def _determine_pending_files(
     """推導本次 commit 完成後會納入的完整檔案集合（相對 repo root）。
 
     三來源聯集：commit pathspec（來源 1）/ 同範圍 git add（來源 2）/
-    呼叫當下已 staged（來源 3，沿用 0.2.1-W3-151 既有邏輯）。
+    呼叫當下已 staged（來源 3，沿用既有邏輯）。
 
     回傳 (fail_closed, files)：
     - fail_closed=True：任一來源無法靜態列舉，files 恆為空清單，
-      呼叫端應直接 deny（0.2.1-W3-154 範疇：-a/-am/--all、萬用字元、
+      呼叫端應直接 deny（add-and-commit 串接範疇：-a/-am/--all、萬用字元、
       shlex 無法切分、staged 清單讀取失敗）。
     - fail_closed=False：files 為三來源聯集後的完整清單，可能為空
       （真正 no-op）。
@@ -681,7 +694,7 @@ def _check_files_for_target(
 def _check_invocation(command: str, inv: Dict[str, object], host_root: str, logger) -> Optional[str]:
     """檢查單一 write 呼叫，回傳 deny 訊息（None 表示允許）。
 
-    Phase 4（0.2.1-W3-156）：拆為「解析 invocation 的三態結果」與「命中時
+    Phase 4 重構：拆為「解析 invocation 的三態結果」與「命中時
     的檔案集合檢查」兩段，前者交由 `_resolve_cross_repo_protected_target`，
     後者交由 `_check_files_for_target`，本函式僅負責依 outcome 分派。
     """
@@ -694,6 +707,131 @@ def _check_invocation(command: str, inv: Dict[str, object], host_root: str, logg
         return None
 
     return _check_files_for_target(command, inv, target, logger)
+
+
+# ============================================================================
+# 主 checkout 改變 HEAD 的 checkout／switch
+# ============================================================================
+# 共用主工作樹由並行 session 與 hook 共用，HEAD 離開 main 會把它們一併帶到錯誤分支
+# （.claude/pm-rules/parallel-dispatch.md〈禁止在共用主工作樹切換或建立分支（強制）〉）。
+# 範圍：只判定本專案 repo 的主 checkout（git-dir 等於 common-dir，且 common-dir 與 host 相同）；
+# 其他 repo 與 linked worktree 不判定。目錄含變數等無法靜態判定時放行並記日誌。
+
+HEAD_CHANGE_SUBCOMMANDS = frozenset({"checkout", "switch"})
+# 主 checkout 可停留的分支：切回這些分支放行
+_MAIN_BRANCH_NAMES = frozenset({"main", "master"})
+# 建立分支的旗標（checkout -b/-B/--orphan、switch -c/-C/--create/--force-create/--orphan）
+_CREATE_BRANCH_FLAGS = frozenset({"-b", "-B", "-c", "-C", "--create", "--force-create", "--orphan"})
+# 會消耗下一個 token 作為值、且值不是目標 ref 的旗標
+_HEAD_VALUE_FLAGS = frozenset({"--conflict", "--pathspec-from-file"})
+
+
+def _is_commitish(target_dir: str, ref: str) -> bool:
+    """ref 可解析為 commit，或為某個 remote 上的同名分支（checkout 會 DWIM 建立追蹤分支）。"""
+    ok, _ = run_git_command(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], cwd=target_dir)
+    if ok:
+        return True
+    ok, out = run_git_command(["for-each-ref", "--count=1", f"refs/remotes/*/{ref}"], cwd=target_dir)
+    return ok and bool(out.strip())
+
+
+def _head_change_reason(subcmd: str, args: List[str], target_dir: str) -> Optional[str]:
+    """checkout／switch 是否改變 HEAD；會改變時回傳原因，否則 None。
+
+    放行：帶 `--`（還原檔案）、無目標、目標為 main／master、checkout 多個位置引數（<tree-ish> <paths>）、
+    checkout 的單一引數不是 ref（視為路徑，如 `git checkout .`）。
+    """
+    if "--" in args:
+        return None
+    positional: List[str] = []
+    skip_next = False
+    for tok in args:
+        if skip_next:
+            skip_next = False
+            continue
+        flag = tok.split("=", 1)[0]
+        if flag in _CREATE_BRANCH_FLAGS:
+            return f"建立分支（{flag}）"
+        if flag == "--detach" or (subcmd == "switch" and tok == "-d"):
+            return "detach HEAD"
+        if flag in _HEAD_VALUE_FLAGS and "=" not in tok:
+            skip_next = True
+            continue
+        if tok.startswith("-") and tok != "-":
+            continue
+        positional.append(tok)
+    if len(positional) != 1:
+        return None
+    ref = positional[0]
+    if ref == "-":
+        return "切回前一個分支（git checkout -）"
+    if ref in _MAIN_BRANCH_NAMES:
+        return None
+    if subcmd == "checkout" and not _is_commitish(target_dir, ref):
+        return None
+    return f"切換到 {ref}"
+
+
+def _git_dirs(directory: str) -> Optional[Tuple[str, str]]:
+    """(git-dir, common-dir) 的絕對真實路徑；不在 git repo 內時回傳 None。"""
+    ok, out = run_git_command(
+        ["rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"], cwd=directory
+    )
+    lines = out.strip().splitlines() if ok else []
+    if len(lines) < 2:
+        return None
+    return os.path.realpath(lines[0]), os.path.realpath(lines[1])
+
+
+def _is_host_main_checkout(target_dir: str, host_root: str) -> bool:
+    """target_dir 位於本專案 repo 的主 checkout（非 linked worktree）。"""
+    target = _git_dirs(target_dir)
+    host = _git_dirs(host_root)
+    if target is None or host is None:
+        return False
+    git_dir, common_dir = target
+    return git_dir == common_dir and common_dir == host[1]
+
+
+def build_main_checkout_head_deny_message(statement: str, target_dir: str, reason: str) -> str:
+    return (
+        f"[主 checkout 分支保護] 共用主工作樹禁止改變 HEAD（{reason}）\n"
+        f"被攔截的命令: {statement}\n"
+        f"主 checkout: {target_dir}\n\n"
+        "主工作樹由並行 session 與 hook 共用，HEAD 離開 main 會把它們一併帶到錯誤分支。\n"
+        "改在 linked worktree 進行：\n"
+        "  git worktree add <路徑> -b <新分支>          # 建立新分支\n"
+        "  git worktree add <路徑> <既有分支>           # 切到既有分支\n"
+        "  git worktree add --detach <路徑> <commit>    # 檢視舊 commit\n"
+        "  或 /worktree create <ticket-id>\n"
+        "切回 main（git checkout main）與還原檔案（git checkout -- <path>）不受限制。\n"
+        "依據：.claude/pm-rules/parallel-dispatch.md〈禁止在共用主工作樹切換或建立分支（強制）〉"
+    )
+
+
+def _check_main_checkout_head_change(command: str, payload: Dict[str, object], logger) -> Optional[str]:
+    """命令中任一 checkout／switch 會改變本專案主 checkout 的 HEAD 時回傳 deny 訊息。"""
+    host_root = _resolve_host_root(payload)
+    cwd = payload.get("cwd")
+    base_dir = cwd if isinstance(cwd, str) and cwd else host_root
+    invocations = find_git_invocations(command, HEAD_CHANGE_SUBCOMMANDS, base_dir=base_dir)
+    if not invocations:
+        return None
+    for inv in invocations:
+        if inv.dir_unknown:
+            logger.info("checkout/switch 目錄無法靜態判定（含變數等），放行: %s", " ".join(inv.statement))
+            continue
+        target_dir = inv.effective_dir or base_dir
+        reason = _head_change_reason(inv.subcommand, inv.args, target_dir)
+        if reason is None:
+            continue
+        if not _is_host_main_checkout(target_dir, host_root):
+            logger.debug("checkout/switch 目標非本專案主 checkout，放行: %s", target_dir)
+            continue
+        statement = " ".join(inv.statement)
+        logger.info("主 checkout 改變 HEAD，阻擋: %s（%s，目錄 %s）", statement, reason, target_dir)
+        return build_main_checkout_head_deny_message(statement, target_dir, reason)
+    return None
 
 
 def main() -> int:
@@ -716,6 +854,15 @@ def main() -> int:
         logger.debug("命令不含 git 字樣，短路允許")
         return 0
 
+    head_deny = _check_main_checkout_head_change(command, input_data, logger)
+    if head_deny:
+        emit_hook_output(
+            "PreToolUse",
+            permission_decision="deny",
+            permission_decision_reason=head_deny,
+        )
+        return 0
+
     invocations = _find_write_invocations(command)
     if invocations is None:
         # 無法安全 tokenize：既定選擇 fail-open，與既有「cwd 隱含形式無法
@@ -730,7 +877,7 @@ def main() -> int:
         logger.debug("命令含 git 但無可解析的 write 呼叫（-C 或子 shell cd 形式），允許")
         return 0
 
-    host_root = str(get_project_root())
+    host_root = _resolve_host_root(input_data)
 
     for inv in invocations:
         deny_message = _check_invocation(command, inv, host_root, logger)
@@ -747,5 +894,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # 不整支宣告 fail_closed：本 hook 經 dispatcher 對每個 Bash 命令執行，整支宣告時
+    # 單支逾時或載入期例外會擋下全部 Bash 命令。保護分支 commit 的高風險分支已在
+    # _determine_pending_files 內保守處理（檔案集合無法靜態列舉或 staged 讀取失敗即阻擋）。
     exit_code = run_hook_safely(main, "bash-git-protected-branch-guard")
     sys.exit(exit_code)
