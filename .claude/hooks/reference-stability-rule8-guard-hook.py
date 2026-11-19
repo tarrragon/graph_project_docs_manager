@@ -9,7 +9,7 @@
 落實 reference-stability 規則 8（框架文件禁止引用專案層級識別符）
 「引用性質判準：全禁原則與五類分類」的 hook 強制層。
 
-偵測策略（全禁 + 逐檔淨增量比對，0.2.1-W3-315）：
+偵測策略（全禁 + 逐檔淨增量比對）：
   ticket ID 在框架文件的任何出現，除落入第 4 類（被說明對象型，白名單
   路徑）或第 5 類（測試資料型，測試路徑）豁免，一律視為候選違規——
   不再依「跳轉引導詞」句型判斷依賴型 vs 歷史錨點型（該判準已被
@@ -28,7 +28,10 @@
   已排除 .claude/ 開頭與 code fence）命中 1990 個相異路徑值、分布於 394
   個檔案——規模遠大於可承受的一次性阻擋量（ARCH-016 失效模式：一次把
   大量既有違規轉為阻擋會逼出整批豁免標記，等於廢掉規則），故本層級僅
-  WARNING 提示（exit 0，不阻擋），阻擋層留待觀察期後另評估。
+  WARNING 提示（exit 0，不阻擋）。決策：本層級維持提示、不升級為阻擋——
+  升級前須先排除框架既定路徑（FRAMEWORK_MANDATED_PROJECT_*）以外的誤報來源，
+  並以新增命中的誤報比例為判準另行評估；提示經 additionalContext 送達模型
+  （exit 0 加 stderr 對模型不可見）。
 
 存量凍結機制（避免對既有大量存量違規產生噪音壓力，ARCH-016 失效模式）：
   本 hook 於 PreToolUse（編輯套用前）讀取目標檔案「編輯前」的磁碟內容作為
@@ -39,7 +42,7 @@
   allowlist 快照，避免「整檔白名單」讓該檔案後續新增違規也被放行的漏洞
   （同一檔案的存量與新增用內容比對區分，而非用路徑層級的全有全無豁免）。
 
-阻擋機制（0.2.1-W3-063，觀察期誤報率 0/10 後升級為 exit 2）：
+阻擋機制（觀察期誤報率 0/10 後升級為 exit 2）：
   淨增量新增命中且非豁免路徑 → exit 2 阻擋（stdout 於 exit 2 時被
   runtime 丟棄，訊息一律寫 stderr，見 IMP-BAL-001）。行內 marker 逃生閥
   （見下）可豁免個別行的命中，供 self-test 測資與規則正文示範等合法
@@ -47,8 +50,8 @@
 
 行內 marker 逃生閥：
   語法：`rule8-exempt: <category>:<reason>`（跨檔案類型通用語法，不綁
-  HTML comment 或 Python 註解符號）。生效範圍為 marker 所在行及其下一行
-  （逐行生效，非整檔放行）。合法 category 共三類：
+  HTML comment 或 Python 註解符號）。以命中行為基準：marker 放在命中行
+  本身，或命中行的上一行（逐行生效，非整檔放行）。合法 category 共三類：
     - testdata     — 守衛或工具自身 self-test 測資需真實 ID 形態
     - illustration — 規則/方法論正文示範 ID 形態，且不便置於 code fence
     - relocation   — 既有內容的逐字位置搬移，reason 須含來源檔路徑
@@ -68,8 +71,8 @@
           PER_PROJECT_PATTERNS 者同理不掃描，manifest 載入失敗時照常掃描
           （見 is_per_project_path）
 偵測樣式（ticket ID 軌，exit 2 可阻擋）:
-  - 版本化 ticket ID：`\\d+\\.\\d+\\.\\d+-W\\d+-\\d+`（如 9.9.9-W9-999）
-  - 裸格式 ticket ID：`W\\d+-\\d+`（如 W9-999）
+  - 版本化 ticket ID：`\\d+\\.\\d+\\.\\d+-W\\d+-\\d+`（如 9.9.9-W9-999） rule8-exempt: testdata:格式範例需真實 ID 形態
+  - 裸格式 ticket ID：`W\\d+-\\d+`（如 W9-999） rule8-exempt: testdata:格式範例需真實 ID 形態
 偵測樣式（專案路徑軌，WARNING-only，exit 0 不阻擋）:
   - 完整路徑 token 以 PROJECT_PATH_PREFIXES（docs/、lib/、test/、
     integration_test/）任一前綴開頭，且以常見框架檔案副檔名
@@ -104,6 +107,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -113,15 +117,14 @@ from typing import Dict, List, Optional, Set, Tuple
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-try:
-    from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin
-    from lib.ticket_id_pattern import (
-        SEARCH_BOUNDED_RE as VERSIONED_TICKET_PATTERN,
-        BARE_BOTH_BOUNDED_RE as BARE_TICKET_PATTERN,
-    )
-except ImportError as e:
-    print(f"[Hook Import Error] {Path(__file__).name}: {e}", file=sys.stderr)
-    sys.exit(0)
+# import 期失敗不攔截：例外照常拋出，直譯器以 exit 1 結束（非 exit 2，仍放行），
+# runtime 記為 non-blocking error、relay 轉告模型（hook-system-operations〈輸出規範〉）
+from lib import setup_hook_logging, run_hook_safely, read_json_from_stdin
+from lib.hook_io import emit_hook_output
+from lib.ticket_id_pattern import (
+    SEARCH_BOUNDED_RE as VERSIONED_TICKET_PATTERN,
+    BARE_BOTH_BOUNDED_RE as BARE_TICKET_PATTERN,
+)
 
 
 EXIT_ALLOW = 0
@@ -174,6 +177,77 @@ RELOCATION_SOURCE_PATH_PATTERN = re.compile(
 # 不同語言、不同目錄結構，甚至無此目錄）。新增專案類型的頂層目錄可直接
 # 擴充此 tuple，不影響判準本身；此清單非豁免類白名單（無成員上限規定）。
 PROJECT_PATH_PREFIXES = ("docs/", "lib/", "test/", "integration_test/")
+
+# 框架既定的專案路徑：框架本身要求每個 consumer 都有（doc-flow 的版本索引與
+# 工作日誌目錄），在其他 consumer 保證存在，不屬規則 8 的專案層級識別符。
+# 精確檔名比對 FRAMEWORK_MANDATED_PROJECT_FILES；目錄比對前綴。
+FRAMEWORK_MANDATED_PROJECT_FILES = frozenset({"docs/todolist.yaml"})
+FRAMEWORK_MANDATED_PROJECT_DIRS = ("docs/work-logs/",)
+
+
+def is_framework_mandated_project_path(token: str) -> bool:
+    """路徑 token 是否為框架既定、每個 consumer 都存在的專案路徑。"""
+    return (
+        token in FRAMEWORK_MANDATED_PROJECT_FILES
+        or token.startswith(FRAMEWORK_MANDATED_PROJECT_DIRS)
+    )
+
+
+# doc／doc-flow skill 以固定檔名管理的 consumer 文件（file_locator、batch_init、
+# test_map、validate 寫死的檔名）。與 FRAMEWORK_MANDATED 分開：未採用 doc 系統的
+# consumer 沒有這些檔，不符合「每個 consumer 保證存在」；但檔名由框架定義、各
+# consumer 相同，引用它描述的是框架 schema，不是某個專案的識別符，規則 8 防的
+# 跨專案死連結（指向只有單一專案才有的內容）不成立。只收精確檔名：docs/spec/、
+# docs/usecases/ 等目錄底下的檔是專案內容（如某份規格），仍屬專案路徑。
+FRAMEWORK_DEFINED_DOC_FILES = frozenset({
+    "docs/proposals-tracking.yaml",
+    "docs/traceability.yaml",
+    "docs/domain-map.md",
+    "docs/non-domain-paths.yaml",
+    "docs/app-use-cases.md",
+})
+
+# 框架目錄本身（本 hook 位於 <framework>/hooks/）。用於判定相對路徑 token 是否
+# 指向框架內既有檔（如 skill 內 lib/messages.py）——那是框架內部結構的相對寫法，
+# 不是 consumer 的 lib/。
+_FRAMEWORK_DIR = Path(__file__).resolve().parent.parent
+# 走訪框架目錄時略過的子目錄：執行期產物與巢狀 worktree 快照，不屬框架檔
+_FRAMEWORK_WALK_SKIP_DIRS = frozenset({
+    "worktrees", "hook-logs", "logs", ".venv", "__pycache__", "node_modules",
+})
+_framework_rel_paths: Optional[frozenset] = None
+
+
+def _framework_relative_paths() -> frozenset:
+    """框架目錄下所有檔案的相對路徑（posix），首次呼叫時走訪並快取。
+
+    只在出現路徑候選時才走訪，未命中的編輯不付此成本。走訪失敗回傳空集合
+    （此時不排除任何候選，誤差方向為多提示，不會漏報）。
+    """
+    global _framework_rel_paths
+    if _framework_rel_paths is not None:
+        return _framework_rel_paths
+    collected = set()
+    try:
+        for dirpath, dirnames, filenames in os.walk(_FRAMEWORK_DIR):
+            dirnames[:] = [d for d in dirnames if d not in _FRAMEWORK_WALK_SKIP_DIRS]
+            rel_dir = Path(dirpath).relative_to(_FRAMEWORK_DIR).as_posix()
+            for name in filenames:
+                collected.add(name if rel_dir == "." else f"{rel_dir}/{name}")
+    except OSError as exc:
+        # 走訪失敗不中斷守衛：回傳空集合，等同不排除（多提示而非漏報）
+        sys.stderr.write(f"[rule8 守衛] 走訪框架目錄失敗，路徑軌不排除框架內相對路徑：{exc}\n")
+        collected = set()
+    _framework_rel_paths = frozenset(collected)
+    return _framework_rel_paths
+
+
+def resolves_inside_framework(token: str) -> bool:
+    """路徑 token 是否為框架內既有檔的相對路徑（任一層目錄下有同一相對路徑）。"""
+    suffix = "/" + token
+    return any(
+        rel == token or rel.endswith(suffix) for rel in _framework_relative_paths()
+    )
 
 # 路徑類命中的完整 token 樣式：從最外層邊界（行首 / 空白 / 反引號 / 引號 /
 # 括號）開始比對到副檔名結尾，取得的是完整路徑而非任意子字串——避免
@@ -489,7 +563,11 @@ def find_project_path_hits_with_lines(text: str) -> List[Tuple[str, int]]:
             token = match.group(1)
             if token.startswith(SCAN_PREFIX):
                 continue
-            if token.startswith(PROJECT_PATH_PREFIXES):
+            if is_framework_mandated_project_path(token):
+                continue
+            if token in FRAMEWORK_DEFINED_DOC_FILES:
+                continue
+            if token.startswith(PROJECT_PATH_PREFIXES) and not resolves_inside_framework(token):
                 hits.append((token, idx))
     return hits
 
@@ -610,7 +688,7 @@ def diff_new_hits(
 def build_marker_syntax_hint() -> str:
     """組合 marker 逃生閥語法說明與三個 category 的具體範例（訊息共用片段）。"""
     return (
-        "逃生閥語法（同行或下一行皆可）：`rule8-exempt: <category>:<reason>`\n"
+        "逃生閥語法（放在命中行本身，或命中行的上一行）：`rule8-exempt: <category>:<reason>`\n"
         "合法 category：\n"
         "  testdata    — 守衛或工具自身 self-test 測資需真實 ID 形態，例：\n"
         "                rule8-exempt: testdata:self-test 存量凍結案例需真實 ID 形態\n"
@@ -638,7 +716,7 @@ def build_block_message(file_path: str, blocked_hits: List[str]) -> str:
         f"test_*.py、*_test.py）。\n"
         f"{build_marker_syntax_hint()}"
         f"這是阻擋（exit 2），非提示——若確認此 ID 屬合法情境（測資 / 示範），"
-        f"請在該行或上一行加上逃生閥 marker 後重試。"
+        f"請在命中行本身或命中行的上一行加上逃生閥 marker 後重試。"
     )
 
 
@@ -648,7 +726,7 @@ def build_path_warning_message(file_path: str, new_paths: List[str]) -> str:
     與 build_block_message（ticket ID，exit 2）並列但語氣與行為不同：
     路徑類命中規模過大（全量掃描 .claude/ 命中 1990 個相異路徑值、
     分布 394 個檔案，見模組 docstring），一次轉為阻擋會逼出整批豁免
-    標記而廢掉規則，故本層級僅提示不阻擋，阻擋層留待觀察期後另評估。
+    標記而廢掉規則，故本層級僅提示不阻擋（升級條件見模組 docstring）。
     """
     paths_display = "、".join(new_paths)
     return (
@@ -663,8 +741,7 @@ def build_path_warning_message(file_path: str, new_paths: List[str]) -> str:
         f"路徑的描述；若屬合法情境（如 error-pattern 記載歷史事實），"
         f"可用行內 marker 豁免。\n"
         f"{build_marker_syntax_hint()}"
-        f"這是 WARNING（exit 0），不阻擋本次操作；命中量過大，此層級目前"
-        f"僅提示，是否升級為阻擋留待觀察期後另評估。"
+        f"這是 WARNING（exit 0），不阻擋本次操作；此層級維持僅提示。"
     )
 
 
@@ -727,8 +804,8 @@ def filter_marker_exempt(
 ) -> Tuple[List[str], List[str]]:
     """依行內 marker 逃生閥篩選新增命中，回傳 (blocked_hits, format_error_messages)。
 
-    marker 生效範圍為所在行與下一行（逐行生效，非整檔放行）。同一筆命中
-    若所在行或上一行有有效 marker → 豁免；若有 marker 但格式錯誤（未知
+    以命中行為基準判定（逐行生效，非整檔放行）：同一筆命中若命中行本身
+    或命中行的上一行有有效 marker → 豁免；若有 marker 但格式錯誤（未知
     category 或理由為空）→ 該命中仍阻擋，且產生獨立的格式錯誤訊息。
 
     `hits_with_lines_finder` 預設為 find_ticket_id_hits_with_lines（既有
@@ -794,16 +871,24 @@ def filter_marker_exempt(
 
 
 def build_path_warning_output(file_path: str, pre_text: str, post_text: str) -> Optional[str]:
-    """計算路徑類新增命中並組合 WARNING 訊息；無新增命中或全數豁免時回傳 None。
+    """計算路徑類新增命中並組合 WARNING 訊息；無新增命中或全數豁免時回傳 None。"""
+    return compute_path_warning(file_path, pre_text, post_text)[0]
+
+
+def compute_path_warning(
+    file_path: str, pre_text: str, post_text: str
+) -> Tuple[Optional[str], List[str]]:
+    """回傳（WARNING 訊息或 None, 未被 marker 豁免的新增路徑命中）。
 
     本函式輸出恆為 WARNING（不影響 main() 的阻擋判斷，exit code 全由
     ticket ID 命中軌決定）——即使 marker 格式錯誤，路徑類命中規模過大
     （見模組 docstring「專案檔案路徑偵測」段），此層級整體維持僅提示、
-    不阻擋，格式錯誤同樣併入提示訊息而非升級為阻擋。
+    不阻擋，格式錯誤同樣併入提示訊息而非升級為阻擋。命中清單供 main()
+    寫入日誌：路徑軌升級判準以新增命中的誤報比例計算，日誌須含命中值。
     """
     new_paths = diff_new_hits(pre_text, post_text, finder=find_project_path_hits)
     if not new_paths:
-        return None
+        return None, []
 
     blocked_paths, format_error_messages = filter_marker_exempt(
         file_path,
@@ -812,13 +897,13 @@ def build_path_warning_output(file_path: str, pre_text: str, post_text: str) -> 
         hits_with_lines_finder=find_project_path_hits_with_lines,
     )
     if not blocked_paths and not format_error_messages:
-        return None
+        return None, []
 
     messages = []
     if blocked_paths:
         messages.append(build_path_warning_message(file_path, blocked_paths))
     messages.extend(format_error_messages)
-    return "\n\n".join(messages)
+    return "\n\n".join(messages), list(blocked_paths)
 
 
 def main() -> int:
@@ -865,13 +950,26 @@ def main() -> int:
 
     pre_text, post_text = reconstruct_pre_post_text(tool_name, tool_input, file_path)
 
-    path_warning = build_path_warning_output(file_path, pre_text, post_text)
+    path_warning, path_hits = compute_path_warning(file_path, pre_text, post_text)
     if path_warning:
         sys.stderr.write(path_warning + "\n")
         logger.info(
-            f"專案路徑類新增命中（WARNING，不阻擋）：file={file_path} tool={tool_name}"
+            f"專案路徑類新增命中（WARNING，不阻擋）：file={file_path} tool={tool_name} "
+            f"hits={sorted(set(path_hits))}"
         )
 
+    result = _ticket_id_track(file_path, tool_name, pre_text, post_text, logger)
+    if path_warning and result == EXIT_ALLOW:
+        # 受眾含模型：exit 0 加 stderr 對模型不可見，改經 additionalContext 送達
+        # （quality-baseline 規則 4）。阻擋時 stdout 會被 runtime 丟棄，不輸出。
+        emit_hook_output("PreToolUse", additional_context=path_warning)
+    return result
+
+
+def _ticket_id_track(
+    file_path: str, tool_name: str, pre_text: str, post_text: str, logger
+) -> int:
+    """ticket ID 命中軌：淨增量比對 → marker 篩選 → 阻擋（exit 2）或放行。"""
     new_hits = diff_new_hits(pre_text, post_text)
 
     if not new_hits:
@@ -916,8 +1014,8 @@ if __name__ == "__main__":
         # 正例：應偵測到 ticket ID 候選（find_ticket_id_hits 為全量偵測，
         # 不再區分依賴型 / 歷史錨點型）
         positive_cases = [
-            "版本化格式：本 hook 修復 9.9.9-W9-999 遺漏的問題。",
-            "裸格式：詳見 W9-999 的分析結論。",
+            "版本化格式：本 hook 修復 9.9.9-W9-999 遺漏的問題。",  # rule8-exempt: testdata:self-test 正例測資
+            "裸格式：詳見 W9-999 的分析結論。",  # rule8-exempt: testdata:self-test 正例測資
             # rule8-exempt: testdata:self-test 正例測資需真實 ID 形態
             "無跳轉詞裸引用（0.2.1-W3-308 形態）：  # from 0.2.1-W3-308",
         ]
@@ -979,14 +1077,14 @@ if __name__ == "__main__":
             print("[PASS] 一般規則檔未被誤判為豁免")
 
         # code fence 內容不應被視為實際引用
-        fence_case = "說明如下：\n```\n詳見 W9-999 的分析結論\n```\n本行本身無引用。"
+        fence_case = "說明如下：\n```\n詳見 W9-999 的分析結論\n```\n本行本身無引用。"  # rule8-exempt: testdata:self-test fence 案例
         fence_hits = find_ticket_id_hits(fence_case)
         if fence_hits:
             failures.append(f"[FAIL] code fence 內容誤判為引用 {fence_hits}: {fence_case!r}")
         else:
             print("[PASS] code fence 內容已正確排除")
 
-        # 存量凍結機制：編輯前後淨增量比對（0.2.1-W3-315 acceptance 1/3）
+        # 存量凍結機制：編輯前後淨增量比對
         with tempfile.TemporaryDirectory() as tmpdir:
             existing_file = Path(tmpdir) / "existing.md"
             existing_file.write_text(
@@ -1019,7 +1117,7 @@ if __name__ == "__main__":
                 {
                     "file_path": str(existing_file),
                     "old_string": "既有內容第一行",
-                    "new_string": "既有內容第一行\n新增引用（0.2.1-W3-999 教訓）",
+                    "new_string": "既有內容第一行\n新增引用（0.2.1-W3-999 教訓）",  # rule8-exempt: testdata:self-test 存量凍結案例
                 },
                 str(existing_file),
             )
@@ -1029,11 +1127,11 @@ if __name__ == "__main__":
             # rule8-exempt: testdata:self-test 存量凍結案例需真實 ID 形態
             if set(new_hits_b) != {"0.2.1-W3-999", "W3-999"} or "0.2.1-W3-100" in new_hits_b:
                 failures.append(
-                    "[FAIL] 凍結範圍內新增命中應被偵測且不含既有 0.2.1-W3-100，"
-                    f"預期 {{'0.2.1-W3-999', 'W3-999'}}，實際 {new_hits_b}"
+                    "[FAIL] 凍結範圍內新增命中應被偵測且不含既有 0.2.1-W3-100，"  # rule8-exempt: testdata:self-test 訊息文字
+                    f"預期 {{'0.2.1-W3-999', 'W3-999'}}，實際 {new_hits_b}"  # rule8-exempt: testdata:self-test 訊息文字
                 )
             else:
-                print("[PASS] 凍結範圍內新增命中仍正確告警（不含既有 0.2.1-W3-100）")
+                print("[PASS] 凍結範圍內新增命中仍正確告警（不含既有 0.2.1-W3-100）")  # rule8-exempt: testdata:self-test 訊息文字
 
             # 案例 C：Write 建立全新檔案含 ticket ID（無存量基準，pre_text 為空）
             new_file = Path(tmpdir) / "brand_new.md"
@@ -1059,7 +1157,7 @@ if __name__ == "__main__":
             "新增引用 0.2.1-W3-777 rule8-exempt: testdata:self-test 同行案例\n"
         )
         blocked_same, errors_same = filter_marker_exempt(
-            "dummy.md", marker_same_line_text, ["0.2.1-W3-777", "W3-777"]
+            "dummy.md", marker_same_line_text, ["0.2.1-W3-777", "W3-777"]  # rule8-exempt: testdata:self-test 引數列表
         )
         if blocked_same or errors_same:
             failures.append(
@@ -1069,26 +1167,27 @@ if __name__ == "__main__":
         else:
             print("[PASS] marker 逃生閥同行生效")
 
-        # marker 逃生閥：下一行生效
+        # marker 逃生閥：marker 在命中行的上一行生效
         marker_next_line_text = (
             "rule8-exempt: illustration:self-test 下一行案例\n"
             "新增引用 0.2.1-W3-778\n"
         )
         blocked_next, errors_next = filter_marker_exempt(
-            "dummy.md", marker_next_line_text, ["0.2.1-W3-778", "W3-778"]
+            "dummy.md", marker_next_line_text, ["0.2.1-W3-778", "W3-778"]  # rule8-exempt: testdata:self-test 引數列表
         )
         if blocked_next or errors_next:
             failures.append(
-                f"[FAIL] marker 下一行應豁免，實際 blocked={blocked_next} "
+                f"[FAIL] marker 在命中行上一行應豁免，實際 blocked={blocked_next} "
                 f"errors={len(errors_next)}"
             )
         else:
-            print("[PASS] marker 逃生閥下一行生效")
+            print("[PASS] marker 逃生閥在命中行上一行生效")
 
         # marker 格式錯誤：未知 category 仍阻擋
+        # rule8-exempt: testdata:self-test 未知 category 案例需真實 ID 形態
         marker_bad_category_text = "新增引用 0.2.1-W3-779 rule8-exempt: unknown:理由存在\n"
         blocked_bad_cat, errors_bad_cat = filter_marker_exempt(
-            "dummy.md", marker_bad_category_text, ["0.2.1-W3-779", "W3-779"]
+            "dummy.md", marker_bad_category_text, ["0.2.1-W3-779", "W3-779"]  # rule8-exempt: testdata:self-test 引數列表
         )
         if not errors_bad_cat:
             failures.append("[FAIL] 未知 category 應產生格式錯誤並阻擋")
@@ -1096,9 +1195,10 @@ if __name__ == "__main__":
             print("[PASS] marker 未知 category 格式錯誤仍阻擋")
 
         # marker 格式錯誤：理由為空仍阻擋
+        # rule8-exempt: testdata:self-test 空理由案例需真實 ID 形態
         marker_empty_reason_text = "新增引用 0.2.1-W3-780 rule8-exempt: testdata:\n"
         blocked_empty, errors_empty = filter_marker_exempt(
-            "dummy.md", marker_empty_reason_text, ["0.2.1-W3-780", "W3-780"]
+            "dummy.md", marker_empty_reason_text, ["0.2.1-W3-780", "W3-780"]  # rule8-exempt: testdata:self-test 引數列表
         )
         if not errors_empty:
             failures.append("[FAIL] 空理由應產生格式錯誤並阻擋")
