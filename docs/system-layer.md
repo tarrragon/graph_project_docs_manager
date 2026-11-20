@@ -1,8 +1,9 @@
 ---
 title: "系統層 — graph_project_docs_manager"
 bundles: [DOMAIN-MAP-workspace, DOMAIN-MAP-schema, DOMAIN-MAP-corpus, DOMAIN-MAP-graph, DOMAIN-MAP-ticketdetail, DOMAIN-MAP-layout, DOMAIN-MAP-diagnostics, DOMAIN-MAP-history]
+layer_names: ["ui"]
 created: "2026-08-26"
-updated: "2026-11-10"
+updated: "2026-11-21"
 ---
 
 # 系統層 — graph_project_docs_manager
@@ -158,7 +159,7 @@ components  lib/components/：元件庫，只依賴 tokens、l10n 與 Flutter
 | 名稱 | 載體 | 語意 | 消費端與行為 |
 |---|---|---|---|
 | `ui` | 目錄 `docs/spec/ui/` | 規格檔的存放位置 | 只供人工導航，工具不依目錄名分流 |
-| `ui` | SPEC-001～004 frontmatter 的 `domain` 欄 | 規格分類：這是層級 SPEC，不是 domain SPEC | spec 的 domain 覆蓋檢查：`domain` 欄的值不在已宣告 domain 集合內，就判為層級 SPEC，改依本檔 §8 判定 FR 歸屬 |
+| `ui` | SPEC-001～004 frontmatter 的 `domain` 欄 | 規格分類：這是層級 SPEC，不是 domain SPEC | spec 的 domain 覆蓋檢查：`domain` 欄的值列在本檔 frontmatter 的 `layer_names` 內，就判為層級 SPEC，改依本檔 §8 判定 FR 歸屬（框架 3.5.0 起；未宣告時退回「不在已宣告 domain 集合內」） |
 | `presentation` | EVT frontmatter 的 `consumers` | 資料中的本地保留字，表示消費方是畫面層 | Diagnostics 的事件類破洞判定：此值改為比對 `traverses == []` 的步驟（SPEC-003 §3.5）；`producers` 不可用此值 |
 | 畫面狀態層 | 本檔 §2 分層圖與 §8 歸屬表 | 架構層：layer，不是 domain | 只供人工閱讀；覆蓋檢查以 FR 號比對，不比對字面。2026-11-10 前寫作「L4 畫面狀態」，domain 層號推導到 L4 後撞號，改為不帶層號（§2） |
 

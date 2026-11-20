@@ -127,7 +127,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 
 #### 1.6.1 provenance 與多值欄位樣本（1.1，`provenance_fixtures.dart`）
 
-正向檔皆以 SPEC-900 為基礎（UC、EVT 變體另以 `UC-900`、`EVT-900` 為 id，欄位相同）。反向檔皆為 PROP，含 `updated`（`prop_no_updated` 除外）與一個不在任何寫入集合內的子鍵 `ticket_refs: [T-1]`，作為「其他子鍵逐位元組不變」的觀察點。
+正向檔皆以 SPEC-900 為基礎（UC、EVT 變體另以 `UC-900`、`EVT-900` 為 id，欄位相同）。反向檔皆為 PROP，含 `updated`（`prop_no_updated` 除外）與一個不在任何寫入集合內的子鍵 `ticket_refs: [T-1]`，作為「其他子鍵逐位元組不變」的觀察點。<!-- uc-verify-exempt: 測試 fixture 的合成 UC id -->
 
 | 名稱 | 內容要點 | 用途 |
 |---|---|---|
@@ -139,7 +139,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 | `spec_related_empty` | `related_specs: []` | M-3 |
 | `spec_related_dup` | `related_specs: [SPEC-1, SPEC-2, SPEC-2]` | M-9 |
 | `spec_unsupported` | `related_specs` 分別為 block 序列、跨兩行的 flow 序列、flow 序列內含註解、anchor、alias、項為巢狀清單、項為 map，共七個變體 | M-10 |
-| `prop_std` | `outputs: {spec_refs: [SPEC-1, SPEC-900], usecase_refs: [UC-1], event_refs: [EVT-1], ticket_refs: [T-1]}`（以 block map 寫，各子鍵值為 flow 序列） | W-1、W-2、W-15、W-16 的基底、W-18、W-19、L-16 |
+| `prop_std` | `outputs: {spec_refs: [SPEC-1, SPEC-900], usecase_refs: [UC-1], event_refs: [EVT-1], ticket_refs: [T-1]}`（以 block map 寫，各子鍵值為 flow 序列） | W-1、W-2、W-15、W-16 的基底、W-18、W-19、L-16 <!-- uc-verify-exempt: 測試 fixture 的合成 UC id --> |
 | `prop_empty_refs` | 同 `prop_std`，但 `spec_refs: []`、`usecase_refs: []`、`event_refs: []` | W-1（加入端）、W-2、W-4、W-7 對照、W-13、W-17、W-20～W-28、V-22、C-8 |
 | `prop_design` | `spec_refs: [SPEC-900]`、`design_refs: [SPEC-900]` | W-5、M 群組加入案 |
 | `prop_design_only` | `spec_refs: []`、`design_refs: [SPEC-900]` | W-6 |
@@ -214,7 +214,7 @@ Mock 只替換外部世界（檔案系統、git、doc CLI、Corpus 的解析完�
 **前置條件**（v0.5，缺任一項時以說明訊息判為失敗，不跳過，同 SPEC-010-test-design §6 對 fvm 的處置）：
 - PATH 上有 `doc` 與 `uv`。
 - fixture repo 內有指向 `.claude/skills/doc` 的符號連結，以及只登記基準文件 UC 編號的 UC 白名單。
-- 基準文件為 UC 型（如 `UC-900-*.md`），不是 SPEC 型：`doc validate` 依檔名前綴取 ID。
+- 基準文件為 UC 型（如 `UC-900-*.md`），不是 SPEC 型：`doc validate` 依檔名前綴取 ID。<!-- uc-verify-exempt: 測試 fixture 的合成 UC id -->
 
 | # | fixture | When | Then | 對應驗收 |
 |---|---|---|---|---|
@@ -499,8 +499,8 @@ FR-03 驗收 #10 由 M-1～M-4 涵蓋；#11 由 M-5；#12～#15 分別由 M-6～
 | # | Given | When | Then |
 |---|---|---|---|
 | W-1 | 正向 `spec_sp_scalar`；PROP-A 為 `prop_std`；PROP-B 為 `prop_empty_refs` | 移除 PROP-A；再加入 PROP-B | 第一次寫入集合恰為 {SPEC-900, PROP-A}：PROP-A 的 `spec_refs` 為 `[SPEC-1]`，SPEC-900 的 `source_proposal` 為 `null`。第二次寫入集合恰為 {SPEC-900, PROP-B}：PROP-B 的 `spec_refs` 為 `[SPEC-900]`，SPEC-900 為 `PROP-B`。每次兩個檔各自除允許變更集合外逐位元組相同（PROP 的 `usecase_refs`、`event_refs`、`ticket_refs` 不變） |
-| W-2 | 正向 UC-900（`source_proposal: PROP-A`）；PROP-A 為 `prop_std` 加 `usecase_refs: [UC-900]`；PROP-B 為 `prop_empty_refs` | 加入 PROP-B；另案移除 PROP-A | 加入：PROP-B 的 `usecase_refs` 為 `[UC-900]`，`spec_refs` 與其他子鍵逐位元組不變。移除：PROP-A 的 `usecase_refs` 不含 UC-900 |
-| W-3（守衛） | 正向 UC-900；PROP-B 為 `prop_missing_key`（缺 `usecase_refs`，有 `spec_refs: []`） | 加入 PROP-B | 整批 `blocked(rewriteNotIsolated)`，帶 PROP-B 路徑；所有檔不變。`spec_refs` 存在不影響判定（不會改寫進 `spec_refs`）。正向對照：W-2 加入 |
+| W-2 | 正向 UC-900（`source_proposal: PROP-A`）；PROP-A 為 `prop_std` 加 `usecase_refs: [UC-900]`；PROP-B 為 `prop_empty_refs` | 加入 PROP-B；另案移除 PROP-A | 加入：PROP-B 的 `usecase_refs` 為 `[UC-900]`，`spec_refs` 與其他子鍵逐位元組不變。移除：PROP-A 的 `usecase_refs` 不含 UC-900 <!-- uc-verify-exempt: 測試 fixture 的合成 UC id --> |
+| W-3（守衛） | 正向 UC-900；PROP-B 為 `prop_missing_key`（缺 `usecase_refs`，有 `spec_refs: []`） | 加入 PROP-B | 整批 `blocked(rewriteNotIsolated)`，帶 PROP-B 路徑；所有檔不變。`spec_refs` 存在不影響判定（不會改寫進 `spec_refs`）。正向對照：W-2 加入 <!-- uc-verify-exempt: 測試 fixture 的合成 UC id --> |
 | W-3b（守衛） | 正向 `spec_sp_null`（SPEC-900）；PROP-B 為 `prop_missing_key` 缺 `spec_refs` 的變體（有 `usecase_refs: []`、`event_refs: []`） | 加入 PROP-B | 整批 `blocked(rewriteNotIsolated)`，帶 PROP-B 路徑；所有檔不變（不改寫進其他子鍵、不新增 `spec_refs`）。正向對照：W-1 第二次加入 `prop_empty_refs`（有 `spec_refs: []`）時 `written` |
 | W-4（守衛） | 正向 EVT-900；PROP-B 為 `prop_empty_refs`；另案 PROP-B 缺 `event_refs` | 加入 PROP-B | 前案：PROP-B 的 `event_refs` 為 `[EVT-900]`，`spec_refs`、`usecase_refs` 逐位元組不變（仍為 `[]`）。後案：整批 `blocked(rewriteNotIsolated)`，所有檔不變，`spec_refs`、`usecase_refs` 也未被寫入 |
 | W-5 | 正向 `spec_sp_scalar`；PROP-A 為 `prop_design` | 移除 PROP-A | 寫入集合恰為 {SPEC-900, PROP-A}；寫入後 `spec_refs` 與 `design_refs` 皆為 `[]`。只刪 `spec_refs` 的實作會留下 `design_refs: [SPEC-900]`，本案因此紅燈（圖上邊的斷言見 IT-E7-1） |
